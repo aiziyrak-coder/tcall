@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "tcall",
-      script: "tsx",
-      args: "server.ts",
+      script: "server.ts",
+      interpreter: "./node_modules/.bin/tsx",
       cwd: "/var/www/tcall",
       env: {
         NODE_ENV: "production",
