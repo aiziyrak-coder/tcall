@@ -30,17 +30,17 @@ export default function HomePage() {
         <div className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-32 text-center">
           <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-sm text-brand-300 mb-8">
             <Globe className="w-4 h-4" />
-            15+ til — OpenAI real-time tarjima
+            15+ til — aqlli real-time tarjima
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold leading-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold leading-tight mb-6">
             Dunyo bilan{" "}
             <span className="bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">
               til chegarasisiz
             </span>{" "}
             gaplashing
           </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto mb-10">
-            Video qo&apos;ng&apos;iroq qiling — OpenAI (Whisper + GPT + TTS) sizning tilingizda real-time tarjima va ovoz qiladi.
+          <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-10 px-2">
+            Video qo&apos;ng&apos;iroq qiling — aqlli tarjima sizning tilingizda real-time ishlaydi.
             Telefonda gaplashgandek, lekin butun dunyo bilan.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -62,7 +62,7 @@ export default function HomePage() {
             {
               icon: Globe,
               title: "Real-time tarjima",
-              desc: "Sherik boshqa tilde gapirsa ham, OpenAI GPT tarjima qiladi va TTS orqali ovozli eshitasiz.",
+              desc: "Sherik boshqa tilde gapirsa ham, aqlli tarjima qiladi va ovozli eshitasiz.",
             },
             {
               icon: Phone,

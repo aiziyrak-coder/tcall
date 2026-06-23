@@ -82,8 +82,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/30 via-slate-950 to-slate-950" />
+    <div className="page-shell flex items-center justify-center px-4 py-8">
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/30 via-slate-950 to-slate-950 pointer-events-none" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">

@@ -113,30 +113,30 @@ export default function DashboardPage() {
   const userLang = getLanguage(user.language);
 
   return (
-    <div className="min-h-screen">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/20 via-slate-950 to-slate-950" />
+    <div className="page-shell">
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/20 via-slate-950 to-slate-950 pointer-events-none" />
 
-      <nav className="relative z-10 flex items-center justify-between max-w-5xl mx-auto px-6 py-6">
-        <Link href="/" className="flex items-center gap-2">
+      <nav className="mobile-nav relative z-10 flex items-center justify-between max-w-5xl mx-auto px-4 sm:px-6 py-4">
+        <Link href="/" className="flex items-center gap-2 touch-manipulation">
           <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center">
             <Phone className="w-4 h-4" />
           </div>
           <span className="font-bold">Tcall</span>
         </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-white/50 hidden sm:inline">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <span className="text-xs sm:text-sm text-white/50 truncate max-w-[100px] sm:max-w-none">
             {userLang.flag} {user.name}
           </span>
-          <button onClick={logout} className="btn-secondary text-sm py-2 px-3 flex items-center gap-2">
+          <button onClick={logout} className="btn-secondary text-sm py-2 px-3 flex items-center gap-1.5 min-h-0">
             <LogOut className="w-4 h-4" />
-            {ui.logout}
+            <span className="hidden sm:inline">{ui.logout}</span>
           </button>
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold mb-2">{ui.dashboard}</h1>
-        <p className="text-white/50 mb-6">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 safe-bottom">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1">{ui.dashboard}</h1>
+        <p className="text-white/50 text-sm mb-6">
           {ui.yourLanguage}: {userLang.flag} {userLang.name}
         </p>
 
@@ -146,8 +146,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="glass rounded-2xl p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-12">
+          <div className="glass rounded-2xl p-6 sm:p-8">
             <div className="w-12 h-12 bg-brand-600/20 rounded-xl flex items-center justify-center mb-5">
               <Plus className="w-6 h-6 text-brand-400" />
             </div>
@@ -172,22 +172,24 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="glass rounded-2xl p-8">
+          <div className="glass rounded-2xl p-6 sm:p-8">
             <div className="w-12 h-12 bg-purple-600/20 rounded-xl flex items-center justify-center mb-5">
               <Users className="w-6 h-6 text-purple-400" />
             </div>
             <h2 className="text-xl font-semibold mb-2">{ui.joinCall}</h2>
             <p className="text-white/50 text-sm mb-6">{ui.joinRoomDesc}</p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
-                className="input-field flex-1 uppercase tracking-widest text-center font-mono"
+                className="input-field flex-1 uppercase tracking-widest text-center font-mono text-lg"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && joinRoom()}
                 placeholder="ABC123"
                 maxLength={6}
+                inputMode="text"
+                autoCapitalize="characters"
               />
-              <button onClick={() => joinRoom()} disabled={joining} className="btn-primary px-5">
+              <button onClick={() => joinRoom()} disabled={joining} className="btn-primary sm:px-6 w-full sm:w-auto">
                 {joining ? "..." : ui.joinCall}
               </button>
             </div>
@@ -199,8 +201,7 @@ export default function DashboardPage() {
           <div>
             <h3 className="font-semibold mb-1">{ui.translation}</h3>
             <p className="text-white/50 text-sm leading-relaxed">
-              {ui.translationInfo} OpenAI Whisper nutqni eshitadi, GPT tarjima qiladi, TTS ovozli aytadi.
-              Siz {userLang.name} tilida gapiring — sherigingiz o&apos;z tilida ko&apos;radi va eshitadi.
+              {ui.translationInfo} {ui.translationInfoFull}
             </p>
           </div>
         </div>
@@ -213,7 +214,7 @@ export default function DashboardPage() {
             {calls.map((call) => (
               <div
                 key={call.id}
-                className="glass rounded-xl p-4 flex items-center justify-between hover:bg-white/10 transition-colors"
+                className="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/10 transition-colors"
               >
                 <div>
                   <span className="font-mono font-semibold text-brand-400">{call.roomId}</span>

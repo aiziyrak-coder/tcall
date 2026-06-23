@@ -73,7 +73,10 @@ conn
       ).catch(() => "NEW");
 
       if (repoCheck.trim().includes("NEW")) {
-        await exec(conn, `git clone https://github.com/aiziyrak-coder/tcall.git ${APP_DIR}`);
+        await exec(
+          conn,
+          `if [ -d ${APP_DIR} ] && [ ! -d ${APP_DIR}/.git ]; then rm -rf ${APP_DIR}; fi; git clone https://github.com/aiziyrak-coder/tcall.git ${APP_DIR}`
+        );
       } else {
         await exec(conn, `cd ${APP_DIR} && git fetch origin && git reset --hard origin/main`);
       }

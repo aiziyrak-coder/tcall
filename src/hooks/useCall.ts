@@ -3,6 +3,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { apiFetch, getSocketUrl } from "@/lib/api";
+import {
+  isMobileDevice,
+  getMediaConstraints,
+  getPreferredAudioMimeType,
+  requestWakeLock,
+} from "@/lib/mobile";
 import type { RoomParticipant, TranslationPayload } from "@/types/signaling";
 
 export interface TranslationMessage extends TranslationPayload {
@@ -65,6 +71,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
   const isMutedRef = useRef(false);
   const voiceEnabledRef = useRef(true);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
 
   const flushIceQueue = useCallback(async (pc: RTCPeerConnection) => {
     while (iceQueueRef.current.length > 0) {
@@ -99,7 +106,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
       processingRef.current = true;
       try {
         const formData = new FormData();
-        formData.append("audio", blob, "chunk.webm");
+        formData.append("audio", blob, blob.type.includes("mp4") ? "chunk.mp4" : "chunk.webm");
         formData.append("language", userLanguage);
 
         const res = await apiFetch("/api/openai/transcribe", {
@@ -121,7 +128,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
           if (lastTranscriptRef.current === text) lastTranscriptRef.current = "";
         }, 5000);
       } catch (e) {
-        console.error("OpenAI transcribe failed:", e);
+        console.error("Transcribe failed:", e);
       } finally {
         processingRef.current = false;
       }
@@ -137,11 +144,8 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
       if (!audioTrack) return;
 
       const audioStream = new MediaStream([audioTrack]);
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-          ? "audio/webm"
-          : "audio/mp4";
+      const mimeType = getPreferredAudioMimeType();
+      const chunkMs = isMobileDevice() ? 2000 : 3000;
 
       try {
         const recorder = new MediaRecorder(audioStream, { mimeType });
@@ -156,7 +160,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
         };
 
         recordingActiveRef.current = true;
-        recorder.start(3000);
+        recorder.start(chunkMs);
         recorderRef.current = recorder;
         setIsListening(true);
       } catch (e) {
@@ -256,7 +260,9 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
     async function init() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const mobile = isMobileDevice();
+        const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(mobile));
+        wakeLockRef.current = await requestWakeLock();
         if (!mounted) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -387,6 +393,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
         audioPlayerRef.current.pause();
         audioPlayerRef.current = null;
       }
+      wakeLockRef.current?.release().catch(() => {});
       pcRef.current?.close();
       pcRef.current = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
