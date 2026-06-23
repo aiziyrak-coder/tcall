@@ -94,6 +94,7 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
       model: "tts-1",
       input: text.slice(0, 4096),
       voice,
+      speed: 1.05,
       response_format: "mp3",
     }),
   });

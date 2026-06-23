@@ -13,9 +13,8 @@ import {
   AlertTriangle,
   Volume2,
   VolumeX,
-  ChevronUp,
-  ChevronDown,
   Share2,
+  Radio,
 } from "lucide-react";
 import { useCall } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
@@ -34,7 +33,6 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [showEndedModal, setShowEndedModal] = useState(false);
-  const [showTranslations, setShowTranslations] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +62,7 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
   useEffect(() => {
     if (remoteVideoRef.current && call.remoteStream) {
       remoteVideoRef.current.srcObject = call.remoteStream;
+      void remoteVideoRef.current.play().catch(() => {});
     }
   }, [call.remoteStream]);
 
@@ -79,6 +78,7 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
   }, [call.callStatus, roomId]);
 
   const handleShare = useCallback(async () => {
+    void call.unlockAudio();
     const url = window.location.href;
     if (navigator.share) {
       try {
@@ -91,21 +91,33 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
-  }, [ui.shareLink]);
+  }, [ui.shareLink, call]);
 
-  const partnerSubtitle = call.translations.filter((t) => t.speaker !== user.name).slice(-1)[0];
+  const handleControlTap = useCallback(() => {
+    void call.unlockAudio();
+  }, [call]);
 
-  const statusLabel =
-    call.callStatus === "active" ? ui.connected
-      : call.callStatus === "waiting" ? ui.waiting
-      : call.callStatus === "ended" ? ui.ended
-      : call.callStatus === "error" ? ui.roomError
-      : ui.connecting;
+  const statusLabel = !call.socketConnected
+    ? ui.socketOffline
+    : call.callStatus === "active"
+      ? ui.connected
+      : call.callStatus === "waiting"
+        ? ui.waiting
+        : call.callStatus === "ended"
+          ? ui.ended
+          : call.callStatus === "error"
+            ? ui.roomError
+            : call.partner
+              ? ui.videoConnecting
+              : ui.connecting;
 
-  const statusColor =
-    call.callStatus === "active" ? "bg-green-500/25 text-green-300"
-      : call.callStatus === "waiting" ? "bg-yellow-500/25 text-yellow-300"
-      : "bg-white/15 text-white/70";
+  const statusColor = !call.socketConnected
+    ? "bg-red-500/25 text-red-300"
+    : call.callStatus === "active"
+      ? "bg-green-500/25 text-green-300"
+      : call.callStatus === "waiting"
+        ? "bg-yellow-500/25 text-yellow-300"
+        : "bg-white/15 text-white/70";
 
   if (call.callStatus === "error") {
     const err =
@@ -125,19 +137,17 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
   }
 
   return (
-    <div className="call-screen bg-black">
-      {/* Video zona */}
-      <div className="absolute inset-0 md:inset-x-6 md:top-16 md:bottom-24 md:flex md:gap-4">
-        {/* Sherik */}
-        <div className="absolute inset-0 md:relative md:flex-1 md:rounded-2xl overflow-hidden bg-slate-900">
+    <div className="call-screen bg-black" onClick={handleControlTap}>
+      <div className="absolute inset-0 max-md:inset-0 md:inset-x-6 md:top-16 md:bottom-24 md:flex md:gap-4">
+        <div className="call-video-main max-md:absolute max-md:inset-0 md:relative md:flex-1 md:rounded-2xl">
           {call.remoteStream ? (
             <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-slate-900">
               <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
                 <Globe className="w-9 h-9 text-white/30" />
               </div>
-              <p className="text-white/60">{ui.waiting}</p>
+              <p className="text-white/60">{call.partner ? ui.videoConnecting : ui.waiting}</p>
               {call.callStatus === "waiting" && (
                 <button onClick={handleShare} className="btn-primary mt-5 w-full max-w-xs flex items-center justify-center gap-2">
                   <Share2 className="w-5 h-5" /> {ui.shareLink}
@@ -146,14 +156,13 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
             </div>
           )}
           {call.partner && (
-            <div className="absolute top-3 left-3 glass rounded-full px-3 py-1 text-xs hidden md:flex gap-2">
+            <div className="absolute top-3 left-3 glass rounded-full px-3 py-1 text-xs flex gap-2 z-10">
               <span>{call.partner.name}</span>
               {partnerLang && <span className="text-white/50">{partnerLang.flag} {partnerLang.name}</span>}
             </div>
           )}
         </div>
 
-        {/* O'zingiz — mobil PiP / desktop yon */}
         <div className="call-pip">
           <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
           {call.isVideoOff && (
@@ -161,11 +170,8 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
               <VideoOff className="w-8 h-8 text-white/30" />
             </div>
           )}
-          <div className="absolute top-2 left-2 glass rounded-full px-2 py-0.5 text-[10px] hidden md:block">
-            {user.name} {userLang.flag}
-          </div>
           {call.isMuted && (
-            <div className="absolute bottom-1 right-1 md:top-2 md:right-2 bg-red-500 rounded-full p-1">
+            <div className="absolute bottom-1 right-1 bg-red-500 rounded-full p-1">
               <MicOff className="w-3 h-3" />
             </div>
           )}
@@ -180,7 +186,12 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
         <div className="flex items-center gap-2">
           {call.isListening && (
             <span className="text-[10px] text-green-300 bg-green-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Globe className="w-3 h-3" /> {ui.aiActive}
+              <Radio className="w-3 h-3 animate-pulse" /> {ui.aiActive}
+            </span>
+          )}
+          {call.isSpeaking && (
+            <span className="text-[10px] text-brand-300 bg-brand-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 voice-pulse">
+              <Volume2 className="w-3 h-3" /> {ui.voiceSpeaking}
             </span>
           )}
           <button onClick={handleShare} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center touch-manipulation" aria-label={ui.copyLink}>
@@ -189,51 +200,25 @@ export function CallRoom({ roomId, user, isHost }: CallRoomProps) {
         </div>
       </header>
 
-      {call.partner && isMobile && (
-        <div className="absolute z-20 left-3 glass rounded-full px-3 py-1 text-xs" style={{ top: "calc(3rem + env(safe-area-inset-top))" }}>
-          {call.partner.name} {partnerLang?.flag}
-        </div>
-      )}
-
-      {partnerSubtitle && (
-        <div className="subtitle-overlay pointer-events-none">
-          <div className="subtitle-bubble">
-            <p className="text-white/60 text-[10px]">{partnerSubtitle.speaker} · {ui.translated}</p>
-            <p className="text-white font-medium text-sm leading-snug">{partnerSubtitle.translated}</p>
-          </div>
-        </div>
-      )}
-
-      {call.translations.length > 0 && isMobile && (
-        <button
-          onClick={() => setShowTranslations(!showTranslations)}
-          className="absolute z-20 left-1/2 -translate-x-1/2 text-xs bg-black/50 backdrop-blur px-3 py-1 rounded-full touch-manipulation flex items-center gap-1"
-          style={{ bottom: "calc(94px + env(safe-area-inset-bottom))" }}
-        >
-          {ui.translation} {showTranslations ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-        </button>
-      )}
-
-      {call.translations.length > 0 && (
-        <div className={`${isMobile ? `translation-sheet px-4 py-2 ${showTranslations ? "" : "opacity-0 pointer-events-none"}` : "hidden md:block fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-lg glass rounded-xl p-3 z-20 mx-4 max-h-24 overflow-y-auto"}`}>
-          {call.translations.slice(-4).map((t) => (
-            <p key={t.id} className="text-xs leading-relaxed"><span className="text-brand-400">{t.speaker}:</span> {t.translated}</p>
-          ))}
+      {call.isSpeaking && isMobile && (
+        <div className="voice-indicator pointer-events-none">
+          <Volume2 className="w-5 h-5" />
+          <span>{ui.voiceSpeaking}</span>
         </div>
       )}
 
       <footer className="call-controls">
         <div className="flex justify-center gap-5 pt-3 px-4">
-          <button onClick={call.toggleMute} className={`call-control-btn ${call.isMuted ? "bg-red-500" : "glass"}`} aria-label={ui.mute}>
+          <button onClick={() => { handleControlTap(); call.toggleMute(); }} className={`call-control-btn ${call.isMuted ? "bg-red-500" : "glass"}`} aria-label={ui.mute}>
             {call.isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </button>
-          <button onClick={call.toggleVoice} className={`call-control-btn ${!call.voiceEnabled ? "bg-yellow-600" : "glass"}`} aria-label={ui.voiceOff}>
+          <button onClick={() => { handleControlTap(); call.toggleVoice(); }} className={`call-control-btn ${!call.voiceEnabled ? "bg-yellow-600" : "glass"}`} aria-label={ui.voiceOff}>
             {call.voiceEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
           </button>
           <button onClick={() => { call.endCall(); setShowEndedModal(true); }} className="call-control-btn call-control-btn-end bg-red-600 shadow-lg shadow-red-600/40" aria-label={ui.endCall}>
             <PhoneOff className="w-7 h-7" />
           </button>
-          <button onClick={call.toggleVideo} className={`call-control-btn ${call.isVideoOff ? "bg-red-500" : "glass"}`} aria-label={ui.videoOff}>
+          <button onClick={() => { handleControlTap(); call.toggleVideo(); }} className={`call-control-btn ${call.isVideoOff ? "bg-red-500" : "glass"}`} aria-label={ui.videoOff}>
             {call.isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
           </button>
         </div>

@@ -41,6 +41,9 @@ app.prepare().then(() => {
       credentials: true,
     },
     path: "/socket.io",
+    pingInterval: 10000,
+    pingTimeout: 20000,
+    transports: ["websocket", "polling"],
   });
 
   io.on("connection", (socket) => {
@@ -139,7 +142,7 @@ app.prepare().then(() => {
             }
           }
 
-          io.to(user.socketId).emit("translation", {
+          const payload = {
             original: data.text,
             translated,
             sourceLang: currentUser!.language,
@@ -147,7 +150,9 @@ app.prepare().then(() => {
             speaker: currentUser!.name,
             isFinal: true,
             audioBase64,
-          });
+          };
+
+          io.to(user.socketId).emit("translation", payload);
         })
       );
     });

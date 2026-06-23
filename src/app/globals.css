@@ -123,6 +123,21 @@
   animation: fadeInUp 0.3s ease-out;
 }
 
+.voice-indicator {
+  @apply absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600/80 backdrop-blur text-white text-sm font-medium;
+  bottom: calc(100px + env(safe-area-inset-bottom));
+  animation: voicePulse 1.2s ease-in-out infinite;
+}
+
+.voice-pulse {
+  animation: voicePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
 .video-container {
   @apply relative rounded-2xl overflow-hidden bg-slate-900 aspect-video;
 }
