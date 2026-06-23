@@ -4,6 +4,12 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { translateText } from "./src/lib/translate";
 import { textToSpeech } from "./src/lib/openai";
+import {
+  setSocketIO,
+  registerUserSocket,
+  unregisterUserSocket,
+} from "./src/lib/socket-io";
+import { seedVanityNumbers } from "./src/lib/tcallId";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -22,13 +28,16 @@ interface RoomUser {
   userId: string;
   name: string;
   language: string;
+  translationMode: string;
   isHost: boolean;
 }
 
 const MAX_ROOM_SIZE = 2;
 const rooms = new Map<string, Map<string, RoomUser>>();
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
+  await seedVanityNumbers().catch(() => {});
+
   const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url!, true);
     handle(req, res, parsedUrl);
@@ -46,9 +55,22 @@ app.prepare().then(() => {
     transports: ["websocket", "polling"],
   });
 
+  setSocketIO(io);
+
   io.on("connection", (socket) => {
     let currentRoom: string | null = null;
     let currentUser: RoomUser | null = null;
+    let registeredUserId: string | null = null;
+
+    socket.on(
+      "register-user",
+      (data: { userId: string; translationMode?: string }) => {
+        if (!data?.userId) return;
+        registeredUserId = data.userId;
+        registerUserSocket(data.userId, socket.id);
+        socket.join(`user:${data.userId}`);
+      }
+    );
 
     socket.on(
       "join-room",
@@ -57,10 +79,13 @@ app.prepare().then(() => {
         userId: string;
         name: string;
         language: string;
+        translationMode?: string;
         isHost?: boolean;
       }) => {
-        const { roomId, userId, name, language, isHost = false } = data;
+        const { roomId, userId, name, language, translationMode = "text", isHost = false } = data;
         currentRoom = roomId.toUpperCase();
+        registeredUserId = userId;
+        registerUserSocket(userId, socket.id);
 
         if (!rooms.has(currentRoom)) {
           rooms.set(currentRoom, new Map());
@@ -68,7 +93,6 @@ app.prepare().then(() => {
 
         const room = rooms.get(currentRoom)!;
 
-        // Replace stale socket for same user (tab refresh)
         for (const [sid, u] of room.entries()) {
           if (u.userId === userId && sid !== socket.id) {
             room.delete(sid);
@@ -76,11 +100,18 @@ app.prepare().then(() => {
         }
 
         if (room.size >= MAX_ROOM_SIZE && !Array.from(room.values()).some((u) => u.userId === userId)) {
-          socket.emit("room-full", { message: "Xona to'liq" });
+          socket.emit("room-full", { message: "Qo'ng'iroq band" });
           return;
         }
 
-        currentUser = { socketId: socket.id, userId, name, language, isHost };
+        currentUser = {
+          socketId: socket.id,
+          userId,
+          name,
+          language,
+          translationMode,
+          isHost,
+        };
         room.set(socket.id, currentUser);
         socket.join(currentRoom);
 
@@ -89,12 +120,26 @@ app.prepare().then(() => {
           userId: u.userId,
           name: u.name,
           language: u.language,
+          translationMode: u.translationMode,
           isHost: u.isHost,
         }));
 
         io.to(currentRoom).emit("room-users", participants);
       }
     );
+
+    socket.on("update-translation-mode", (data: { mode: string }) => {
+      if (currentUser && data?.mode) {
+        currentUser.translationMode = data.mode;
+        if (currentRoom) {
+          const room = rooms.get(currentRoom);
+          if (room) {
+            const u = room.get(socket.id);
+            if (u) u.translationMode = data.mode;
+          }
+        }
+      }
+    });
 
     socket.on("offer", (data: { offer: RTCSessionDescriptionInit; targetId: string }) => {
       socket.to(data.targetId).emit("offer", {
@@ -133,7 +178,9 @@ app.prepare().then(() => {
             : data.text;
 
           let audioBase64: string | undefined;
-          if (needsTranslation && translated) {
+          const wantsVoice = user.translationMode === "voice";
+
+          if (needsTranslation && translated && wantsVoice) {
             try {
               const audio = await textToSpeech(translated);
               if (audio) audioBase64 = audio.toString("base64");
@@ -142,7 +189,7 @@ app.prepare().then(() => {
             }
           }
 
-          const payload = {
+          io.to(user.socketId).emit("translation", {
             original: data.text,
             translated,
             sourceLang: currentUser!.language,
@@ -150,11 +197,15 @@ app.prepare().then(() => {
             speaker: currentUser!.name,
             isFinal: true,
             audioBase64,
-          };
-
-          io.to(user.socketId).emit("translation", payload);
+          });
         })
       );
+    });
+
+    socket.on("call-reject", (data: { roomId: string; callerId: string }) => {
+      if (data?.callerId) {
+        io.to(`user:${data.callerId}`).emit("call-rejected", { roomId: data.roomId });
+      }
     });
 
     socket.on("call-ended", () => {
@@ -164,6 +215,10 @@ app.prepare().then(() => {
     });
 
     socket.on("disconnect", () => {
+      if (registeredUserId) {
+        unregisterUserSocket(registeredUserId);
+      }
+
       if (currentRoom) {
         const room = rooms.get(currentRoom);
         if (room) {
@@ -176,6 +231,7 @@ app.prepare().then(() => {
               userId: u.userId,
               name: u.name,
               language: u.language,
+              translationMode: u.translationMode,
               isHost: u.isHost,
             }));
             io.to(currentRoom).emit("room-users", participants);
@@ -187,6 +243,6 @@ app.prepare().then(() => {
   });
 
   httpServer.listen(port, () => {
-    console.log(`> Tcall server ${appUrl}`);
+    console.log(`> Tcall audio server ${appUrl}`);
   });
 });

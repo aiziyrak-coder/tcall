@@ -5,8 +5,7 @@ import { io, Socket } from "socket.io-client";
 import { apiFetch, getSocketUrl } from "@/lib/api";
 import { TranslationAudioQueue } from "@/lib/audioQueue";
 import {
-  isMobileDevice,
-  getMediaConstraints,
+  getAudioConstraints,
   getPreferredAudioMimeType,
   requestWakeLock,
 } from "@/lib/mobile";
@@ -18,14 +17,16 @@ export interface TranslationMessage extends TranslationPayload {
   timestamp: number;
 }
 
-export type CallStatus = "connecting" | "waiting" | "active" | "ended" | "error";
+export type CallStatus = "connecting" | "waiting" | "ringing" | "active" | "ended" | "error";
 export type CallError = "media_denied" | "room_full" | "room_error" | "ai_error" | null;
+export type TranslationMode = "text" | "voice";
 
 interface UseCallOptions {
   roomId: string;
   userId: string;
   userName: string;
   userLanguage: string;
+  translationMode: TranslationMode;
   isHost: boolean;
   enabled: boolean;
 }
@@ -33,23 +34,31 @@ interface UseCallOptions {
 const OFFER_RETRY_MS = 8000;
 const MAX_OFFER_RETRIES = 3;
 
-export function useCall({ roomId, userId, userName, userLanguage, isHost, enabled }: UseCallOptions) {
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+export function useCall({
+  roomId,
+  userId,
+  userName,
+  userLanguage,
+  translationMode,
+  isHost,
+  enabled,
+}: UseCallOptions) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [translations, setTranslations] = useState<TranslationMessage[]>([]);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [translationModeState, setTranslationModeState] = useState<TranslationMode>(translationMode);
   const [callStatus, setCallStatus] = useState<CallStatus>("connecting");
   const [callError, setCallError] = useState<CallError>(null);
   const [isListening, setIsListening] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
 
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingActiveRef = useRef(false);
   const processingRef = useRef(false);
@@ -60,12 +69,18 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
   const makingOfferRef = useRef(false);
   const msgCounterRef = useRef(0);
   const isMutedRef = useRef(false);
-  const voiceEnabledRef = useRef(true);
+  const translationModeRef = useRef<TranslationMode>(translationMode);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const audioQueueRef = useRef<TranslationAudioQueue | null>(null);
   const offerRetryRef = useRef(0);
   const offerRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    translationModeRef.current = translationModeState;
+    socketRef.current?.emit("update-translation-mode", { mode: translationModeState });
+  }, [translationModeState]);
 
   const flushIceQueue = useCallback(async (pc: RTCPeerConnection) => {
     while (iceQueueRef.current.length > 0) {
@@ -101,11 +116,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
     const rec = recorderRef.current;
     recorderRef.current = null;
     if (rec && rec.state !== "inactive") {
-      try {
-        rec.stop();
-      } catch {
-        /* ignore */
-      }
+      try { rec.stop(); } catch { /* ignore */ }
     }
     setIsListening(false);
   }, []);
@@ -121,11 +132,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
         formData.append("audio", blob, blob.type.includes("mp4") ? "chunk.mp4" : "chunk.webm");
         formData.append("language", userLanguage);
 
-        const res = await apiFetch("/api/openai/transcribe", {
-          method: "POST",
-          body: formData,
-        });
-
+        const res = await apiFetch("/api/openai/transcribe", { method: "POST", body: formData });
         if (!res.ok) return;
 
         const data = await res.json();
@@ -150,28 +157,23 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
   const startRecording = useCallback(
     (stream: MediaStream) => {
       if (recorderRef.current || isMutedRef.current) return;
-
       const audioTrack = stream.getAudioTracks()[0];
       if (!audioTrack) return;
 
       const audioStream = new MediaStream([audioTrack]);
       const mimeType = getPreferredAudioMimeType();
-      const chunkMs = isMobileDevice() ? 1200 : 2000;
 
       try {
         const recorder = new MediaRecorder(audioStream, { mimeType });
-
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) processAudioChunk(e.data);
         };
-
         recorder.onerror = () => {
           recordingActiveRef.current = false;
           setIsListening(false);
         };
-
         recordingActiveRef.current = true;
-        recorder.start(chunkMs);
+        recorder.start(1200);
         recorderRef.current = recorder;
         setIsListening(true);
       } catch (e) {
@@ -182,7 +184,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
   );
 
   const playTranslationAudio = useCallback((audioBase64: string) => {
-    if (!voiceEnabledRef.current) return;
+    if (translationModeRef.current !== "voice") return;
     audioQueueRef.current?.enqueue(audioBase64);
   }, []);
 
@@ -190,78 +192,72 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
     return audioQueueRef.current?.unlock() ?? false;
   }, []);
 
-  const attachRemoteTrack = useCallback((event: RTCTrackEvent) => {
-    let stream = remoteStreamRef.current;
-    if (!stream) {
-      stream = event.streams[0] ?? new MediaStream();
-      remoteStreamRef.current = stream;
-      setRemoteStream(stream);
-    }
-    if (event.track && !stream.getTracks().some((t) => t.id === event.track.id)) {
-      stream.addTrack(event.track);
-      setRemoteStream(new MediaStream(stream.getTracks()));
-    }
-    setCallStatus("active");
-    clearOfferRetry();
-  }, [clearOfferRetry]);
+  const startTimer = useCallback(() => {
+    if (timerRef.current) return;
+    setCallDuration(0);
+    timerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
+  }, []);
 
-  const createPeerConnection = useCallback((stream: MediaStream, socket: Socket) => {
-    const pc = new RTCPeerConnection(getPeerConnectionConfig());
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate && remoteIdRef.current) {
-        socket.emit("ice-candidate", {
-          candidate: event.candidate,
-          targetId: remoteIdRef.current,
-        });
+  const attachRemoteTrack = useCallback(
+    (event: RTCTrackEvent) => {
+      let stream = remoteStreamRef.current;
+      if (!stream) {
+        stream = event.streams[0] ?? new MediaStream();
+        remoteStreamRef.current = stream;
+        setRemoteStream(stream);
       }
-    };
+      if (event.track && !stream.getTracks().some((t) => t.id === event.track.id)) {
+        stream.addTrack(event.track);
+        setRemoteStream(new MediaStream(stream.getTracks()));
+      }
+      setCallStatus("active");
+      startTimer();
+      clearOfferRetry();
+    },
+    [clearOfferRetry, startTimer]
+  );
 
-    pc.ontrack = attachRemoteTrack;
+  const createPeerConnection = useCallback(
+    (stream: MediaStream, socket: Socket) => {
+      const pc = new RTCPeerConnection(getPeerConnectionConfig());
 
-    pc.onconnectionstatechange = () => {
-      const state = pc.connectionState;
-      if (state === "connected") {
-        setCallStatus("active");
-        clearOfferRetry();
-      } else if (state === "disconnected") {
-        setCallStatus("connecting");
-      } else if (state === "failed") {
-        if (offerRetryRef.current < MAX_OFFER_RETRIES) {
+      pc.onicecandidate = (event) => {
+        if (event.candidate && remoteIdRef.current) {
+          socket.emit("ice-candidate", { candidate: event.candidate, targetId: remoteIdRef.current });
+        }
+      };
+
+      pc.ontrack = attachRemoteTrack;
+
+      pc.onconnectionstatechange = () => {
+        const state = pc.connectionState;
+        if (state === "connected") {
+          setCallStatus("active");
+          startTimer();
+          clearOfferRetry();
+        } else if (state === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
           offerRetryRef.current += 1;
           resetPeerConnection();
           setCallStatus("connecting");
-        } else {
-          setCallError("room_error");
-          setCallStatus("error");
         }
-      }
-    };
+      };
 
-    pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
-        offerRetryRef.current += 1;
-        void (async () => {
-          try {
-            if (!pcRef.current || !remoteIdRef.current) return;
-            const offer = await pcRef.current.createOffer({ iceRestart: true });
-            await pcRef.current.setLocalDescription(offer);
-            socket.emit("offer", { offer, targetId: remoteIdRef.current });
-          } catch (e) {
-            console.warn("ICE restart failed:", e);
-          }
-        })();
-      }
-    };
-
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-    return pc;
-  }, [attachRemoteTrack, clearOfferRetry, resetPeerConnection]);
+      stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+      return pc;
+    },
+    [attachRemoteTrack, clearOfferRetry, resetPeerConnection, startTimer]
+  );
 
   const sendOffer = useCallback(
     async (stream: MediaStream, socket: Socket, other: RoomParticipant, forceNew = false) => {
       if (forceNew) resetPeerConnection();
-
       remoteIdRef.current = other.socketId;
 
       try {
@@ -269,7 +265,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
         const pc = createPeerConnection(stream, socket);
         pcRef.current = pc;
 
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+        const offer = await pc.createOffer({ offerToReceiveAudio: true });
         await pc.setLocalDescription(offer);
         socket.emit("offer", { offer, targetId: other.socketId });
         setCallStatus("connecting");
@@ -282,7 +278,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
           }
         }, OFFER_RETRY_MS);
       } catch (e) {
-        console.error("Offer creation failed:", e);
+        console.error("Offer failed:", e);
         setCallError("room_error");
         setCallStatus("error");
       } finally {
@@ -297,7 +293,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
       setParticipants(users);
 
       if (users.length < 2) {
-        setCallStatus("waiting");
+        setCallStatus(isHost ? "ringing" : "waiting");
         return;
       }
 
@@ -324,6 +320,13 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
   );
 
   useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch(() => {});
+    }
+  }, [remoteStream]);
+
+  useEffect(() => {
     if (!enabled || !userId) return;
 
     let mounted = true;
@@ -336,8 +339,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
     async function init() {
       try {
-        const mobile = isMobileDevice();
-        const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(mobile));
+        const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
         wakeLockRef.current = await requestWakeLock();
         if (!mounted) {
           stream.getTracks().forEach((t) => t.stop());
@@ -345,17 +347,13 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
         }
 
         streamRef.current = stream;
-        setLocalStream(stream);
         await audioQueue.unlock();
 
         const socket = io(getSocketUrl(), {
           path: "/socket.io",
           transports: ["websocket", "polling"],
-          autoConnect: true,
           reconnection: true,
           reconnectionAttempts: 15,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
           timeout: 20000,
           withCredentials: true,
         });
@@ -363,31 +361,26 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
         socket.on("connect", () => {
           setSocketConnected(true);
+          socket.emit("register-user", { userId, translationMode: translationModeRef.current });
           socket.emit("join-room", {
             roomId,
             userId,
             name: userName,
             language: userLanguage,
+            translationMode: translationModeRef.current,
             isHost,
           });
         });
 
         socket.on("disconnect", () => setSocketConnected(false));
-
-        socket.on("connect_error", (err) => {
-          console.error("Socket connect error:", err.message);
-          setSocketConnected(false);
-        });
-
+        socket.on("connect_error", () => setSocketConnected(false));
         socket.on("room-full", () => {
           setCallError("room_full");
           setCallStatus("error");
         });
 
         socket.on("room-users", (users: RoomParticipant[]) => {
-          if (streamRef.current) {
-            handleRoomUsers(users, streamRef.current, socket);
-          }
+          if (streamRef.current) handleRoomUsers(users, streamRef.current, socket);
         });
 
         socket.on("offer", async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
@@ -396,17 +389,10 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
           try {
             let pc = pcRef.current;
-
-            if (pc) {
-              if (pc.signalingState !== "stable" && makingOfferRef.current) {
-                await pc.setLocalDescription({ type: "rollback" } as RTCSessionDescriptionInit);
-              }
-              if (pc.signalingState === "closed" || pc.connectionState === "failed") {
-                pc = null;
-                pcRef.current = null;
-              }
+            if (pc?.signalingState === "closed" || pc?.connectionState === "failed") {
+              pc = null;
+              pcRef.current = null;
             }
-
             if (!pc) {
               pc = createPeerConnection(streamRef.current, socket);
               pcRef.current = pc;
@@ -423,7 +409,6 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
           } catch (e) {
             console.error("Answer failed:", e);
             resetPeerConnection();
-            setCallStatus("connecting");
           }
         });
 
@@ -457,20 +442,28 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
             id: `${msg.speaker}-${msgCounterRef.current}`,
             timestamp: Date.now(),
           };
-          setTranslations((prev) => [...prev.slice(-19), entry]);
+          setTranslations((prev) => [...prev.slice(-29), entry]);
 
           if (msg.audioBase64 && msg.speaker !== userName) {
             playTranslationAudio(msg.audioBase64);
           }
         });
 
-        socket.on("call-ended", () => setCallStatus("ended"));
+        socket.on("call-ended", () => {
+          stopTimer();
+          setCallStatus("ended");
+        });
+        socket.on("call-rejected", () => {
+          stopTimer();
+          setCallStatus("ended");
+        });
         socket.on("user-left", () => {
+          stopTimer();
           resetPeerConnection();
-          setCallStatus("waiting");
+          setCallStatus("ended");
         });
       } catch (err) {
-        console.error("Media access error:", err);
+        console.error("Media error:", err);
         if (mounted) {
           setCallError("media_denied");
           setCallStatus("error");
@@ -482,6 +475,7 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
     return () => {
       mounted = false;
+      stopTimer();
       clearOfferRetry();
       stopRecording();
       audioQueue.stop();
@@ -512,7 +506,8 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
     playTranslationAudio,
     resetPeerConnection,
     clearOfferRetry,
-    sendOffer,
+    startTimer,
+    stopTimer,
   ]);
 
   const toggleMute = useCallback(() => {
@@ -521,71 +516,59 @@ export function useCall({ roomId, userId, userName, userLanguage, isHost, enable
 
     const nextMuted = !isMuted;
     isMutedRef.current = nextMuted;
-    stream.getAudioTracks().forEach((t) => {
-      t.enabled = !nextMuted;
-    });
+    stream.getAudioTracks().forEach((t) => { t.enabled = !nextMuted; });
     setIsMuted(nextMuted);
 
-    if (nextMuted) {
-      stopRecording();
-    } else if (streamRef.current) {
-      startRecording(streamRef.current);
-    }
+    if (nextMuted) stopRecording();
+    else if (streamRef.current) startRecording(streamRef.current);
   }, [isMuted, stopRecording, startRecording]);
 
-  const toggleVideo = useCallback(() => {
-    const stream = streamRef.current;
-    if (!stream) return;
+  const setTranslationMode = useCallback(async (mode: TranslationMode) => {
+    setTranslationModeState(mode);
+    translationModeRef.current = mode;
+    socketRef.current?.emit("update-translation-mode", { mode });
 
-    const nextOff = !isVideoOff;
-    stream.getVideoTracks().forEach((t) => {
-      t.enabled = !nextOff;
-    });
-    setIsVideoOff(nextOff);
-  }, [isVideoOff]);
+    await apiFetch("/api/user/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    }).catch(() => {});
 
-  const toggleVoice = useCallback(() => {
-    setVoiceEnabled((v) => {
-      const next = !v;
-      voiceEnabledRef.current = next;
-      audioQueueRef.current?.setEnabled(next);
-      return next;
-    });
+    if (mode === "text") audioQueueRef.current?.stop();
   }, []);
 
   const endCall = useCallback(() => {
     intentionalEndRef.current = true;
+    stopTimer();
     stopRecording();
     audioQueueRef.current?.stop();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    setLocalStream(null);
     resetPeerConnection();
     socketRef.current?.emit("call-ended");
     socketRef.current?.disconnect();
     setCallStatus("ended");
-  }, [stopRecording, resetPeerConnection]);
+  }, [stopRecording, resetPeerConnection, stopTimer]);
 
   const partner = participants.find((p) => p.userId !== userId);
 
   return {
-    localStream,
     remoteStream,
+    remoteAudioRef,
     participants,
     partner,
     translations,
     isMuted,
-    isVideoOff,
-    voiceEnabled,
+    translationMode: translationModeState,
     callStatus,
     callError,
     isListening,
     socketConnected,
     isSpeaking,
+    callDuration,
     unlockAudio,
     toggleMute,
-    toggleVideo,
-    toggleVoice,
+    setTranslationMode,
     endCall,
   };
 }

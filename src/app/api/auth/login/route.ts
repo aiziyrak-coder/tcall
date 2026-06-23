@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createToken, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { generateUniqueTcallId } from "@/lib/tcallId";
 
 const schema = z.object({
   email: z.string().email(),
@@ -18,17 +19,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email yoki parol noto'g'ri" }, { status: 401 });
     }
 
+    let tcallId = user.tcallId;
+    if (!tcallId) {
+      tcallId = await generateUniqueTcallId();
+      await prisma.user.update({ where: { id: user.id }, data: { tcallId } });
+    }
+
     const token = await createToken({
       userId: user.id,
       email: user.email,
       name: user.name,
       language: user.language,
+      tcallId,
+      translationMode: user.translationMode,
     });
 
     await setSessionCookie(token);
 
     return NextResponse.json({
-      user: { userId: user.id, email: user.email, name: user.name, language: user.language },
+      user: {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        language: user.language,
+        tcallId,
+        translationMode: user.translationMode,
+      },
     });
   } catch (err) {
     if (err instanceof z.ZodError) {

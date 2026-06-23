@@ -40,8 +40,8 @@ export default function HomePage() {
             gaplashing
           </h1>
           <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-10 px-2">
-            Video qo&apos;ng&apos;iroq qiling — aqlli tarjima sizning tilingizda real-time ishlaydi.
-            Telefonda gaplashgandek, lekin butun dunyo bilan.
+            Audio qo&apos;ng&apos;iroq qiling — 9 xonali raqamingiz bilan dunyo bilan gaplashing.
+            Real-time tarjima: matn yoki ovoz rejimida.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/register" className="btn-primary text-lg px-8 py-4">

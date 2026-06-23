@@ -8,6 +8,8 @@ const sessionSchema = z.object({
   email: z.string(),
   name: z.string(),
   language: z.string(),
+  tcallId: z.string().optional(),
+  translationMode: z.string().default("text"),
 });
 
 function getJwtSecret() {

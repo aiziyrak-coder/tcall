@@ -36,6 +36,18 @@ export function getPreferredAudioMimeType(): string {
   return "audio/webm";
 }
 
+export function getAudioConstraints(): MediaStreamConstraints {
+  return {
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      sampleRate: { ideal: 48000 },
+    },
+    video: false,
+  };
+}
+
 export function getMediaConstraints(mobile: boolean): MediaStreamConstraints {
   if (mobile) {
     return {

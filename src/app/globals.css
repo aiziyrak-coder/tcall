@@ -42,108 +42,178 @@
   }
 }
 
-/* Video call — mobil (FaceTime uslubi) */
-.call-screen {
+/* Audio qo'ng'iroq — telefon uslubi */
+.phone-screen {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #020617;
   touch-action: manipulation;
 }
 
-.call-video-main {
-  @apply absolute inset-0 bg-slate-900;
+.phone-bg {
+  @apply absolute inset-0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(37, 99, 235, 0.15) 0%, transparent 60%),
+              radial-gradient(ellipse at 50% 80%, rgba(88, 28, 135, 0.1) 0%, transparent 50%);
 }
 
-.call-video-main video {
-  @apply w-full h-full object-cover;
+.phone-avatar-ring {
+  @apply relative z-10 mt-20 mb-6;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  padding: 4px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
 }
 
-.call-pip {
-  @apply absolute z-20 rounded-2xl overflow-hidden shadow-2xl border-2 border-white/25 bg-slate-900;
-  width: 112px;
-  height: 152px;
-  bottom: calc(88px + env(safe-area-inset-bottom));
-  right: 12px;
+.phone-avatar-active {
+  animation: phonePulse 2s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(37, 99, 235, 0.3));
 }
 
-@media (min-width: 768px) {
-  .call-pip {
-    position: relative !important;
-    width: auto !important;
-    height: auto !important;
-    bottom: auto !important;
-    right: auto !important;
-    flex: 1;
-    border-width: 0;
-    box-shadow: none;
-    border-radius: 1rem;
-    aspect-ratio: 16 / 9;
-  }
+.phone-avatar {
+  @apply w-full h-full rounded-full flex items-center justify-center text-3xl font-bold;
+  background: linear-gradient(135deg, #1e3a5f, #0f172a);
+  border: 2px solid rgba(255,255,255,0.1);
 }
 
-.call-controls {
-  @apply fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-xl border-t border-white/10;
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+.phone-info {
+  @apply relative z-10 text-center px-6;
 }
 
-.call-control-btn {
-  @apply rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95;
-  width: 56px;
-  height: 56px;
-  min-width: 56px;
-  min-height: 56px;
+.phone-listening-badge {
+  @apply relative z-10 mt-4 text-xs text-green-300 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1;
 }
 
-.call-control-btn-end {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  min-height: 64px;
-}
-
-.call-header {
-  @apply absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3;
-  padding-top: max(0.75rem, env(safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(2,6,23,0.85) 0%, transparent 100%);
-}
-
-.subtitle-overlay {
-  @apply absolute left-3 right-3 z-10;
-  bottom: calc(100px + env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px) {
-  .subtitle-overlay {
-    @apply bottom-4;
-  }
-}
-
-.subtitle-bubble {
-  @apply bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl px-4 py-3 text-sm leading-relaxed;
+.phone-subtitle {
+  @apply relative z-10 mx-4 mt-6 px-4 py-3 rounded-2xl bg-black/50 backdrop-blur border border-white/10 max-w-sm w-full;
   animation: fadeInUp 0.3s ease-out;
 }
 
-.voice-indicator {
-  @apply absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600/80 backdrop-blur text-white text-sm font-medium;
-  bottom: calc(100px + env(safe-area-inset-bottom));
+.phone-subtitle-own {
+  @apply relative z-10 mx-4 mt-2 text-center;
+}
+
+.phone-voice-badge {
+  @apply relative z-10 mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600/80 text-sm;
   animation: voicePulse 1.2s ease-in-out infinite;
 }
 
-.voice-pulse {
-  animation: voicePulse 1.2s ease-in-out infinite;
+.phone-mode-toggle {
+  @apply relative z-10 flex gap-2 mt-auto mb-4 p-1 bg-white/5 rounded-xl;
 }
 
-@keyframes voicePulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.02); }
+.phone-mode-btn {
+  @apply flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white/50 transition-all touch-manipulation;
 }
 
-.video-container {
-  @apply relative rounded-2xl overflow-hidden bg-slate-900 aspect-video;
+.phone-mode-active {
+  @apply bg-brand-600 text-white;
 }
 
-.video-container video {
-  @apply w-full h-full object-cover;
+.phone-controls {
+  @apply relative z-10 w-full flex justify-center gap-8 pb-8 px-6;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+.phone-control-btn {
+  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-all;
+  width: 60px;
+  height: 60px;
+}
+
+.phone-end-btn {
+  @apply bg-red-600 shadow-lg shadow-red-600/40;
+  width: 68px;
+  height: 68px;
+}
+
+@keyframes phonePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.03); opacity: 0.9; }
+}
+
+/* Dailer */
+.dialer {
+  @apply flex flex-col items-center;
+}
+
+.dialer-display {
+  @apply text-center mb-8 w-full;
+}
+
+.dialer-number {
+  @apply text-4xl font-mono font-light tracking-[0.2em] text-white;
+  min-height: 3rem;
+}
+
+.dialer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.dialer-key {
+  @apply aspect-square rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 active:bg-white/20;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  min-height: 64px;
+}
+
+.dialer-key-action {
+  @apply bg-transparent border-0;
+}
+
+.dialer-call-btn {
+  @apply mt-8 rounded-full bg-green-600 flex items-center justify-center shadow-lg shadow-green-600/30 touch-manipulation active:scale-95 transition-all disabled:opacity-40 disabled:scale-100;
+  width: 72px;
+  height: 72px;
+}
+
+/* Kiruvchi qo'ng'iroq */
+.incoming-call-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgba(2, 6, 23, 0.95);
+}
+
+.incoming-call-pulse {
+  @apply absolute inset-0;
+  background: radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.2) 0%, transparent 50%);
+  animation: phonePulse 1.5s ease-in-out infinite;
+}
+
+.incoming-call-content {
+  @apply relative z-10 text-center px-6;
+}
+
+.incoming-avatar {
+  width: 120px !important;
+  height: 120px !important;
+}
+
+.incoming-btn {
+  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-all;
+  width: 68px;
+  height: 68px;
+}
+
+.incoming-accept {
+  @apply bg-green-600 shadow-lg shadow-green-600/40;
+  animation: phonePulse 1s ease-in-out infinite;
+}
+
+.incoming-reject {
+  @apply bg-red-600 shadow-lg shadow-red-600/40;
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.3s ease-out;
 }
 
 @keyframes fadeInUp {
@@ -151,10 +221,9 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.translation-sheet {
-  @apply absolute left-0 right-0 z-20 bg-slate-950/90 backdrop-blur-xl border-t border-white/10 rounded-t-2xl transition-transform duration-300;
-  bottom: calc(80px + env(safe-area-inset-bottom));
-  max-height: 35vh;
+@keyframes voicePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
 }
 
 ::-webkit-scrollbar { width: 4px; }

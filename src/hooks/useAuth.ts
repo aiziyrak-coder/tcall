@@ -8,6 +8,8 @@ export interface User {
   email: string;
   name: string;
   language: string;
+  tcallId: string;
+  translationMode: string;
 }
 
 export function useAuth() {
