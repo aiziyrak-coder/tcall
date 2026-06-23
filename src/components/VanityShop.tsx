@@ -32,6 +32,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
   const [loading, setLoading] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
 
   const load = async () => {
     if (loaded) return;
@@ -49,6 +50,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
 
   const purchase = async (numberId: string) => {
     setBuying(numberId);
+    setError("");
     try {
       const res = await apiFetch("/api/numbers/purchase", {
         method: "POST",
@@ -61,7 +63,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
       setOwned({ number: data.tcallId, tier: data.tier });
       setNumbers((prev) => prev.filter((n) => n.id !== numberId));
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Xatolik");
+      setError(e instanceof Error ? e.message : "Xatolik");
     } finally {
       setBuying(null);
     }
@@ -80,6 +82,12 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
           <p className="text-white/50 text-xs">{ui.vanityDesc}</p>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm mb-4">
+          {error}
+        </div>
+      )}
 
       <div className="bg-brand-600/10 border border-brand-500/20 rounded-xl p-4 mb-4">
         <p className="text-white/50 text-xs mb-1">{ui.yourNumber}</p>

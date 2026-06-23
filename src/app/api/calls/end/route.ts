@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { markCallEnded } from "@/lib/call-service";
+import { generateCallSummary } from "@/lib/call-summary";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -14,10 +15,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Xona kodi kerak" }, { status: 400 });
     }
 
-    await prisma.call.updateMany({
-      where: { roomId: roomId.toUpperCase(), status: "active" },
-      data: { status: "ended", endedAt: new Date() },
-    });
+    const result = await markCallEnded(roomId.toString(), session.userId);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.reason }, { status: 403 });
+    }
+
+    if (result.callId && !result.alreadyEnded) {
+      void generateCallSummary(result.callId);
+    }
 
     return NextResponse.json({ ok: true });
   } catch {

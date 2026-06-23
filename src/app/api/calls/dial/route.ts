@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { emitToUser } from "@/lib/socket-io";
+import { emitToUser, isUserOnline } from "@/lib/socket-io";
 import { generateRoomId } from "@/lib/utils";
+import { userHasActiveCall } from "@/lib/call-service";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+    }
+
+    const limited = rateLimit(`dial:${session.userId}:${clientIp(req)}`, 20, 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Juda ko'p qo'ng'iroq. ${limited.retryAfterSec}s kuting` },
+        { status: 429 }
+      );
     }
 
     const body = await req.json();
@@ -21,13 +31,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "O'zingizga qo'ng'iroq qilib bo'lmaydi" }, { status: 400 });
     }
 
+    if (await userHasActiveCall(session.userId)) {
+      return NextResponse.json({ error: "Siz allaqachon qo'ng'iroqdasiz" }, { status: 409 });
+    }
+
     const callee = await prisma.user.findUnique({
       where: { tcallId: targetId },
-      select: { id: true, name: true, language: true, tcallId: true },
+      select: { id: true, name: true, language: true, tcallId: true, status: true },
     });
 
     if (!callee) {
       return NextResponse.json({ error: "Raqam topilmadi" }, { status: 404 });
+    }
+
+    const blockedByCallee = await prisma.blockedUser.findFirst({
+      where: { blockerId: callee.id, blockedTcallId: session.tcallId! },
+    });
+    if (blockedByCallee) {
+      return NextResponse.json({ error: "Bu raqamga qo'ng'iroq qilib bo'lmaydi" }, { status: 403 });
+    }
+
+    const blockedByCaller = await prisma.blockedUser.findFirst({
+      where: { blockerId: session.userId, blockedTcallId: targetId },
+    });
+    if (blockedByCaller) {
+      return NextResponse.json({ error: "Bu raqam bloklangan. Avval blokdan chiqaring" }, { status: 403 });
+    }
+
+    if (callee.status === "dnd") {
+      return NextResponse.json(
+        {
+          error: "Abonent bezovta qilinmasin rejimida",
+          canMessage: true,
+          calleeTcallId: targetId,
+          callee: { name: callee.name, tcallId: targetId },
+        },
+        { status: 409 }
+      );
+    }
+
+    if (await userHasActiveCall(callee.id)) {
+      return NextResponse.json(
+        {
+          error: "Abonent band",
+          canMessage: true,
+          calleeTcallId: targetId,
+          callee: { name: callee.name, tcallId: targetId },
+        },
+        { status: 409 }
+      );
     }
 
     let roomId = generateRoomId();
@@ -42,6 +94,7 @@ export async function POST(req: NextRequest) {
         roomId,
         hostId: session.userId,
         calleeTcallId: targetId,
+        callType: "dial",
         status: "ringing",
         participants: { create: { userId: session.userId } },
       },
@@ -52,7 +105,7 @@ export async function POST(req: NextRequest) {
       select: { name: true, language: true, tcallId: true },
     });
 
-    emitToUser(callee.id, "incoming-call", {
+    const delivered = emitToUser(callee.id, "incoming-call", {
       roomId: call.roomId,
       callId: call.id,
       caller: {
@@ -66,6 +119,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       roomId: call.roomId,
       callId: call.id,
+      calleeOnline: isUserOnline(callee.id),
+      delivered,
       callee: {
         userId: callee.id,
         name: callee.name,

@@ -66,13 +66,13 @@ export default function HomePage() {
             },
             {
               icon: Phone,
-              title: "Video qo'ng'iroq",
-              desc: "Yuqori sifatli video va audio. WebRTC texnologiyasi — tez va xavfsiz ulanish.",
+              title: "Audio qo'ng'iroq",
+              desc: "Yuqori sifatli audio. WebRTC texnologiyasi — telefon kabi tez va xavfsiz ulanish.",
             },
             {
               icon: Shield,
               title: "Shaxsiy va xavfsiz",
-              desc: "WebRTC orqali shifrlangan video va audio. Ma'lumotlaringiz himoyalangan.",
+              desc: "WebRTC orqali shifrlangan audio. Ma'lumotlaringiz himoyalangan.",
             },
           ].map((f) => (
             <div key={f.title} className="glass rounded-2xl p-8 hover:bg-white/10 transition-colors">
@@ -92,8 +92,8 @@ export default function HomePage() {
         <div className="grid md:grid-cols-4 gap-6">
           {[
             { step: "1", title: "Ro'yxatdan o'ting", desc: "O'z tilingizni tanlang" },
-            { step: "2", title: "Xona yarating", desc: "Havolani sherigingizga yuboring" },
-            { step: "3", title: "Video qo'ng'iroq", desc: "Telefonda gaplashgandek suhbat qiling" },
+            { step: "2", title: "Raqam oling", desc: "9 xonali Tcall ID yoki chiroyli raqam" },
+            { step: "3", title: "Qo'ng'iroq qiling", desc: "Raqam terish yoki xona havolasi orqali" },
             { step: "4", title: "Tarjima", desc: "AI avtomatik tarjima qiladi" },
           ].map((s) => (
             <div key={s.step} className="text-center">

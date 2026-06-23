@@ -3,18 +3,26 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createToken, hashPassword, setSessionCookie } from "@/lib/auth";
 import { LANGUAGES } from "@/lib/languages";
-import { generateUniqueTcallId, seedVanityNumbers } from "@/lib/tcallId";
+import { generateUniqueTcallId } from "@/lib/tcallId";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
-  name: z.string().min(2),
+  password: z.string().min(6).max(128),
+  name: z.string().min(2).max(80),
   language: z.string().refine((l) => LANGUAGES.some((lang) => lang.code === l)),
 });
 
 export async function POST(req: NextRequest) {
   try {
-    await seedVanityNumbers();
+    const ip = clientIp(req);
+    const limited = rateLimit(`register:${ip}`, 5, 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Juda ko'p urinish. ${limited.retryAfterSec}s kuting` },
+        { status: 429 }
+      );
+    }
 
     const body = await req.json();
     const data = schema.parse(body);

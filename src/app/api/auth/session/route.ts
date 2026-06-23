@@ -40,7 +40,8 @@ export async function GET() {
 
     return NextResponse.json({ user: freshUser });
   } catch {
-    return NextResponse.json({ user: session });
+    await clearSessionCookie();
+    return NextResponse.json({ user: null });
   }
 }
 

@@ -20,6 +20,7 @@ export async function POST() {
     data: {
       roomId,
       hostId: session.userId,
+      callType: "room",
       status: "waiting",
       participants: { create: { userId: session.userId } },
     },

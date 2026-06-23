@@ -3,14 +3,24 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createToken, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { generateUniqueTcallId } from "@/lib/tcallId";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(1).max(128),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = clientIp(req);
+    const limited = rateLimit(`login:${ip}`, 10, 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Juda ko'p urinish. ${limited.retryAfterSec}s kuting` },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const data = schema.parse(body);
 

@@ -76,6 +76,8 @@ export function useCall({
   const offerRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const userLeftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionActiveRef = useRef(false);
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
@@ -123,7 +125,7 @@ export function useCall({
 
   const processAudioChunk = useCallback(
     async (blob: Blob) => {
-      if (processingRef.current || isMutedRef.current || !recordingActiveRef.current) return;
+      if (processingRef.current || isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
       if (blob.size < 800) return;
 
       processingRef.current = true;
@@ -140,7 +142,9 @@ export function useCall({
         if (!text || text === lastTranscriptRef.current) return;
 
         lastTranscriptRef.current = text;
-        socketRef.current?.emit("speech-transcript", { text, isFinal: true });
+        if (sessionActiveRef.current && socketRef.current?.connected) {
+          socketRef.current.emit("speech-transcript", { text, isFinal: true });
+        }
 
         setTimeout(() => {
           if (lastTranscriptRef.current === text) lastTranscriptRef.current = "";
@@ -330,6 +334,7 @@ export function useCall({
     if (!enabled || !userId) return;
 
     let mounted = true;
+    sessionActiveRef.current = true;
     intentionalEndRef.current = false;
     offerRetryRef.current = 0;
 
@@ -361,7 +366,6 @@ export function useCall({
 
         socket.on("connect", () => {
           setSocketConnected(true);
-          socket.emit("register-user", { userId, translationMode: translationModeRef.current });
           socket.emit("join-room", {
             roomId,
             userId,
@@ -458,9 +462,14 @@ export function useCall({
           setCallStatus("ended");
         });
         socket.on("user-left", () => {
-          stopTimer();
-          resetPeerConnection();
-          setCallStatus("ended");
+          if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
+          userLeftTimerRef.current = setTimeout(() => {
+            if (mounted) {
+              stopTimer();
+              resetPeerConnection();
+              setCallStatus("ended");
+            }
+          }, 8000);
         });
       } catch (err) {
         console.error("Media error:", err);
@@ -475,6 +484,7 @@ export function useCall({
 
     return () => {
       mounted = false;
+      sessionActiveRef.current = false;
       stopTimer();
       clearOfferRetry();
       stopRecording();

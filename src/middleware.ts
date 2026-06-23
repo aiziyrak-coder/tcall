@@ -1,24 +1,51 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 const protectedPaths = ["/dashboard", "/call"];
 const ALLOWED_ORIGINS = [
   "https://tcall.vizara.uz",
   "https://tcallapi.vizara.uz",
   "http://localhost:3000",
+  "http://127.0.0.1:3000",
 ];
 
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
+  return new TextEncoder().encode(secret);
+}
+
 function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : null;
+  if (!allowed) {
+    return {
+      "Access-Control-Allow-Origin": "https://tcall.vizara.uz",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+    };
+  }
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Allow-Credentials": "true",
   };
 }
 
-export function middleware(request: NextRequest) {
+async function verifySessionCookie(token: string): Promise<boolean> {
+  const secret = getJwtSecret();
+  if (!secret) return process.env.NODE_ENV !== "production";
+  try {
+    await jwtVerify(token, secret);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api")) {
@@ -28,17 +55,20 @@ export function middleware(request: NextRequest) {
     }
     const response = NextResponse.next();
     Object.entries(corsHeaders(origin)).forEach(([k, v]) => response.headers.set(k, v));
+    response.headers.set("X-Content-Type-Options", "nosniff");
     return response;
   }
 
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
-  const session = request.cookies.get("session")?.value;
-  if (!session) {
+  const token = request.cookies.get("session")?.value;
+  if (!token || !(await verifySessionCookie(token))) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(loginUrl);
+    if (token) res.cookies.delete("session");
+    return res;
   }
 
   return NextResponse.next();

@@ -62,7 +62,7 @@ export async function translateWithGPT(
       messages: [
         {
           role: "system",
-          content: `You are a real-time interpreter for video calls. Translate the user's speech from ${sourceName} to ${targetName}. Return ONLY the translated text, nothing else. Keep it natural and conversational.`,
+          content: `You are a real-time interpreter for audio calls. Translate the user's speech from ${sourceName} to ${targetName}. Return ONLY the translated text, nothing else. Keep it natural and conversational.`,
         },
         { role: "user", content: text },
       ],
@@ -132,4 +132,13 @@ export async function chatCompletion(
   if (!res.ok) return "";
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || "";
+}
+
+/** Qo'ng'iroq transkriptidan AI xulosa */
+export async function summarizeCallTranscript(transcript: string): Promise<string> {
+  if (!transcript.trim()) return "";
+  return chatCompletion(
+    "Summarize this phone call transcript in 2-3 concise sentences. Use the same language as the majority of the conversation. Include key topics and any action items.",
+    transcript.slice(0, 4000)
+  );
 }

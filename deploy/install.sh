@@ -30,7 +30,7 @@ source .env 2>/dev/null || true
 
 npm ci
 npx prisma generate
-npx prisma db push --accept-data-loss
+npx prisma db push
 
 npm run build
 

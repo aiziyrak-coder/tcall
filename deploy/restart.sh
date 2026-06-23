@@ -1,9 +1,9 @@
 #!/bin/bash
-# Faqat PM2 + nginx qayta ishga tushirish
+# PM2 + nginx qayta ishga tushirish (ma'lumot yo'qotmasdan)
 set -e
 cd /var/www/tcall
 git pull origin main 2>/dev/null || true
-npx prisma db push --accept-data-loss 2>/dev/null || true
+npx prisma db push 2>/dev/null || true
 npm run build
 pm2 delete tcall 2>/dev/null || true
 pm2 start deploy/ecosystem.config.js

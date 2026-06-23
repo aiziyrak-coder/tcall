@@ -88,6 +88,7 @@ export default function RegisterPage() {
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="Kamida 6 ta belgi"
               minLength={6}
+              maxLength={128}
               required
             />
           </div>

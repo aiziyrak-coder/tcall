@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canJoinCall, getCallByRoomId } from "@/lib/call-service";
 
 const MAX_PARTICIPANTS = 2;
 
@@ -17,22 +18,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Qo'ng'iroq kodi kerak" }, { status: 400 });
     }
 
-    const call = await prisma.call.findUnique({
-      where: { roomId },
-      include: {
-        host: { select: { name: true, language: true, id: true, tcallId: true } },
-        participants: {
-          include: { user: { select: { name: true, language: true, tcallId: true } } },
-        },
-      },
-    });
-
+    const call = await getCallByRoomId(roomId);
     if (!call) {
       return NextResponse.json({ error: "Qo'ng'iroq topilmadi" }, { status: 404 });
     }
 
-    if (call.status === "ended") {
-      return NextResponse.json({ error: "Qo'ng'iroq tugagan" }, { status: 410 });
+    const access = await canJoinCall(call, session.userId, session.tcallId);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.reason }, { status: 403 });
     }
 
     const alreadyJoined = call.participants.some((p) => p.userId === session.userId);
@@ -47,19 +40,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const participantCount = alreadyJoined
-      ? call.participants.length
-      : call.participants.length + 1;
+    const participantCount = alreadyJoined ? call.participants.length : call.participants.length + 1;
 
-    if (participantCount >= MAX_PARTICIPANTS) {
+    if (participantCount >= MAX_PARTICIPANTS && call.status !== "active") {
       await prisma.call.update({
         where: { id: call.id },
         data: { status: "active" },
       });
     }
 
-    const partner = call.participants.find((p) => p.userId !== session.userId)?.user
-      || (call.hostId !== session.userId ? call.host : null);
+    const partner =
+      call.participants.find((p) => p.userId !== session.userId)?.user
+      ?? (call.hostId !== session.userId ? call.host : null);
 
     return NextResponse.json({
       roomId: call.roomId,

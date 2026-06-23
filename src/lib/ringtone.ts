@@ -38,6 +38,33 @@ function playRingCycle() {
   }
 }
 
+let ringbackInterval: ReturnType<typeof setInterval> | null = null;
+
+function playRingbackCycle() {
+  try {
+    const ctx = getCtx();
+    if (ctx.state === "suspended") void ctx.resume();
+    const now = ctx.currentTime;
+    playTone(425, 0.15, ctx, now);
+    playTone(425, 0.15, ctx, now + 0.2);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function startRingback() {
+  stopRingback();
+  playRingbackCycle();
+  ringbackInterval = setInterval(playRingbackCycle, 2000);
+}
+
+export function stopRingback() {
+  if (ringbackInterval) {
+    clearInterval(ringbackInterval);
+    ringbackInterval = null;
+  }
+}
+
 export function startRingtone() {
   stopRingtone();
   playRingCycle();
@@ -52,6 +79,7 @@ export function startRingtone() {
 }
 
 export function stopRingtone() {
+  stopRingback();
   if (ringInterval) {
     clearInterval(ringInterval);
     ringInterval = null;

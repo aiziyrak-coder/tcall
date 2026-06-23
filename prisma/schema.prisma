@@ -15,13 +15,43 @@ model User {
   password        String
   language        String   @default("uz")
   translationMode String   @default("text")
+  status          String   @default("available")
+  bio             String?
   avatar          String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  hostedCalls  Call[]            @relation("HostCalls")
-  callLogs     CallParticipant[]
-  vanityNumber VanityNumber?
+  hostedCalls       Call[]            @relation("HostCalls")
+  callLogs          CallParticipant[]
+  vanityNumber      VanityNumber?
+  contacts          Contact[]         @relation("OwnerContacts")
+  blocks            BlockedUser[]     @relation("Blocker")
+  quickMessagesSent QuickMessage[]    @relation("MessageSender")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation("OwnerContacts", fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  tcallId   String
+  favorite  Boolean  @default(false)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, tcallId])
+  @@index([ownerId])
+}
+
+model BlockedUser {
+  id             String   @id @default(cuid())
+  blockerId      String
+  blocker        User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedTcallId String
+  createdAt      DateTime @default(now())
+
+  @@unique([blockerId, blockedTcallId])
 }
 
 model VanityNumber {
@@ -37,16 +67,25 @@ model VanityNumber {
 }
 
 model Call {
-  id           String    @id @default(cuid())
-  roomId       String    @unique
-  hostId       String
-  host         User      @relation("HostCalls", fields: [hostId], references: [id])
-  calleeTcallId String?
-  status       String    @default("waiting")
-  createdAt    DateTime  @default(now())
-  endedAt      DateTime?
+  id                String    @id @default(cuid())
+  roomId            String    @unique
+  hostId            String
+  host              User      @relation("HostCalls", fields: [hostId], references: [id])
+  calleeTcallId     String?
+  callType          String    @default("room")
+  status            String    @default("waiting")
+  durationSec       Int?
+  transcriptSummary String?
+  createdAt         DateTime  @default(now())
+  endedAt           DateTime?
 
   participants CallParticipant[]
+  transcripts  CallTranscript[]
+
+  @@index([hostId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([calleeTcallId])
 }
 
 model CallParticipant {
@@ -59,4 +98,31 @@ model CallParticipant {
   leftAt   DateTime?
 
   @@unique([callId, userId])
+}
+
+model CallTranscript {
+  id             String   @id @default(cuid())
+  callId         String
+  call           Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  speakerName    String
+  originalText   String
+  translatedText String?
+  sourceLang     String
+  targetLang     String?
+  createdAt      DateTime @default(now())
+
+  @@index([callId])
+}
+
+model QuickMessage {
+  id               String   @id @default(cuid())
+  senderId         String
+  sender           User     @relation("MessageSender", fields: [senderId], references: [id])
+  recipientTcallId String
+  message          String
+  read             Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  @@index([recipientTcallId])
+  @@index([senderId])
 }

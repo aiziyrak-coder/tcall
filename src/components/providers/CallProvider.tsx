@@ -9,15 +9,23 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { getSocketUrl } from "@/lib/api";
-import { startRingtone, stopRingtone, unlockAudio, playCallEndTone } from "@/lib/ringtone";
+import { apiFetch, getSocketUrl } from "@/lib/api";
+import {
+  startRingtone,
+  stopRingtone,
+  startRingback,
+  stopRingback,
+  unlockAudio,
+  playCallEndTone,
+} from "@/lib/ringtone";
 import {
   requestNotificationPermission,
   showIncomingCallNotification,
 } from "@/lib/notifications";
 import { formatTcallId } from "@/lib/tcallId";
+import { RING_TIMEOUT_MS } from "@/lib/call-service";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 
@@ -36,6 +44,19 @@ export interface OutgoingCall {
   roomId: string;
   callId: string;
   callee: { userId: string; name: string; tcallId: string; language: string };
+  calleeOnline?: boolean;
+}
+
+export class DialError extends Error {
+  canMessage?: boolean;
+  calleeTcallId?: string;
+  calleeName?: string;
+  constructor(message: string, opts?: { canMessage?: boolean; calleeTcallId?: string; calleeName?: string }) {
+    super(message);
+    this.canMessage = opts?.canMessage;
+    this.calleeTcallId = opts?.calleeTcallId;
+    this.calleeName = opts?.calleeName;
+  }
 }
 
 interface CallContextValue {
@@ -45,6 +66,8 @@ interface CallContextValue {
   cancelOutgoing: () => void;
   notificationsEnabled: boolean;
   enableNotifications: () => Promise<boolean>;
+  quickMessageTarget: { tcallId: string; name?: string } | null;
+  clearQuickMessageTarget: () => void;
 }
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -56,24 +79,39 @@ export function useCallContext() {
 }
 
 interface CallProviderProps {
-  userId?: string;
-  userLanguage?: string;
+  userId: string;
+  userLanguage: string;
   translationMode?: string;
   children: ReactNode;
 }
 
 export function CallProvider({
   userId,
-  userLanguage = "uz",
-  translationMode = "text",
+  userLanguage,
   children,
 }: CallProviderProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [outgoingCall, setOutgoingCall] = useState<OutgoingCall | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [dialError, setDialError] = useState<string | null>(null);
+  const [quickMessageTarget, setQuickMessageTarget] = useState<{ tcallId: string; name?: string } | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearRingTimeout = useCallback(() => {
+    if (ringTimeoutRef.current) {
+      clearTimeout(ringTimeoutRef.current);
+      ringTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (dialError) {
+      const t = setTimeout(() => setDialError(null), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [dialError]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -89,8 +127,6 @@ export function CallProvider({
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
-
     const socket = io(getSocketUrl(), {
       path: "/socket.io",
       transports: ["websocket", "polling"],
@@ -101,25 +137,34 @@ export function CallProvider({
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("register-user", { userId, translationMode });
+      /* Auth via cookie — server auto-registers userId */
     });
 
     socket.on("incoming-call", (data: IncomingCall) => {
       setIncomingCall(data);
-      startRingtone();
       showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
     });
 
     socket.on("call-accepted", ({ roomId }: { roomId: string }) => {
-      stopRingtone();
+      clearRingTimeout();
+      stopRingback();
       setOutgoingCall(null);
       router.push(`/call/${roomId}`);
     });
 
     socket.on("call-rejected", () => {
-      stopRingtone();
+      clearRingTimeout();
+      stopRingback();
       playCallEndTone();
       setOutgoingCall(null);
+    });
+
+    socket.on("call-timeout", () => {
+      clearRingTimeout();
+      stopRingback();
+      playCallEndTone();
+      setOutgoingCall(null);
+      setIncomingCall(null);
     });
 
     socket.on("call-cancelled", ({ roomId }: { roomId: string }) => {
@@ -127,81 +172,129 @@ export function CallProvider({
       setIncomingCall((prev) => (prev?.roomId === roomId ? null : prev));
     });
 
-    return () => {
+    socket.on("call-error", ({ message }: { message: string }) => {
+      setDialError(message);
       stopRingtone();
+    });
+
+    socket.on("quick-message", () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tcall:quick-message"));
+      }
+    });
+
+    socket.on("connect_error", () => {
+      /* Auth failed — session expired */
+    });
+
+    return () => {
+      clearRingTimeout();
+      stopRingtone();
+      stopRingback();
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [userId, translationMode, router]);
+  }, [userId, router, clearRingTimeout]);
 
   useEffect(() => {
-    if (incomingCall) {
-      startRingtone();
-    } else {
-      stopRingtone();
-    }
+    if (incomingCall) startRingtone();
+    else stopRingtone();
     return () => stopRingtone();
   }, [incomingCall]);
 
-  const rejectCall = useCallback(() => {
+  useEffect(() => {
+    if (outgoingCall) {
+      startRingback();
+      clearRingTimeout();
+      ringTimeoutRef.current = setTimeout(() => {
+        cancelOutgoingRef.current();
+      }, RING_TIMEOUT_MS);
+    } else {
+      stopRingback();
+      clearRingTimeout();
+    }
+    return () => {
+      stopRingback();
+      clearRingTimeout();
+    };
+  }, [outgoingCall, clearRingTimeout]);
+
+  const cancelOutgoingRef = useRef<() => void>(() => {});
+
+  const rejectCall = useCallback(async () => {
     stopRingtone();
     playCallEndTone();
     if (incomingCall && socketRef.current) {
-      socketRef.current.emit("call-reject", {
-        roomId: incomingCall.roomId,
-        callerId: incomingCall.caller.userId,
-      });
+      socketRef.current.emit("call-reject", { roomId: incomingCall.roomId });
     }
     setIncomingCall(null);
   }, [incomingCall]);
 
-  const acceptCall = useCallback(() => {
+  const acceptCall = useCallback(async () => {
+    if (!incomingCall) return;
     stopRingtone();
-    if (incomingCall && socketRef.current) {
-      socketRef.current.emit("call-accept", {
-        roomId: incomingCall.roomId,
-        callerId: incomingCall.caller.userId,
-      });
-      const roomId = incomingCall.roomId;
-      setIncomingCall(null);
-      router.push(`/call/${roomId}`);
-    }
-  }, [incomingCall, router]);
+    const roomId = incomingCall.roomId;
 
-  const cancelOutgoing = useCallback(() => {
-    stopRingtone();
-    playCallEndTone();
-    if (outgoingCall && socketRef.current) {
-      socketRef.current.emit("call-cancel", {
-        roomId: outgoingCall.roomId,
-        calleeId: outgoingCall.callee.userId,
-      });
-    }
-    setOutgoingCall(null);
-  }, [outgoingCall]);
-
-  const dial = useCallback(
-    async (tcallId: string) => {
-      await unlockAudio();
-      const { apiFetch } = await import("@/lib/api");
-      const res = await apiFetch("/api/calls/dial", {
+    try {
+      const res = await apiFetch("/api/calls/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tcallId }),
+        body: JSON.stringify({ roomId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
 
-      setOutgoingCall({
-        roomId: data.roomId,
-        callId: data.callId,
-        callee: data.callee,
-      });
-    },
-    []
-  );
+      socketRef.current?.emit("call-accept", { roomId });
+      setIncomingCall(null);
+      router.push(`/call/${roomId}`);
+    } catch {
+      socketRef.current?.emit("call-reject", { roomId });
+      setIncomingCall(null);
+    }
+  }, [incomingCall, router]);
 
-  const isOnCallPage = pathname?.startsWith("/call/");
+  const cancelOutgoing = useCallback(() => {
+    stopRingback();
+    playCallEndTone();
+    clearRingTimeout();
+    if (outgoingCall && socketRef.current) {
+      socketRef.current.emit("call-cancel", { roomId: outgoingCall.roomId });
+    }
+    setOutgoingCall(null);
+  }, [outgoingCall, clearRingTimeout]);
+
+  cancelOutgoingRef.current = cancelOutgoing;
+
+  const dial = useCallback(async (tcallId: string) => {
+    setDialError(null);
+    await unlockAudio();
+    const res = await apiFetch("/api/calls/dial", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tcallId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (data.canMessage && data.calleeTcallId) {
+        setQuickMessageTarget({ tcallId: data.calleeTcallId, name: data.callee?.name });
+      }
+      throw new DialError(data.error || "Xatolik", {
+        canMessage: data.canMessage,
+        calleeTcallId: data.calleeTcallId,
+      });
+    }
+
+    setOutgoingCall({
+      roomId: data.roomId,
+      callId: data.callId,
+      callee: data.callee,
+      calleeOnline: data.calleeOnline,
+    });
+
+    if (!data.delivered) {
+      setDialError("Abonent offline — kuting yoki keyinroq qayta urining");
+    }
+  }, []);
 
   return (
     <CallContext.Provider
@@ -212,11 +305,19 @@ export function CallProvider({
         cancelOutgoing,
         notificationsEnabled,
         enableNotifications,
+        quickMessageTarget,
+        clearQuickMessageTarget: () => setQuickMessageTarget(null),
       }}
     >
       {children}
 
-      {incomingCall && !isOnCallPage && (
+      {dialError && (
+        <div className="fixed top-4 left-4 right-4 z-[60] bg-yellow-500/15 border border-yellow-500/30 text-yellow-200 rounded-xl px-4 py-3 text-sm text-center">
+          {dialError}
+        </div>
+      )}
+
+      {incomingCall && (
         <IncomingCallModal
           call={incomingCall}
           userLanguage={userLanguage}
@@ -225,7 +326,7 @@ export function CallProvider({
         />
       )}
 
-      {outgoingCall && !isOnCallPage && (
+      {outgoingCall && (
         <OutgoingCallModal
           call={outgoingCall}
           userLanguage={userLanguage}

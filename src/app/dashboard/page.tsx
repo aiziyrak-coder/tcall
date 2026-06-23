@@ -1,25 +1,31 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { Copy, Check, Bell, BellOff, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, Bell, BellOff, LogOut } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { useAuth, type User } from "@/hooks/useAuth";
-import { CallProvider, useCallContext } from "@/components/providers/CallProvider";
+import { useAuth } from "@/hooks/useAuth";
+import { useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage, getUI } from "@/lib/languages";
 import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
 import { RecentsList } from "@/components/RecentsList";
-import { ContactsList } from "@/components/ContactsList";
+import { ContactsManager } from "@/components/ContactsManager";
 import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
+import { SpeedDial } from "@/components/SpeedDial";
+import { SettingsPanel } from "@/components/SettingsPanel";
+import { MessagesInbox } from "@/components/MessagesInbox";
+import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 
 interface CallRecord {
   id: string;
   roomId: string;
   status: string;
+  durationSec?: number | null;
+  calleeTcallId?: string | null;
   createdAt: string;
   host: { name: string; language: string; tcallId: string };
   participants: { user: { name: string; language: string; tcallId: string } }[];
@@ -28,6 +34,14 @@ interface CallRecord {
 export default function DashboardPage() {
   const { user, loading, logout, setUser } = useAuth();
   const router = useRouter();
+  const [calls, setCalls] = useState<CallRecord[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [tab, setTab] = useState<PhoneTab>("keypad");
+  const [loadError, setLoadError] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
+  const [favorites, setFavorites] = useState<{ name: string; tcallId: string }[]>([]);
+  const [missedCount, setMissedCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -42,13 +56,27 @@ export default function DashboardPage() {
   }
 
   return (
-    <CallProvider
-      userId={user.userId}
-      userLanguage={user.language}
-      translationMode={user.translationMode}
-    >
-      <DashboardInner user={user} logout={logout} setUser={setUser} />
-    </CallProvider>
+    <DashboardInner
+      user={user}
+      logout={logout}
+      setUser={setUser}
+      calls={calls}
+      setCalls={setCalls}
+      copied={copied}
+      setCopied={setCopied}
+      tab={tab}
+      setTab={setTab}
+      loadError={loadError}
+      setLoadError={setLoadError}
+      showSettings={showSettings}
+      setShowSettings={setShowSettings}
+      favorites={favorites}
+      setFavorites={setFavorites}
+      missedCount={missedCount}
+      setMissedCount={setMissedCount}
+      messageCount={messageCount}
+      setMessageCount={setMessageCount}
+    />
   );
 }
 
@@ -56,37 +84,90 @@ function DashboardInner({
   user,
   logout,
   setUser,
+  calls,
+  setCalls,
+  copied,
+  setCopied,
+  tab,
+  setTab,
+  loadError,
+  setLoadError,
+  showSettings,
+  setShowSettings,
+  favorites,
+  setFavorites,
+  missedCount,
+  setMissedCount,
+  messageCount,
+  setMessageCount,
 }: {
-  user: User;
+  user: NonNullable<ReturnType<typeof useAuth>["user"]>;
   logout: () => void;
-  setUser: (u: User) => void;
+  setUser: ReturnType<typeof useAuth>["setUser"];
+  calls: CallRecord[];
+  setCalls: (c: CallRecord[]) => void;
+  copied: boolean;
+  setCopied: (v: boolean) => void;
+  tab: PhoneTab;
+  setTab: (t: PhoneTab) => void;
+  loadError: string;
+  setLoadError: (v: string) => void;
+  showSettings: boolean;
+  setShowSettings: (v: boolean) => void;
+  favorites: { name: string; tcallId: string }[];
+  setFavorites: (f: { name: string; tcallId: string }[]) => void;
+  missedCount: number;
+  setMissedCount: (n: number) => void;
+  messageCount: number;
+  setMessageCount: (n: number) => void;
 }) {
-  const { enableNotifications, notificationsEnabled } = useCallContext();
-  const [calls, setCalls] = useState<CallRecord[]>([]);
-  const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<PhoneTab>("keypad");
-
+  const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget } = useCallContext();
   const ui = getUI(user.language);
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     apiFetch("/api/calls")
       .then((r) => r.json())
-      .then((d) => { if (d.calls) setCalls(d.calls); })
-      .catch(() => {});
-    void enableNotifications();
-  }, [enableNotifications]);
+      .then((d) => {
+        if (d.calls) {
+          setCalls(d.calls);
+          const missedIncoming = d.calls.filter(
+            (c: CallRecord) =>
+              (c.status === "missed" || c.status === "rejected") &&
+              c.calleeTcallId === user.tcallId
+          ).length;
+          setMissedCount(missedIncoming);
+        }
+      })
+      .catch(() => setLoadError(ui.loadError));
 
-  const contacts = useMemo(() => {
-    const map = new Map<string, { name: string; tcallId: string; language: string }>();
-    for (const call of calls) {
-      const partner =
-        call.host.tcallId !== user.tcallId
-          ? call.host
-          : call.participants.find((p) => p.user.tcallId !== user.tcallId)?.user;
-      if (partner?.tcallId) map.set(partner.tcallId, partner);
-    }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [calls, user.tcallId]);
+    apiFetch("/api/contacts")
+      .then((r) => r.json())
+      .then((d) => {
+        const favs = (d.contacts || []).filter((c: { favorite: boolean }) => c.favorite);
+        setFavorites(favs.map((c: { name: string; tcallId: string }) => ({ name: c.name, tcallId: c.tcallId })));
+      });
+
+    apiFetch("/api/messages")
+      .then((r) => r.json())
+      .then((d) => setMessageCount(d.unreadCount || 0));
+  }, [setCalls, setLoadError, setFavorites, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
+
+  useEffect(() => {
+    refresh();
+    void enableNotifications();
+    const interval = setInterval(refresh, 30_000);
+    return () => clearInterval(interval);
+  }, [refresh, enableNotifications]);
+
+  useEffect(() => {
+    if (tab === "recents") setMissedCount(0);
+  }, [tab, setMissedCount]);
+
+  useEffect(() => {
+    const onQuickMessage = () => refresh();
+    window.addEventListener("tcall:quick-message", onQuickMessage);
+    return () => window.removeEventListener("tcall:quick-message", onQuickMessage);
+  }, [refresh]);
 
   const copyId = async () => {
     if (!user.tcallId) return;
@@ -103,70 +184,97 @@ function DashboardInner({
     contacts: ui.contacts,
     room: ui.roomTab,
     numbers: ui.vanityNumbers,
+    messages: ui.messages,
   };
 
   const userLang = getLanguage(user.language);
 
   return (
-    <PhoneShell
-      userLanguage={user.language}
-      activeTab={tab}
-      onTabChange={setTab}
-      header={
-        <PhoneHeader
-          title={tabTitles[tab]}
-          subtitle={tab === "keypad" ? `${userLang.flag} ${user.name}` : undefined}
-          right={
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => enableNotifications()}
-                className="ios-icon-btn"
-                title={ui.enableNotifications}
-              >
-                {notificationsEnabled ? (
-                  <Bell className="w-5 h-5 text-green-400" />
-                ) : (
-                  <BellOff className="w-5 h-5 text-yellow-400" />
-                )}
-              </button>
-              <button onClick={logout} className="ios-icon-btn">
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          }
-        />
-      }
-    >
-      {tab === "keypad" && (
-        <>
-          <button onClick={copyId} className="ios-my-number">
-            <span className="text-xs text-white/40">{ui.yourNumber}</span>
-            <span className="font-mono text-lg font-semibold text-brand-300 tracking-wider flex items-center gap-2">
-              {formatTcallId(user.tcallId)}
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-white/30" />}
-            </span>
-          </button>
-          <Dialer userLanguage={user.language} />
-        </>
-      )}
+    <>
+      <PhoneShell
+        userLanguage={user.language}
+        activeTab={tab}
+        onTabChange={setTab}
+        badges={{ recents: missedCount, messages: messageCount }}
+        header={
+          <PhoneHeader
+            title={tabTitles[tab]}
+            subtitle={tab === "keypad" ? `${userLang.flag} ${user.name}` : undefined}
+            right={
+              <div className="flex items-center gap-2">
+                <button onClick={() => setShowSettings(true)} className="ios-icon-btn" title={ui.settings}>
+                  <Settings className="w-5 h-5" />
+                </button>
+                <button onClick={() => enableNotifications()} className="ios-icon-btn" title={ui.enableNotifications}>
+                  {notificationsEnabled ? (
+                    <Bell className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <BellOff className="w-5 h-5 text-yellow-400" />
+                  )}
+                </button>
+                <button onClick={logout} className="ios-icon-btn">
+                  <LogOut className="w-5 h-5" />
+                </button>
+              </div>
+            }
+          />
+        }
+      >
+        {loadError && <div className="ios-error-banner mb-3">{loadError}</div>}
 
-      {tab === "recents" && (
-        <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
-      )}
+        {tab === "keypad" && (
+          <>
+            <button onClick={copyId} className="ios-my-number">
+              <span className="text-xs text-white/40">{ui.yourNumber}</span>
+              <span className="font-mono text-lg font-semibold text-brand-300 tracking-wider flex items-center gap-2">
+                {user.tcallId ? formatTcallId(user.tcallId) : "..."}
+                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-white/30" />}
+              </span>
+            </button>
+            <SpeedDial userLanguage={user.language} favorites={favorites} />
+            <Dialer userLanguage={user.language} />
+          </>
+        )}
 
-      {tab === "contacts" && (
-        <ContactsList userLanguage={user.language} contacts={contacts} />
-      )}
+        {tab === "recents" && (
+          <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+        )}
 
-      {tab === "room" && <RoomPanel userLanguage={user.language} />}
+        {tab === "messages" && (
+          <MessagesInbox userLanguage={user.language} onRead={() => setMessageCount(0)} />
+        )}
 
-      {tab === "numbers" && (
-        <VanityShop
+        {tab === "contacts" && <ContactsManager userLanguage={user.language} />}
+
+        {tab === "room" && <RoomPanel userLanguage={user.language} />}
+
+        {tab === "numbers" && (
+          <VanityShop
+            userLanguage={user.language}
+            currentId={user.tcallId}
+            onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
+          />
+        )}
+      </PhoneShell>
+
+      {showSettings && (
+        <SettingsPanel
+          user={user}
           userLanguage={user.language}
-          currentId={user.tcallId}
-          onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
+          onClose={() => setShowSettings(false)}
+          onUpdate={(updates) => setUser({ ...user, ...updates })}
         />
       )}
-    </PhoneShell>
+
+      {quickMessageTarget && (
+        <QuickMessageModal
+          recipientTcallId={quickMessageTarget.tcallId}
+          recipientName={quickMessageTarget.name}
+          userLanguage={user.language}
+          onClose={clearQuickMessageTarget}
+          onSent={refresh}
+        />
+      )}
+    </>
   );
 }

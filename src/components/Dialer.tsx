@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Phone, Delete } from "lucide-react";
+import { Phone, Delete, UserPlus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
+import { getStatusLabel } from "@/lib/status";
 import { playDialTone } from "@/lib/ringtone";
 import { useCallContext } from "@/components/providers/CallProvider";
 
@@ -33,12 +34,18 @@ export function Dialer({ userLanguage }: DialerProps) {
   const [digits, setDigits] = useState("");
   const [lookupName, setLookupName] = useState<string | null>(null);
   const [lookupLang, setLookupLang] = useState<string | null>(null);
+  const [lookupStatus, setLookupStatus] = useState<string | null>(null);
+  const [lookupOnline, setLookupOnline] = useState<boolean | null>(null);
   const [calling, setCalling] = useState(false);
   const [error, setError] = useState("");
+  const [addedContact, setAddedContact] = useState(false);
 
   useEffect(() => {
     if (digits.length !== 9) {
       setLookupName(null);
+      setLookupStatus(null);
+      setLookupOnline(null);
+      setAddedContact(false);
       return;
     }
 
@@ -46,9 +53,12 @@ export function Dialer({ userLanguage }: DialerProps) {
       apiFetch(`/api/users/lookup?tcallId=${digits}`)
         .then((r) => r.json())
         .then((d) => {
-          if (d.found) {
+          if (d.found && d.user) {
             setLookupName(d.user.name);
             setLookupLang(d.user.language);
+            setLookupStatus(d.user.status);
+            setLookupOnline(d.user.online);
+            if (d.user.blockedYou) setError(ui.blocked);
           } else {
             setLookupName(null);
           }
@@ -57,7 +67,7 @@ export function Dialer({ userLanguage }: DialerProps) {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [digits]);
+  }, [digits, ui.blocked]);
 
   const press = useCallback((key: string) => {
     playDialTone();
@@ -87,6 +97,18 @@ export function Dialer({ userLanguage }: DialerProps) {
     }
   }, [digits, lookupName, dial]);
 
+  const addContact = async () => {
+    if (!lookupName || digits.length !== 9) return;
+    const res = await apiFetch("/api/contacts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: lookupName, tcallId: digits }),
+    });
+    if (res.ok) {
+      setAddedContact(true);
+    }
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") press(e.key);
@@ -103,7 +125,15 @@ export function Dialer({ userLanguage }: DialerProps) {
     <div className="ios-keypad">
       <div className="ios-keypad-display">
         {lookupName ? (
-          <p className="ios-keypad-name animate-fade-in">{lookupName} {partnerLang?.flag}</p>
+          <>
+            <p className="ios-keypad-name animate-fade-in">{lookupName} {partnerLang?.flag}</p>
+            <p className="text-xs text-white/40">
+              {lookupOnline ? ui.online : ui.offline}
+              {lookupStatus && lookupStatus !== "available" && (
+                <> · {getStatusLabel(lookupStatus, ui)}</>
+              )}
+            </p>
+          </>
         ) : digits.length === 9 ? (
           <p className="ios-keypad-error">{ui.numberNotFound}</p>
         ) : (
@@ -111,6 +141,11 @@ export function Dialer({ userLanguage }: DialerProps) {
         )}
         <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
         {error && <p className="ios-keypad-error mt-1">{error}</p>}
+        {lookupName && !addedContact && (
+          <button onClick={() => void addContact()} className="text-xs text-brand-400 mt-2 flex items-center gap-1 mx-auto">
+            <UserPlus className="w-3 h-3" /> {ui.addToContacts}
+          </button>
+        )}
       </div>
 
       <div className="ios-keypad-grid">

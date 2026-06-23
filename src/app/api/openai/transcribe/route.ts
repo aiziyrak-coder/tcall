@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { transcribeAudio } from "@/lib/openai";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -10,6 +11,14 @@ export async function POST(req: NextRequest) {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+    }
+
+    const limited = rateLimit(`transcribe:${session.userId}`, 40, 60_000);
+    if (!limited.ok) {
+      return NextResponse.json(
+        { error: `Limit. ${limited.retryAfterSec}s kuting` },
+        { status: 429 }
+      );
     }
 
     const formData = await req.formData();

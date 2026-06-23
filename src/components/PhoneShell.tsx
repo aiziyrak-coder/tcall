@@ -1,10 +1,10 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Phone, Clock, Users, Link2, Sparkles } from "lucide-react";
+import { Phone, Clock, Users, Link2, Sparkles, MessageSquare } from "lucide-react";
 import { getUI } from "@/lib/languages";
 
-export type PhoneTab = "keypad" | "recents" | "contacts" | "room" | "numbers";
+export type PhoneTab = "keypad" | "recents" | "contacts" | "room" | "numbers" | "messages";
 
 interface PhoneShellProps {
   userLanguage: string;
@@ -12,38 +12,42 @@ interface PhoneShellProps {
   onTabChange: (tab: PhoneTab) => void;
   header?: ReactNode;
   children: ReactNode;
+  badges?: Partial<Record<PhoneTab, number>>;
 }
 
 const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeof getUI> }[] = [
   { id: "recents", icon: Clock, labelKey: "recents" },
+  { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
   { id: "contacts", icon: Users, labelKey: "contacts" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
   { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
 ];
 
-export function PhoneShell({ userLanguage, activeTab, onTabChange, header, children }: PhoneShellProps) {
+export function PhoneShell({ userLanguage, activeTab, onTabChange, header, children, badges }: PhoneShellProps) {
   const ui = getUI(userLanguage);
 
   return (
     <div className="ios-phone-app">
-      <div className="ios-phone-header">
-        {header}
-      </div>
-
+      <div className="ios-phone-header">{header}</div>
       <main className="ios-phone-content">{children}</main>
-
-      <nav className="ios-tab-bar">
+      <nav className="ios-tab-bar ios-tab-bar-6">
         {TABS.map(({ id, icon: Icon, labelKey }) => {
           const active = activeTab === id;
+          const badge = badges?.[id];
           return (
             <button
               key={id}
               onClick={() => onTabChange(id)}
               className={`ios-tab-item ${active ? "ios-tab-active" : ""}`}
             >
-              <Icon className="w-6 h-6" strokeWidth={active ? 2.5 : 1.8} />
-              <span>{ui[labelKey] as string}</span>
+              <span className="relative">
+                <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
+                {badge != null && badge > 0 && (
+                  <span className="ios-tab-badge">{badge > 9 ? "9+" : badge}</span>
+                )}
+              </span>
+              <span className="text-[10px]">{ui[labelKey] as string}</span>
             </button>
           );
         })}

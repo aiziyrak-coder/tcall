@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ClientProviders } from "@/components/providers/ClientProviders";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -25,7 +26,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz">
-      <body className={`${inter.className} overflow-x-hidden`}>{children}</body>
+      <body className={`${inter.className} overflow-x-hidden`}>
+        <ClientProviders>{children}</ClientProviders>
+      </body>
     </html>
   );
 }
