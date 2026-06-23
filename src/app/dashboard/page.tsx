@@ -1,25 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Phone, LogOut, History, Copy, Check } from "lucide-react";
+import { Copy, Check, Bell, BellOff, LogOut } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
-import { usePresence } from "@/hooks/usePresence";
+import { useAuth, type User } from "@/hooks/useAuth";
+import { CallProvider, useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage, getUI } from "@/lib/languages";
 import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
+import { RecentsList } from "@/components/RecentsList";
+import { ContactsList } from "@/components/ContactsList";
+import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
-import { IncomingCallModal } from "@/components/IncomingCallModal";
+import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 
 interface CallRecord {
   id: string;
   roomId: string;
   status: string;
   createdAt: string;
-  calleeTcallId?: string;
   host: { name: string; language: string; tcallId: string };
   participants: { user: { name: string; language: string; tcallId: string } }[];
 }
@@ -27,53 +28,68 @@ interface CallRecord {
 export default function DashboardPage() {
   const { user, loading, logout, setUser } = useAuth();
   const router = useRouter();
-  const [calls, setCalls] = useState<CallRecord[]>([]);
-  const [calling, setCalling] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState("");
-  const [tab, setTab] = useState<"dialer" | "history" | "numbers">("dialer");
-
-  const { incomingCall, rejectCall, clearIncoming } = usePresence(
-    user?.userId,
-    user?.translationMode || "text"
-  );
-
-  const ui = getUI(user?.language || "uz");
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user) {
-      apiFetch("/api/calls")
-        .then((r) => r.json())
-        .then((d) => { if (d.calls) setCalls(d.calls); })
-        .catch(() => {});
-    }
-  }, [user]);
+  if (loading || !user) {
+    return (
+      <div className="ios-phone-app flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  const dial = async (tcallId: string) => {
-    setError("");
-    setCalling(true);
-    try {
-      const res = await apiFetch("/api/calls/dial", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tcallId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Xatolik");
-      router.push(`/call/${data.roomId}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Xatolik");
-    } finally {
-      setCalling(false);
+  return (
+    <CallProvider
+      userId={user.userId}
+      userLanguage={user.language}
+      translationMode={user.translationMode}
+    >
+      <DashboardInner user={user} logout={logout} setUser={setUser} />
+    </CallProvider>
+  );
+}
+
+function DashboardInner({
+  user,
+  logout,
+  setUser,
+}: {
+  user: User;
+  logout: () => void;
+  setUser: (u: User) => void;
+}) {
+  const { enableNotifications, notificationsEnabled } = useCallContext();
+  const [calls, setCalls] = useState<CallRecord[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [tab, setTab] = useState<PhoneTab>("keypad");
+
+  const ui = getUI(user.language);
+
+  useEffect(() => {
+    apiFetch("/api/calls")
+      .then((r) => r.json())
+      .then((d) => { if (d.calls) setCalls(d.calls); })
+      .catch(() => {});
+    void enableNotifications();
+  }, [enableNotifications]);
+
+  const contacts = useMemo(() => {
+    const map = new Map<string, { name: string; tcallId: string; language: string }>();
+    for (const call of calls) {
+      const partner =
+        call.host.tcallId !== user.tcallId
+          ? call.host
+          : call.participants.find((p) => p.user.tcallId !== user.tcallId)?.user;
+      if (partner?.tcallId) map.set(partner.tcallId, partner);
     }
-  };
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [calls, user.tcallId]);
 
   const copyId = async () => {
-    if (!user?.tcallId) return;
+    if (!user.tcallId) return;
     const ok = await copyToClipboard(user.tcallId);
     if (ok) {
       setCopied(true);
@@ -81,126 +97,76 @@ export default function DashboardPage() {
     }
   };
 
-  const acceptIncoming = () => {
-    if (incomingCall) {
-      clearIncoming();
-      router.push(`/call/${incomingCall.roomId}`);
-    }
+  const tabTitles: Record<PhoneTab, string> = {
+    keypad: ui.keypad,
+    recents: ui.recents,
+    contacts: ui.contacts,
+    room: ui.roomTab,
+    numbers: ui.vanityNumbers,
   };
-
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   const userLang = getLanguage(user.language);
 
   return (
-    <div className="page-shell">
-      <div className="absolute inset-0 bg-gradient-to-b from-brand-900/30 via-slate-950 to-slate-950 pointer-events-none" />
-
-      {incomingCall && (
-        <IncomingCallModal
-          call={incomingCall}
-          userLanguage={user.language}
-          onAccept={acceptIncoming}
-          onReject={rejectCall}
+    <PhoneShell
+      userLanguage={user.language}
+      activeTab={tab}
+      onTabChange={setTab}
+      header={
+        <PhoneHeader
+          title={tabTitles[tab]}
+          subtitle={tab === "keypad" ? `${userLang.flag} ${user.name}` : undefined}
+          right={
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => enableNotifications()}
+                className="ios-icon-btn"
+                title={ui.enableNotifications}
+              >
+                {notificationsEnabled ? (
+                  <Bell className="w-5 h-5 text-green-400" />
+                ) : (
+                  <BellOff className="w-5 h-5 text-yellow-400" />
+                )}
+              </button>
+              <button onClick={logout} className="ios-icon-btn">
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          }
         />
+      }
+    >
+      {tab === "keypad" && (
+        <>
+          <button onClick={copyId} className="ios-my-number">
+            <span className="text-xs text-white/40">{ui.yourNumber}</span>
+            <span className="font-mono text-lg font-semibold text-brand-300 tracking-wider flex items-center gap-2">
+              {formatTcallId(user.tcallId)}
+              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-white/30" />}
+            </span>
+          </button>
+          <Dialer userLanguage={user.language} />
+        </>
       )}
 
-      <nav className="mobile-nav relative z-10 flex items-center justify-between max-w-lg mx-auto px-4 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center">
-            <Phone className="w-4 h-4" />
-          </div>
-          <span className="font-bold">Tcall</span>
-        </Link>
-        <button onClick={logout} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-          <LogOut className="w-4 h-4" />
-        </button>
-      </nav>
+      {tab === "recents" && (
+        <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+      )}
 
-      <main className="relative z-10 max-w-lg mx-auto px-4 pb-8 safe-bottom">
-        <div className="text-center mb-6">
-          <p className="text-white/50 text-sm">{ui.yourNumber}</p>
-          <button onClick={copyId} className="flex items-center justify-center gap-2 mx-auto mt-1 group">
-            <span className="text-3xl font-mono font-bold text-brand-300 tracking-wider">
-              {user.tcallId ? formatTcallId(user.tcallId) : "..."}
-            </span>
-            {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-white/30 group-hover:text-white/60" />}
-          </button>
-          <p className="text-xs text-white/40 mt-1">{userLang.flag} {user.name}</p>
-        </div>
+      {tab === "contacts" && (
+        <ContactsList userLanguage={user.language} contacts={contacts} />
+      )}
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm mb-4">
-            {error}
-          </div>
-        )}
+      {tab === "room" && <RoomPanel userLanguage={user.language} />}
 
-        <div className="flex gap-1 mb-6 p-1 bg-white/5 rounded-xl">
-          {(["dialer", "history", "numbers"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                tab === t ? "bg-brand-600 text-white" : "text-white/50 hover:text-white/80"
-              }`}
-            >
-              {t === "dialer" ? ui.dialer : t === "history" ? ui.history : ui.vanityNumbers}
-            </button>
-          ))}
-        </div>
-
-        {tab === "dialer" && (
-          <Dialer userLanguage={user.language} onCall={dial} calling={calling} />
-        )}
-
-        {tab === "history" && (
-          <div className="space-y-2">
-            {calls.length === 0 ? (
-              <p className="text-white/40 text-center py-12">{ui.noCalls}</p>
-            ) : (
-              calls.map((call) => {
-                const partner =
-                  call.host.tcallId !== user.tcallId
-                    ? call.host
-                    : call.participants.find((p) => p.user.tcallId !== user.tcallId)?.user;
-                return (
-                  <div key={call.id} className="glass rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{partner?.name || ui.unknown}</p>
-                      <p className="text-xs text-white/40 font-mono">
-                        {partner?.tcallId ? formatTcallId(partner.tcallId) : ""}
-                      </p>
-                      <p className="text-xs text-white/30 mt-1">
-                        {new Date(call.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => partner?.tcallId && dial(partner.tcallId)}
-                      className="w-11 h-11 rounded-full bg-green-600 flex items-center justify-center"
-                    >
-                      <Phone className="w-5 h-5" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {tab === "numbers" && (
-          <VanityShop
-            userLanguage={user.language}
-            currentId={user.tcallId}
-            onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
-          />
-        )}
-      </main>
-    </div>
+      {tab === "numbers" && (
+        <VanityShop
+          userLanguage={user.language}
+          currentId={user.tcallId}
+          onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
+        />
+      )}
+    </PhoneShell>
   );
 }

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "Tcall — Til chegarasisiz video qo'ng'iroq",
-  description: "Real-time tarjima bilan video qo'ng'iroq. Dunyo bilan o'z tilingizda gaplashing.",
+  title: "Tcall — Audio qo'ng'iroq",
+  description: "Real-time tarjima bilan audio qo'ng'iroq. Dunyo bilan o'z tilingizda gaplashing.",
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Tcall" },
   icons: { icon: "/icon.svg", apple: "/icon.svg" },

@@ -1,7 +1,7 @@
 {
-  "name": "Tcall — Video qo'ng'iroq",
+  "name": "Tcall — Audio qo'ng'iroq",
   "short_name": "Tcall",
-  "description": "Til chegarasisiz video qo'ng'iroq va real-time tarjima",
+  "description": "Til chegarasisiz audio qo'ng'iroq va real-time tarjima",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0f172a",

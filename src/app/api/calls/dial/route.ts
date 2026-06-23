@@ -66,7 +66,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       roomId: call.roomId,
       callId: call.id,
-      callee: { name: callee.name, tcallId: callee.tcallId, language: callee.language },
+      callee: {
+        userId: callee.id,
+        name: callee.name,
+        tcallId: callee.tcallId,
+        language: callee.language,
+      },
     });
   } catch (e) {
     console.error("Dial error:", e);

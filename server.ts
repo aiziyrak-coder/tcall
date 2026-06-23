@@ -8,6 +8,7 @@ import {
   setSocketIO,
   registerUserSocket,
   unregisterUserSocket,
+  emitToUser,
 } from "./src/lib/socket-io";
 import { seedVanityNumbers } from "./src/lib/tcallId";
 
@@ -204,7 +205,19 @@ app.prepare().then(async () => {
 
     socket.on("call-reject", (data: { roomId: string; callerId: string }) => {
       if (data?.callerId) {
-        io.to(`user:${data.callerId}`).emit("call-rejected", { roomId: data.roomId });
+        emitToUser(data.callerId, "call-rejected", { roomId: data.roomId });
+      }
+    });
+
+    socket.on("call-accept", (data: { roomId: string; callerId: string }) => {
+      if (data?.callerId) {
+        emitToUser(data.callerId, "call-accepted", { roomId: data.roomId });
+      }
+    });
+
+    socket.on("call-cancel", (data: { roomId: string; calleeId: string }) => {
+      if (data?.calleeId) {
+        emitToUser(data.calleeId, "call-cancelled", { roomId: data.roomId });
       }
     });
 
