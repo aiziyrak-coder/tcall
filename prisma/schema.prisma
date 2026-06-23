@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  language  String   @default("uz")
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hostedCalls Call[] @relation("HostCalls")
+  callLogs    CallParticipant[]
+}
+
+model Call {
+  id        String   @id @default(cuid())
+  roomId    String   @unique
+  hostId    String
+  host      User     @relation("HostCalls", fields: [hostId], references: [id])
+  status    String   @default("waiting")
+  createdAt DateTime @default(now())
+  endedAt   DateTime?
+
+  participants CallParticipant[]
+}
+
+model CallParticipant {
+  id       String @id @default(cuid())
+  callId   String
+  call     Call   @relation(fields: [callId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  joinedAt DateTime @default(now())
+  leftAt   DateTime?
+
+  @@unique([callId, userId])
+}

@@ -1,0 +1,36 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { transcribeAudio } from "@/lib/openai";
+
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+    }
+
+    const formData = await req.formData();
+    const audio = formData.get("audio") as File | null;
+    const language = (formData.get("language") as string) || session.language;
+
+    if (!audio) {
+      return NextResponse.json({ error: "Audio fayl topilmadi" }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await audio.arrayBuffer());
+
+    // Juda kichik bo'laklar — ovoz yo'q
+    if (buffer.length < 1500) {
+      return NextResponse.json({ text: "" });
+    }
+
+    const text = await transcribeAudio(buffer, audio.name || "audio.webm", language);
+    return NextResponse.json({ text });
+  } catch (e) {
+    console.error("Transcribe API error:", e);
+    return NextResponse.json({ error: "Transkripsiya xatosi" }, { status: 500 });
+  }
+}

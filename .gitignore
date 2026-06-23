@@ -1,0 +1,8 @@
+node_modules
+.next
+.env
+.env.production.server
+deploy/.env.production.server
+*.db
+*.db-journal
+dist
