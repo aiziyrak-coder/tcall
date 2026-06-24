@@ -154,10 +154,9 @@ function DashboardInner({
 
   useEffect(() => {
     refresh();
-    void enableNotifications();
     const interval = setInterval(refresh, 30_000);
     return () => clearInterval(interval);
-  }, [refresh, enableNotifications]);
+  }, [refresh]);
 
   useEffect(() => {
     if (tab === "recents") setMissedCount(0);

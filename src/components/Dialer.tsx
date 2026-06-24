@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
 import { getStatusLabel } from "@/lib/status";
-import { playDialTone } from "@/lib/ringtone";
+import { playDialTone, unlockAudio } from "@/lib/ringtone";
 import { useCallContext } from "@/components/providers/CallProvider";
 
 interface DialerProps {
@@ -70,6 +70,7 @@ export function Dialer({ userLanguage }: DialerProps) {
   }, [digits, ui.blocked]);
 
   const press = useCallback((key: string) => {
+    void unlockAudio();
     playDialTone();
     if (key === "del") {
       setDigits((d) => d.slice(0, -1));

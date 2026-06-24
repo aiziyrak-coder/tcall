@@ -19,6 +19,7 @@ import {
   stopRingback,
   unlockAudio,
   playCallEndTone,
+  setupAudioUnlockOnGesture,
 } from "@/lib/ringtone";
 import {
   requestNotificationPermission,
@@ -114,15 +115,16 @@ export function CallProvider({
   }, [dialError]);
 
   useEffect(() => {
+    setupAudioUnlockOnGesture();
     if (typeof window !== "undefined" && "Notification" in window) {
       setNotificationsEnabled(Notification.permission === "granted");
     }
   }, []);
 
   const enableNotifications = useCallback(async () => {
+    await unlockAudio();
     const ok = await requestNotificationPermission();
     setNotificationsEnabled(ok);
-    await unlockAudio();
     return ok;
   }, []);
 
@@ -222,6 +224,7 @@ export function CallProvider({
   const cancelOutgoingRef = useRef<() => void>(() => {});
 
   const rejectCall = useCallback(async () => {
+    await unlockAudio();
     stopRingtone();
     playCallEndTone();
     if (incomingCall && socketRef.current) {
@@ -232,6 +235,7 @@ export function CallProvider({
 
   const acceptCall = useCallback(async () => {
     if (!incomingCall) return;
+    await unlockAudio();
     stopRingtone();
     const roomId = incomingCall.roomId;
 

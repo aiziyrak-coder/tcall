@@ -51,7 +51,7 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
   const userLang = getLanguage(user.language);
   const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
 
-  useEffect(() => {
+  const handleTap = useCallback(() => {
     void call.unlockAudio();
   }, [call]);
 
@@ -65,10 +65,6 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
       setShowEndedModal(true);
     }
   }, [call.callStatus, roomId]);
-
-  const handleTap = useCallback(() => {
-    void call.unlockAudio();
-  }, [call]);
 
   const latestTranslation = call.translations.filter((t) => t.speaker !== user.name).slice(-1)[0];
   const latestOwn = call.translations.filter((t) => t.speaker === user.name).slice(-1)[0];

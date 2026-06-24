@@ -1,14 +1,75 @@
-/** Telefon jiringlash ovozi — Web Audio API */
+/** Telefon jiringlash ovozi — Web Audio API (faqat user gesture dan keyin) */
 let audioCtx: AudioContext | null = null;
+let audioUnlocked = false;
 let ringInterval: ReturnType<typeof setInterval> | null = null;
 let vibrateInterval: ReturnType<typeof setInterval> | null = null;
+let ringbackInterval: ReturnType<typeof setInterval> | null = null;
+let pendingRingtone = false;
+let pendingRingback = false;
+let gestureListenerAttached = false;
 
-function getCtx(): AudioContext {
-  if (!audioCtx) {
-    const C = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    audioCtx = new C();
+export function isAudioUnlocked() {
+  return audioUnlocked;
+}
+
+function flushPending() {
+  if (pendingRingtone) {
+    pendingRingtone = false;
+    startRingtoneInternal();
   }
+  if (pendingRingback) {
+    pendingRingback = false;
+    startRingbackInternal();
+  }
+}
+
+export async function unlockAudio(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const C =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!C) return false;
+    if (!audioCtx) audioCtx = new C();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.connect(audioCtx.destination);
+    src.start(0);
+    audioUnlocked = true;
+    flushPending();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Birinchi bosish/tugma bilan audio ruxsatini ochish */
+export function setupAudioUnlockOnGesture() {
+  if (typeof window === "undefined" || gestureListenerAttached) return;
+  gestureListenerAttached = true;
+
+  const unlock = () => {
+    void unlockAudio();
+  };
+
+  window.addEventListener("pointerdown", unlock, { once: true, passive: true });
+  window.addEventListener("keydown", unlock, { once: true, passive: true });
+}
+
+function getCtx(): AudioContext | null {
+  if (!audioUnlocked || !audioCtx) return null;
   return audioCtx;
+}
+
+function safeVibrate(pattern: number | number[]) {
+  if (!audioUnlocked) return;
+  try {
+    if ("vibrate" in navigator) navigator.vibrate(pattern);
+  } catch {
+    /* ignore */
+  }
 }
 
 function playTone(freq: number, duration: number, ctx: AudioContext, startTime: number) {
@@ -25,8 +86,9 @@ function playTone(freq: number, duration: number, ctx: AudioContext, startTime: 
 }
 
 function playRingCycle() {
+  const ctx = getCtx();
+  if (!ctx) return;
   try {
-    const ctx = getCtx();
     if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
     playTone(440, 0.4, ctx, now);
@@ -38,11 +100,10 @@ function playRingCycle() {
   }
 }
 
-let ringbackInterval: ReturnType<typeof setInterval> | null = null;
-
 function playRingbackCycle() {
+  const ctx = getCtx();
+  if (!ctx) return;
   try {
-    const ctx = getCtx();
     if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
     playTone(425, 0.15, ctx, now);
@@ -52,33 +113,49 @@ function playRingbackCycle() {
   }
 }
 
-export function startRingback() {
+function startRingbackInternal() {
   stopRingback();
   playRingbackCycle();
   ringbackInterval = setInterval(playRingbackCycle, 2000);
 }
 
+export function startRingback() {
+  if (!audioUnlocked) {
+    pendingRingback = true;
+    return;
+  }
+  startRingbackInternal();
+}
+
 export function stopRingback() {
+  pendingRingback = false;
   if (ringbackInterval) {
     clearInterval(ringbackInterval);
     ringbackInterval = null;
   }
 }
 
-export function startRingtone() {
+function startRingtoneInternal() {
   stopRingtone();
   playRingCycle();
   ringInterval = setInterval(playRingCycle, 3000);
 
-  if ("vibrate" in navigator) {
-    navigator.vibrate([400, 200, 400, 200, 400, 1000]);
-    vibrateInterval = setInterval(() => {
-      navigator.vibrate([400, 200, 400, 200, 400, 1000]);
-    }, 3000);
+  safeVibrate([400, 200, 400, 200, 400, 1000]);
+  vibrateInterval = setInterval(() => {
+    safeVibrate([400, 200, 400, 200, 400, 1000]);
+  }, 3000);
+}
+
+export function startRingtone() {
+  if (!audioUnlocked) {
+    pendingRingtone = true;
+    return;
   }
+  startRingtoneInternal();
 }
 
 export function stopRingtone() {
+  pendingRingtone = false;
   stopRingback();
   if (ringInterval) {
     clearInterval(ringInterval);
@@ -88,26 +165,13 @@ export function stopRingtone() {
     clearInterval(vibrateInterval);
     vibrateInterval = null;
   }
-  if ("vibrate" in navigator) navigator.vibrate(0);
-}
-
-export async function unlockAudio(): Promise<void> {
-  try {
-    const ctx = getCtx();
-    if (ctx.state === "suspended") await ctx.resume();
-    const buf = ctx.createBuffer(1, 1, 22050);
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    src.connect(ctx.destination);
-    src.start(0);
-  } catch {
-    /* ignore */
-  }
+  safeVibrate(0);
 }
 
 export function playDialTone() {
+  const ctx = getCtx();
+  if (!ctx) return;
   try {
-    const ctx = getCtx();
     if (ctx.state === "suspended") void ctx.resume();
     const now = ctx.currentTime;
     playTone(350 + Math.random() * 50, 0.08, ctx, now);
@@ -117,8 +181,9 @@ export function playDialTone() {
 }
 
 export function playCallEndTone() {
+  const ctx = getCtx();
+  if (!ctx) return;
   try {
-    const ctx = getCtx();
     const now = ctx.currentTime;
     playTone(400, 0.15, ctx, now);
     playTone(300, 0.25, ctx, now + 0.15);
