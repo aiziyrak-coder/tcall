@@ -1,4 +1,5 @@
 import { isPrettyNumber } from "@/lib/tcallId";
+import { toVanityUsdPrice } from "@/lib/vanity-currency";
 
 export type VanityTier = "platinum" | "gold" | "silver" | "standard";
 
@@ -9,11 +10,11 @@ export interface VanityQuote {
   pretty: boolean;
 }
 
-const TIER_BASE: Record<VanityTier, number> = {
-  platinum: 550000,
-  gold: 280000,
-  silver: 140000,
-  standard: 90000,
+const TIER_BASE_SOM: Record<VanityTier, number> = {
+  platinum: 550_000,
+  gold: 280_000,
+  silver: 140_000,
+  standard: 90_000,
 };
 
 function scorePattern(num: string): number {
@@ -51,20 +52,18 @@ export function quoteVanityNumber(raw: string): VanityQuote | null {
   const pretty = isPrettyNumber(number);
   const score = scorePattern(number);
   const tier = tierFromScore(score, pretty);
-  const base = TIER_BASE[tier];
+  const base = TIER_BASE_SOM[tier];
 
-  let price = base;
+  let priceSom = base;
   if (pretty) {
-    price += Math.min(score * 2500, 450000);
+    priceSom += Math.min(score * 2500, 450_000);
   }
 
   const lastDigit = Number(number.slice(-1));
-  price += lastDigit * 1200;
+  priceSom += lastDigit * 1200;
+  priceSom = Math.round(priceSom / 1000) * 1000;
 
-  return { number, price: Math.round(price / 1000) * 1000, tier, pretty };
+  return { number, price: toVanityUsdPrice(priceSom), tier, pretty };
 }
 
-export function formatVanityPrice(price: number): string {
-  if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(1)}M so'm`;
-  return `${Math.round(price / 1000)}k so'm`;
-}
+export { formatVanityPrice, toVanityUsdPrice } from "@/lib/vanity-currency";
