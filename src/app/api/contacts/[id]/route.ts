@@ -10,7 +10,7 @@ const patchSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   try {
@@ -30,8 +30,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getSession();
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const existing = await prisma.contact.findFirst({

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
-import { clearSessionCookie, createToken, getSession, setSessionCookie } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { createToken, getSession, jsonClearSession, jsonWithSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateUniqueTcallId } from "@/lib/tcallId";
 
-export async function GET() {
-  const session = await getSession();
+export async function GET(req: NextRequest) {
+  const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ user: null });
   }
@@ -12,8 +12,7 @@ export async function GET() {
   try {
     let user = await prisma.user.findUnique({ where: { id: session.userId } });
     if (!user) {
-      await clearSessionCookie();
-      return NextResponse.json({ user: null });
+      return jsonClearSession({ user: null });
     }
 
     if (!user.tcallId) {
@@ -35,17 +34,15 @@ export async function GET() {
 
     if (session.tcallId !== user.tcallId || session.translationMode !== user.translationMode) {
       const token = await createToken(freshUser);
-      await setSessionCookie(token);
+      return jsonWithSession({ user: freshUser }, token);
     }
 
     return NextResponse.json({ user: freshUser });
   } catch {
-    await clearSessionCookie();
-    return NextResponse.json({ user: null });
+    return jsonClearSession({ user: null });
   }
 }
 
 export async function DELETE() {
-  await clearSessionCookie();
-  return NextResponse.json({ ok: true });
+  return jsonClearSession({ ok: true });
 }

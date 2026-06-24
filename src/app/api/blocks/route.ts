@@ -8,8 +8,8 @@ const schema = z.object({
   tcallId: z.string().regex(/^\d{9}$/),
 });
 
-export async function GET() {
-  const session = await getSession();
+export async function GET(req: NextRequest) {
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const blocks = await prisma.blockedUser.findMany({
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const limited = rateLimit(`block:${session.userId}`, 20, 60_000);
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const tcallId = req.nextUrl.searchParams.get("tcallId")?.replace(/\D/g, "");

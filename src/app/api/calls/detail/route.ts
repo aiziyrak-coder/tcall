@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const roomId = req.nextUrl.searchParams.get("roomId")?.toUpperCase();

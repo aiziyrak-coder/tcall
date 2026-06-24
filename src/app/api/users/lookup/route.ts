@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isUserOnline } from "@/lib/socket-io";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
   }

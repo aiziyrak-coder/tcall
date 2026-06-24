@@ -4,7 +4,7 @@ import { markCallEnded } from "@/lib/call-service";
 import { generateCallSummary } from "@/lib/call-summary";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
   }

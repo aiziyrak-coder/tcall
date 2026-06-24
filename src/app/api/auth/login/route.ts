@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { createToken, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createToken, jsonWithSession, verifyPassword } from "@/lib/auth";
 import { generateUniqueTcallId } from "@/lib/tcallId";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().email().transform((e) => e.trim().toLowerCase()),
   password: z.string().min(1).max(128),
 });
 
 export async function POST(req: NextRequest) {
   try {
     const ip = clientIp(req);
-    const limited = rateLimit(`login:${ip}`, 10, 60_000);
+    const limited = rateLimit(`login:${ip}`, 15, 60_000);
     if (!limited.ok) {
       return NextResponse.json(
         { error: `Juda ko'p urinish. ${limited.retryAfterSec}s kuting` },
@@ -44,18 +44,19 @@ export async function POST(req: NextRequest) {
       translationMode: user.translationMode,
     });
 
-    await setSessionCookie(token);
-
-    return NextResponse.json({
-      user: {
-        userId: user.id,
-        email: user.email,
-        name: user.name,
-        language: user.language,
-        tcallId,
-        translationMode: user.translationMode,
+    return jsonWithSession(
+      {
+        user: {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          language: user.language,
+          tcallId,
+          translationMode: user.translationMode,
+        },
       },
-    });
+      token
+    );
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.errors[0].message }, { status: 400 });

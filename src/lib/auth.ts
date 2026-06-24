@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -21,6 +22,18 @@ function getJwtSecret() {
 }
 
 export type SessionPayload = z.infer<typeof sessionSchema>;
+
+function sessionCookieOptions() {
+  const domain = process.env.COOKIE_DOMAIN;
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: (domain ? "none" : "lax") as "none" | "lax" | "strict",
+    ...(domain ? { domain } : {}),
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
+  };
+}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
@@ -48,26 +61,48 @@ export async function verifyToken(token: string): Promise<SessionPayload | null>
   }
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
+/** Custom server (tsx) bilan ishlaydi — NextRequest dan cookie o'qish */
+export async function getSession(req?: NextRequest): Promise<SessionPayload | null> {
+  let token = req?.cookies.get("session")?.value;
+
+  if (!token) {
+    try {
+      const cookieStore = await cookies();
+      token = cookieStore.get("session")?.value;
+    } catch {
+      return null;
+    }
+  }
+
   if (!token) return null;
   return verifyToken(token);
 }
 
-export async function setSessionCookie(token: string) {
-  const cookieStore = await cookies();
-  const domain = process.env.COOKIE_DOMAIN;
-  cookieStore.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: domain ? "none" : "lax",
-    ...(domain ? { domain } : {}),
-    maxAge: 60 * 60 * 24 * 7,
-    path: "/",
-  });
+/** Response ga session cookie qo'shish — register/login uchun */
+export function withSessionCookie<T>(response: NextResponse<T>, token: string): NextResponse<T> {
+  response.cookies.set("session", token, sessionCookieOptions());
+  return response;
 }
 
+export function jsonWithSession(data: unknown, token: string, status = 200) {
+  const res = NextResponse.json(data, { status });
+  return withSessionCookie(res, token);
+}
+
+export function jsonClearSession(data: unknown = { ok: true }) {
+  const res = NextResponse.json(data);
+  const opts = sessionCookieOptions();
+  res.cookies.set("session", "", { ...opts, maxAge: 0 });
+  return res;
+}
+
+/** @deprecated — jsonWithSession ishlating */
+export async function setSessionCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set("session", token, sessionCookieOptions());
+}
+
+/** @deprecated — jsonClearSession ishlating */
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
   const domain = process.env.COOKIE_DOMAIN;

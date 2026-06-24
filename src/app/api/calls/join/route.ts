@@ -7,7 +7,7 @@ const MAX_PARTICIPANTS = 2;
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSession(req);
     if (!session) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
     }

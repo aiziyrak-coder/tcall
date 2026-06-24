@@ -43,6 +43,7 @@ export function getAudioConstraints(): MediaStreamConstraints {
       noiseSuppression: true,
       autoGainControl: true,
       sampleRate: { ideal: 48000 },
+      channelCount: { ideal: 1 },
     },
     video: false,
   };

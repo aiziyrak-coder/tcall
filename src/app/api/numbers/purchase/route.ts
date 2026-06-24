@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession, createToken, setSessionCookie } from "@/lib/auth";
+import { getSession, createToken, jsonWithSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession();
+    const session = await getSession(req);
     if (!session) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
     }
@@ -52,13 +52,11 @@ export async function POST(req: NextRequest) {
       tcallId: user.tcallId!,
       translationMode: user.translationMode,
     });
-    await setSessionCookie(token);
 
-    return NextResponse.json({
-      success: true,
-      tcallId: user.tcallId!,
-      tier: vanity.tier,
-    });
+    return jsonWithSession(
+      { success: true, tcallId: user.tcallId!, tier: vanity.tier },
+      token
+    );
   } catch (e) {
     console.error("Purchase error:", e);
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });

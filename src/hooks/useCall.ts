@@ -126,7 +126,7 @@ export function useCall({
   const processAudioChunk = useCallback(
     async (blob: Blob) => {
       if (processingRef.current || isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
-      if (blob.size < 800) return;
+      if (blob.size < 500) return;
 
       processingRef.current = true;
       try {
@@ -177,7 +177,7 @@ export function useCall({
           setIsListening(false);
         };
         recordingActiveRef.current = true;
-        recorder.start(1200);
+        recorder.start(700);
         recorderRef.current = recorder;
         setIsListening(true);
       } catch (e) {
@@ -246,6 +246,7 @@ export function useCall({
           setCallStatus("active");
           startTimer();
           clearOfferRetry();
+          if (streamRef.current && !recorderRef.current) startRecording(streamRef.current);
         } else if (state === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
           offerRetryRef.current += 1;
           resetPeerConnection();
@@ -253,10 +254,23 @@ export function useCall({
         }
       };
 
+      pc.oniceconnectionstatechange = () => {
+        const ice = pc.iceConnectionState;
+        if (ice === "connected" || ice === "completed") {
+          setCallStatus("active");
+          if (streamRef.current && !recorderRef.current && !isMutedRef.current) {
+            startRecording(streamRef.current);
+          }
+        } else if (ice === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
+          offerRetryRef.current += 1;
+          resetPeerConnection();
+        }
+      };
+
       stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
       return pc;
     },
-    [attachRemoteTrack, clearOfferRetry, resetPeerConnection, startTimer]
+    [attachRemoteTrack, clearOfferRetry, resetPeerConnection, startTimer, startRecording]
   );
 
   const sendOffer = useCallback(
@@ -541,7 +555,7 @@ export function useCall({
     await apiFetch("/api/user/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ translationMode: mode }),
     }).catch(() => {});
 
     if (mode === "text") audioQueueRef.current?.stop();
