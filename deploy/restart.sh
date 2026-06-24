@@ -3,6 +3,7 @@
 set -e
 cd /var/www/tcall
 git pull origin main 2>/dev/null || true
+npm install --omit=dev 2>/dev/null || npm install
 npx prisma db push 2>/dev/null || true
 mkdir -p public/uploads/avatars public/uploads/chat
 pm2 delete tcall 2>/dev/null || true

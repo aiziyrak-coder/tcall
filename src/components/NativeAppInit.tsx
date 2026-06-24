@@ -2,12 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LocalNotifications } from "@capacitor/local-notifications";
-import {
-  initNativeApp,
-  isNativeApp,
-  requestNativeNotificationPermission,
-} from "@/lib/native-app";
+import { isNativeApp, initNativeApp, requestNativeNotificationPermission } from "@/lib/native-app";
 
 /** Native Capacitor ilova ishga tushirish */
 export function NativeAppInit() {
@@ -22,14 +17,19 @@ export function NativeAppInit() {
 
     void requestNativeNotificationPermission();
 
-    const tapSub = LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
-      const roomId = action.notification.extra?.roomId as string | undefined;
-      if (roomId) router.push(`/call/${String(roomId).toUpperCase()}`);
+    let removeTap: (() => void) | undefined;
+
+    void import("@capacitor/local-notifications").then(({ LocalNotifications }) => {
+      const sub = LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
+        const roomId = action.notification.extra?.roomId as string | undefined;
+        if (roomId) router.push(`/call/${String(roomId).toUpperCase()}`);
+      });
+      removeTap = () => {
+        void sub.then((h) => h.remove());
+      };
     });
 
-    return () => {
-      void tapSub.then((h) => h.remove());
-    };
+    return () => removeTap?.();
   }, [router]);
 
   return null;

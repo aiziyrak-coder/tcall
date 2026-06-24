@@ -1,21 +1,42 @@
 "use client";
 
-import { Capacitor } from "@capacitor/core";
-import { App } from "@capacitor/app";
-import { StatusBar, Style } from "@capacitor/status-bar";
-import { SplashScreen } from "@capacitor/splash-screen";
-import { LocalNotifications } from "@capacitor/local-notifications";
-import { PushNotifications } from "@capacitor/push-notifications";
 import { apiFetch } from "@/lib/api";
 
 const INCOMING_CHANNEL = "incoming_calls";
 
+type CapCore = typeof import("@capacitor/core");
+type CapApp = typeof import("@capacitor/app");
+type CapStatusBar = typeof import("@capacitor/status-bar");
+type CapSplash = typeof import("@capacitor/splash-screen");
+type CapLocal = typeof import("@capacitor/local-notifications");
+type CapPush = typeof import("@capacitor/push-notifications");
+
+let capCore: CapCore | null = null;
+
+async function core(): Promise<CapCore> {
+  if (!capCore) capCore = await import("@capacitor/core");
+  return capCore;
+}
+
 export function isNativeApp(): boolean {
-  return typeof window !== "undefined" && Capacitor.isNativePlatform();
+  if (typeof window === "undefined") return false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Capacitor } = require("@capacitor/core") as CapCore;
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
 }
 
 export function getNativePlatform(): "android" | "ios" | "web" {
-  return Capacitor.getPlatform() as "android" | "ios" | "web";
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Capacitor } = require("@capacitor/core") as CapCore;
+    return Capacitor.getPlatform() as "android" | "ios" | "web";
+  } catch {
+    return "web";
+  }
 }
 
 let initDone = false;
@@ -25,9 +46,11 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
   if (!isNativeApp() || initDone) return;
   initDone = true;
 
+  const { Capacitor } = await core();
   document.body.classList.add("native-app", `native-${Capacitor.getPlatform()}`);
 
   try {
+    const { StatusBar, Style } = await import("@capacitor/status-bar") as CapStatusBar;
     await StatusBar.setStyle({ style: Style.Light });
     if (Capacitor.getPlatform() === "android") {
       await StatusBar.setBackgroundColor({ color: "#f2f2f7" });
@@ -37,6 +60,7 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
   }
 
   try {
+    const { SplashScreen } = await import("@capacitor/splash-screen") as CapSplash;
     await SplashScreen.hide();
   } catch {
     /* ignore */
@@ -44,6 +68,7 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
 
   if (Capacitor.getPlatform() === "android") {
     try {
+      const { LocalNotifications } = await import("@capacitor/local-notifications") as CapLocal;
       await LocalNotifications.createChannel({
         id: INCOMING_CHANNEL,
         name: "Kiruvchi qo'ng'iroqlar",
@@ -60,10 +85,15 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
     }
   }
 
-  App.addListener("appUrlOpen", (event) => {
-    const path = urlToPath(event.url);
-    if (path && onDeepLink) onDeepLink(path);
-  });
+  try {
+    const { App } = await import("@capacitor/app") as CapApp;
+    App.addListener("appUrlOpen", (event) => {
+      const path = urlToPath(event.url);
+      if (path && onDeepLink) onDeepLink(path);
+    });
+  } catch {
+    /* ignore */
+  }
 
   void setupPushNotifications();
 }
@@ -85,6 +115,8 @@ function urlToPath(url: string): string | null {
 
 async function setupPushNotifications() {
   try {
+    const { PushNotifications } = await import("@capacitor/push-notifications") as CapPush;
+    const { Capacitor } = await core();
     const perm = await PushNotifications.requestPermissions();
     if (perm.receive !== "granted") return;
 
@@ -116,6 +148,9 @@ export async function requestNativeNotificationPermission(): Promise<boolean> {
   if (!isNativeApp()) return false;
 
   try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications") as CapLocal;
+    const { PushNotifications } = await import("@capacitor/push-notifications") as CapPush;
+    const { Capacitor } = await core();
     const local = await LocalNotifications.requestPermissions();
     if (Capacitor.getPlatform() === "android" || Capacitor.getPlatform() === "ios") {
       const push = await PushNotifications.requestPermissions();
@@ -136,6 +171,7 @@ export async function showNativeIncomingCallNotification(
   if (document.visibilityState === "visible") return;
 
   try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications") as CapLocal;
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -147,8 +183,6 @@ export async function showNativeIncomingCallNotification(
           ongoing: true,
           autoCancel: false,
           extra: { roomId, type: "incoming_call" },
-          actionTypeId: "INCOMING_CALL",
-          attachments: undefined,
         },
       ],
     });
@@ -160,6 +194,7 @@ export async function showNativeIncomingCallNotification(
 export async function cancelNativeIncomingNotification(roomId?: string) {
   if (!isNativeApp()) return;
   try {
+    const { LocalNotifications } = await import("@capacitor/local-notifications") as CapLocal;
     if (roomId) {
       const id = Math.abs(hashCode(roomId)) % 2147483647 || 1001;
       await LocalNotifications.cancel({ notifications: [{ id }] });
