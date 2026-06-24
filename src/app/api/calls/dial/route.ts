@@ -72,6 +72,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (callee.status === "busy") {
+      return NextResponse.json(
+        {
+          error: "Abonent band",
+          canMessage: true,
+          calleeTcallId: targetId,
+          callee: { name: callee.name, tcallId: targetId },
+        },
+        { status: 409 }
+      );
+    }
+
     if (await userHasActiveCall(callee.id, callee.tcallId ?? undefined)) {
       return NextResponse.json(
         {

@@ -4,7 +4,7 @@ export const STATUS_OPTIONS: { value: UserStatus; color: string }[] = [
   { value: "available", color: "text-green-400" },
   { value: "busy", color: "text-yellow-400" },
   { value: "dnd", color: "text-red-400" },
-  { value: "away", color: "text-white/40" },
+  { value: "away", color: "text-slate-400" },
 ];
 
 export function getStatusLabel(status: string, ui: Record<string, string>): string {

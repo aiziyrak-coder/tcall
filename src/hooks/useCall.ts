@@ -78,6 +78,7 @@ export function useCall({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userLeftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherParticipantRef = useRef<RoomParticipant | null>(null);
+  const partnerLanguageRef = useRef<string | null>(null);
   const sessionActiveRef = useRef(false);
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export function useCall({
   const processAudioChunk = useCallback(
     async (blob: Blob) => {
       if (processingRef.current || isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
+      if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
       if (blob.size < 500) return;
 
       processingRef.current = true;
@@ -162,6 +164,7 @@ export function useCall({
   const startRecording = useCallback(
     (stream: MediaStream) => {
       if (recorderRef.current || isMutedRef.current) return;
+      if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
       const audioTrack = stream.getAudioTracks()[0];
       if (!audioTrack) return;
 
@@ -185,7 +188,7 @@ export function useCall({
         console.error("MediaRecorder failed:", e);
       }
     },
-    [processAudioChunk]
+    [processAudioChunk, userLanguage]
   );
 
   const playTranslationAudio = useCallback((audioBase64: string) => {
@@ -348,6 +351,7 @@ export function useCall({
       if (!other) return;
 
       otherParticipantRef.current = other;
+      partnerLanguageRef.current = other.language;
 
       const pc = pcRef.current;
       const pcBroken = !pc || pc.connectionState === "failed" || pc.connectionState === "closed";
@@ -527,6 +531,18 @@ export function useCall({
           stopTimer();
           setCallStatus("ended");
         });
+        socket.on("call-timeout", () => {
+          stopTimer();
+          stopRecording();
+          resetPeerConnection();
+          setCallStatus("ended");
+        });
+        socket.on("call-cancelled", () => {
+          stopTimer();
+          stopRecording();
+          resetPeerConnection();
+          setCallStatus("ended");
+        });
         socket.on("user-left", () => {
           if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
           userLeftTimerRef.current = setTimeout(() => {
@@ -542,6 +558,14 @@ export function useCall({
         if (mounted) {
           setCallError("media_denied");
           setCallStatus("error");
+          if (isHost && socketRef.current?.connected) {
+            socketRef.current.emit("call-cancel", { roomId });
+          }
+          void apiFetch("/api/calls/end", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomId }),
+          });
         }
       }
     }
@@ -561,10 +585,23 @@ export function useCall({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
 
-      if (intentionalEndRef.current) {
-        socketRef.current?.emit("call-ended");
+      const hadRemote = !!remoteStreamRef.current;
+      const socket = socketRef.current;
+
+      if (!intentionalEndRef.current) {
+        if (isHost && !hadRemote && socket?.connected) {
+          socket.emit("call-cancel", { roomId });
+        } else if (socket?.connected) {
+          socket.emit("call-ended");
+        }
+        void apiFetch("/api/calls/end", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId }),
+        });
       }
-      socketRef.current?.disconnect();
+
+      socket?.disconnect();
       socketRef.current = null;
     };
   }, [

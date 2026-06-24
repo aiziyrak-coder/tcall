@@ -5,7 +5,7 @@ import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info } from "lucide-r
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
 import { formatDuration } from "@/lib/status";
-import { useCallContext } from "@/components/providers/CallProvider";
+import { useCallContext, DialError } from "@/components/providers/CallProvider";
 import { CallDetailModal } from "@/components/CallDetailModal";
 
 interface CallRecord {
@@ -35,8 +35,8 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
     setDialError("");
     try {
       await dial(tcallId);
-    } catch {
-      setDialError(ui.dialError);
+    } catch (e) {
+      setDialError(e instanceof DialError ? e.message : ui.dialError);
     }
   };
 

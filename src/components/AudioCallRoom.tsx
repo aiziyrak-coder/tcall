@@ -90,7 +90,15 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">{err.t}</h2>
           <p className="text-slate-500 mb-6 text-sm">{err.d}</p>
-          <button onClick={() => router.push("/dashboard")} className="btn-primary w-full">{ui.backToDashboard}</button>
+          <button
+            onClick={() => {
+              call.endCall();
+              router.push("/dashboard");
+            }}
+            className="btn-primary w-full"
+          >
+            {ui.backToDashboard}
+          </button>
         </div>
       </div>
     );

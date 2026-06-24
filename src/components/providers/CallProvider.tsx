@@ -97,6 +97,7 @@ export function CallProvider({
   const [outgoingCall, setOutgoingCall] = useState<OutgoingCall | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [dialError, setDialError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const [quickMessageTarget, setQuickMessageTarget] = useState<{ tcallId: string; name?: string } | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
@@ -115,6 +116,13 @@ export function CallProvider({
       return () => clearTimeout(t);
     }
   }, [dialError]);
+
+  useEffect(() => {
+    if (acceptError) {
+      const t = setTimeout(() => setAcceptError(null), 6000);
+      return () => clearTimeout(t);
+    }
+  }, [acceptError]);
 
   useEffect(() => {
     setupAudioUnlockOnGesture();
@@ -256,7 +264,9 @@ export function CallProvider({
       socketRef.current?.emit("call-accept", { roomId });
       setIncomingCall(null);
       router.push(`/call/${roomId}`);
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Qo'ng'iroqni qabul qilib bo'lmadi";
+      setAcceptError(message);
       socketRef.current?.emit("call-reject", { roomId });
       setIncomingCall(null);
     }
@@ -322,6 +332,12 @@ export function CallProvider({
       {dialError && (
         <div className="fixed top-4 left-4 right-4 z-[60] bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm text-center">
           {dialError}
+        </div>
+      )}
+
+      {acceptError && (
+        <div className="fixed top-4 left-4 right-4 z-[60] bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm text-center">
+          {acceptError}
         </div>
       )}
 

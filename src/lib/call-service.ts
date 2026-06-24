@@ -14,7 +14,7 @@ export async function endStaleCallsForUser(userId: string, userTcallId?: string 
 
   await prisma.call.updateMany({
     where: {
-      status: { in: ["ringing", "waiting"] },
+      status: "ringing",
       createdAt: { lt: cutoff },
       OR: [
         { hostId: userId },
@@ -25,7 +25,16 @@ export async function endStaleCallsForUser(userId: string, userTcallId?: string 
   });
 
   await prisma.call.updateMany({
-    where: { hostId: userId, status: "ringing" },
+    where: {
+      status: "waiting",
+      createdAt: { lt: cutoff },
+      hostId: userId,
+    },
+    data: { status: "cancelled", endedAt: new Date() },
+  });
+
+  await prisma.call.updateMany({
+    where: { hostId: userId, status: { in: ["ringing", "waiting"] } },
     data: { status: "cancelled", endedAt: new Date() },
   });
 
@@ -58,6 +67,7 @@ export async function userHasActiveCall(userId: string, userTcallId?: string | n
 
   if (!call) return false;
   if (call.status === "ringing" && call.createdAt < cutoff) return false;
+  if (call.status === "waiting" && call.createdAt < cutoff) return false;
   if (call.status === "active" && call.createdAt < new Date(Date.now() - 2 * 60 * 60 * 1000)) return false;
   return true;
 }
@@ -207,9 +217,9 @@ export async function cancelCall(roomId: string, userId: string) {
 }
 
 export async function expireStaleRingingCalls() {
-  const cutoff = new Date(Date.now() - RING_TIMEOUT_MS);
+  const cutoff = ringingCutoff();
   const stale = await prisma.call.findMany({
-    where: { status: "ringing", createdAt: { lt: cutoff } },
+    where: { status: { in: ["ringing", "waiting"] }, createdAt: { lt: cutoff } },
     include: { host: { select: { id: true } } },
   });
 
@@ -218,7 +228,10 @@ export async function expireStaleRingingCalls() {
   for (const call of stale) {
     await prisma.call.update({
       where: { id: call.id },
-      data: { status: "missed", endedAt: new Date() },
+      data: {
+        status: call.status === "waiting" ? "cancelled" : "missed",
+        endedAt: new Date(),
+      },
     });
 
     let calleeId: string | undefined;

@@ -40,7 +40,7 @@ export default function RegisterPage() {
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center">
               <Phone className="w-5 h-5" />
             </div>
             <span className="text-xl font-bold">Tcall</span>
@@ -101,7 +101,7 @@ export default function RegisterPage() {
               onChange={(e) => setForm({ ...form, language: e.target.value })}
             >
               {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-slate-900">
+                <option key={lang.code} value={lang.code}>
                   {lang.flag} {lang.name}
                 </option>
               ))}

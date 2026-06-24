@@ -42,6 +42,13 @@ export async function POST(req: NextRequest) {
 
     const participantCount = alreadyJoined ? call.participants.length : call.participants.length + 1;
 
+    if (participantCount >= MAX_PARTICIPANTS && ["waiting", "ringing"].includes(call.status)) {
+      await prisma.call.updateMany({
+        where: { id: call.id, status: { in: ["waiting", "ringing"] } },
+        data: { status: "active" },
+      });
+    }
+
     const partner =
       call.participants.find((p) => p.userId !== session.userId)?.user
       ?? (call.hostId !== session.userId ? call.host : null);

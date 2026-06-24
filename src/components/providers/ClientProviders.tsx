@@ -16,7 +16,8 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, loading } = useAuth();
 
-  const needsProvider = pathname?.startsWith("/dashboard");
+  const needsProvider =
+    pathname?.startsWith("/dashboard") || pathname?.startsWith("/call");
 
   if (!needsProvider) return <>{children}</>;
 

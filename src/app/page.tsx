@@ -12,7 +12,7 @@ export default function HomePage() {
 
         <nav className="relative z-10 flex items-center justify-between max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center">
               <Phone className="w-5 h-5" />
             </div>
             <span className="text-xl font-bold">Tcall</span>
@@ -97,7 +97,7 @@ export default function HomePage() {
             { step: "4", title: "Tarjima", desc: "AI avtomatik tarjima qiladi" },
           ].map((s) => (
             <div key={s.step} className="text-center">
-              <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4">
+              <div className="w-14 h-14 bg-brand-600 text-white rounded-2xl flex items-center justify-center text-xl font-bold mx-auto mb-4">
                 {s.step}
               </div>
               <h3 className="font-semibold mb-2">{s.title}</h3>
