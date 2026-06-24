@@ -8,7 +8,9 @@
     "start": "tsx server.ts",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "smoke": "node scripts/smoke-test.mjs",
+    "smoke:socket": "node scripts/socket-smoke-test.mjs"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

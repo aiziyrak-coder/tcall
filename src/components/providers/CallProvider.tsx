@@ -278,10 +278,6 @@ export function CallProvider({
     setDialError(null);
     await unlockAudio();
 
-    if (!socketRef.current?.connected) {
-      throw new DialError("Ulanish yo'q — sahifani yangilang yoki biroz kuting");
-    }
-
     const res = await apiFetch("/api/calls/dial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -299,7 +295,9 @@ export function CallProvider({
     }
 
     if (!data.delivered) {
-      setDialError("Abonent hozir offline — qo'ng'iroq yuborildi, ulanganda jiringlaydi");
+      setDialError("Abonent hozir offline — ulanganda jiringlaydi");
+    } else if (!socketRef.current?.connected) {
+      setDialError("Signal vaqtincha uzilgan — qo'ng'iroq yuborildi");
     }
 
     router.push(`/call/${data.roomId}`);

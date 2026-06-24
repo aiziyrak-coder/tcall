@@ -10,6 +10,7 @@ function ringingCutoff() {
 
 export async function endStaleCallsForUser(userId: string, userTcallId?: string | null) {
   const cutoff = ringingCutoff();
+  const activeCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
   await prisma.call.updateMany({
     where: {
@@ -26,6 +27,18 @@ export async function endStaleCallsForUser(userId: string, userTcallId?: string 
   await prisma.call.updateMany({
     where: { hostId: userId, status: "ringing" },
     data: { status: "cancelled", endedAt: new Date() },
+  });
+
+  await prisma.call.updateMany({
+    where: {
+      status: "active",
+      createdAt: { lt: activeCutoff },
+      OR: [
+        { hostId: userId },
+        ...(userTcallId ? [{ calleeTcallId: userTcallId }] : []),
+      ],
+    },
+    data: { status: "ended", endedAt: new Date() },
   });
 }
 
@@ -45,6 +58,7 @@ export async function userHasActiveCall(userId: string, userTcallId?: string | n
 
   if (!call) return false;
   if (call.status === "ringing" && call.createdAt < cutoff) return false;
+  if (call.status === "active" && call.createdAt < new Date(Date.now() - 2 * 60 * 60 * 1000)) return false;
   return true;
 }
 
@@ -144,6 +158,10 @@ export async function acceptCall(roomId: string, userId: string, userTcallId?: s
   });
 
   if (updated.count === 0) {
+    const fresh = await getCallByRoomId(roomId);
+    if (fresh?.status === "active") {
+      return { ok: true as const, hostId: call.hostId };
+    }
     return { ok: false as const, reason: "Qo'ng'iroq allaqachon tugagan" };
   }
 

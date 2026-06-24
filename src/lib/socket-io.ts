@@ -1,15 +1,25 @@
 import type { Server as SocketIOServer } from "socket.io";
 
-let io: SocketIOServer | null = null;
+type SocketStore = {
+  io: SocketIOServer | null;
+  userSockets: Map<string, string>;
+};
 
-const userSockets = new Map<string, string>();
+const globalStore = globalThis as typeof globalThis & { __tcallSocketStore?: SocketStore };
+
+function store(): SocketStore {
+  if (!globalStore.__tcallSocketStore) {
+    globalStore.__tcallSocketStore = { io: null, userSockets: new Map() };
+  }
+  return globalStore.__tcallSocketStore;
+}
 
 export function setSocketIO(server: SocketIOServer) {
-  io = server;
+  store().io = server;
 }
 
 export function getSocketIO(): SocketIOServer | null {
-  return io;
+  return store().io;
 }
 
 function userRoom(userId: string) {
@@ -17,32 +27,35 @@ function userRoom(userId: string) {
 }
 
 export function registerUserSocket(userId: string, socketId: string) {
-  userSockets.set(userId, socketId);
+  store().userSockets.set(userId, socketId);
 }
 
 export function unregisterUserSocket(userId: string, socketId: string) {
-  if (userSockets.get(userId) === socketId) {
-    userSockets.delete(userId);
+  const map = store().userSockets;
+  if (map.get(userId) === socketId) {
+    map.delete(userId);
   }
 }
 
 export function getUserSocketId(userId: string): string | undefined {
-  return userSockets.get(userId);
+  return store().userSockets.get(userId);
 }
 
 export function isUserOnline(userId: string): boolean {
-  if (!io) return userSockets.has(userId);
+  const io = store().io;
+  if (!io) return store().userSockets.has(userId);
   const room = io.sockets.adapter.rooms.get(userRoom(userId));
   return (room?.size ?? 0) > 0;
 }
 
 /** user:${userId} xonasiga yuboradi — multi-tab va reconnect uchun ishonchli */
 export function emitToUser(userId: string, event: string, data: unknown): boolean {
+  const io = store().io;
   if (!io) return false;
   const room = userRoom(userId);
   const sockets = io.sockets.adapter.rooms.get(room);
   if (!sockets || sockets.size === 0) {
-    const fallback = userSockets.get(userId);
+    const fallback = store().userSockets.get(userId);
     if (fallback) {
       io.to(fallback).emit(event, data);
       return true;
