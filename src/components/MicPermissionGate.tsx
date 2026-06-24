@@ -1,6 +1,7 @@
 "use client";
 
-import { Mic, Loader2, AlertCircle, Settings } from "lucide-react";
+import { Mic, AlertCircle, Settings } from "lucide-react";
+import { TcallLogo } from "@/components/TcallLogo";
 
 interface MicPermissionGateProps {
   ui: Record<string, string>;
@@ -14,9 +15,13 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
   return (
     <div className="phone-screen flex items-center justify-center p-5">
       <div className="mic-gate-card">
-        <div className={`mic-gate-icon ${denied ? "mic-gate-icon-denied" : ""}`}>
-          {denied ? <AlertCircle className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
-        </div>
+        {denied ? (
+          <div className="mic-gate-icon mic-gate-icon-denied">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+        ) : (
+          <TcallLogo size="lg" animate className="mb-1" />
+        )}
 
         <h2 className="mic-gate-title">
           {denied ? ui.micDeniedTitle : ui.micPermissionTitle}
@@ -27,7 +32,7 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
 
         {status === "requesting" ? (
           <div className="mic-gate-loading">
-            <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
+            <TcallLogo size="xs" animate />
             <span>{ui.micPermissionWaiting}</span>
           </div>
         ) : (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Phone, Globe, Shield, Zap } from "lucide-react";
 
 export default function HomePage() {
@@ -11,12 +12,10 @@ export default function HomePage() {
         <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
 
         <nav className="relative z-10 flex items-center justify-between max-w-6xl mx-auto px-6 py-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center">
-              <Phone className="w-5 h-5" />
-            </div>
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/logo.png" alt="Tcall" width={48} height={48} className="object-contain" priority />
             <span className="text-xl font-bold">Tcall</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-3">
             <Link href="/login" className="btn-secondary text-sm py-2 px-4">
               Kirish

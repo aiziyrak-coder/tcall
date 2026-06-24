@@ -5,10 +5,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
-import { Phone } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { TcallLogo } from "@/components/TcallLogo";
+import { AppSplash } from "@/components/AppSplash";
 
 function LoginForm() {
   const router = useRouter();
+  const { setUser } = useAuth();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"));
   const [form, setForm] = useState({ email: "", password: "" });
@@ -28,13 +31,16 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      window.location.href = redirect;
+      setUser(data.user);
+      router.replace(redirect);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
   };
+
+  if (loading) return <AppSplash message="Kirish..." />;
 
   return (
     <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
@@ -68,7 +74,7 @@ function LoginForm() {
       </div>
 
       <button type="submit" disabled={loading} className="btn-primary w-full">
-        {loading ? "Yuklanmoqda..." : "Kirish"}
+        Kirish
       </button>
 
       <p className="text-center text-sm text-slate-500">
@@ -87,17 +93,14 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center">
-              <Phone className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold">Tcall</span>
+          <Link href="/" className="inline-flex flex-col items-center gap-3 mb-6">
+            <TcallLogo size="lg" showTagline />
           </Link>
           <h1 className="text-2xl font-bold">Kirish</h1>
           <p className="text-slate-500 mt-2">Hisobingizga kiring</p>
         </div>
 
-        <Suspense fallback={<div className="glass rounded-2xl p-8 h-64 animate-pulse" />}>
+        <Suspense fallback={<AppSplash fullscreen={false} />}>
           <LoginForm />
         </Suspense>
       </div>

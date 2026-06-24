@@ -154,6 +154,11 @@ export function CallProvider({
       socket.emit("register-user", {});
     });
 
+    socket.io.on("reconnect", () => {
+      setSocketConnected(true);
+      socket.emit("register-user", {});
+    });
+
     socket.on("disconnect", () => setSocketConnected(false));
 
     socket.on("incoming-call", (data: IncomingCall) => {
@@ -203,7 +208,15 @@ export function CallProvider({
       setSocketConnected(false);
     });
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && !socket.connected) {
+        socket.connect();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
       clearRingTimeout();
       stopRingtone();
       stopRingback();

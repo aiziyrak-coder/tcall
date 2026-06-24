@@ -8,9 +8,7 @@ import {
   PhoneOff,
   Type,
   Volume2,
-  AlertTriangle,
   Radio,
-  Loader2,
 } from "lucide-react";
 import { useCall, type TranslationMode } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
@@ -18,6 +16,8 @@ import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
 import { configureRemoteAudioElement } from "@/lib/audio-unlock";
 import { MicPermissionGate } from "@/components/MicPermissionGate";
+import { AppSplash } from "@/components/AppSplash";
+import { TcallLogo } from "@/components/TcallLogo";
 import type { User } from "@/hooks/useAuth";
 
 interface AudioCallRoomProps {
@@ -141,31 +141,17 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
     return (
       <div className="phone-screen flex items-center justify-center p-5">
         <div className="glass rounded-2xl p-8 w-full max-w-md text-center">
-          <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <TcallLogo size="md" animate className="mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">{err.t}</h2>
           <p className="text-slate-500 mb-6 text-sm">{err.d}</p>
-          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{ui.returningToDashboard}</span>
-          </div>
+          <p className="text-sm text-slate-400">{ui.returningToDashboard}</p>
         </div>
       </div>
     );
   }
 
   if (call.callStatus === "ended") {
-    return (
-      <div className="phone-screen flex items-center justify-center p-5">
-        <div className="text-center">
-          <PhoneOff className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-          <p className="text-slate-600 font-medium">{ui.callEnded}</p>
-          <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mt-3">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{ui.returningToDashboard}</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <AppSplash message={ui.returningToDashboard} />;
   }
 
   return (

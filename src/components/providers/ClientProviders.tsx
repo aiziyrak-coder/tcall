@@ -1,27 +1,28 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/components/providers/AuthProvider";
 import { CallProvider } from "@/components/providers/CallProvider";
+import { AppSplash } from "@/components/AppSplash";
 
-function AppLoading() {
-  return (
-    <div className="ios-phone-app flex items-center justify-center min-h-[100dvh]">
-      <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-}
-
-export function ClientProviders({ children }: { children: React.ReactNode }) {
+function CallBridge({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, loading } = useAuth();
 
   const needsProvider =
     pathname?.startsWith("/dashboard") || pathname?.startsWith("/call");
 
+  useEffect(() => {
+    if (needsProvider) {
+      router.prefetch("/dashboard");
+    }
+  }, [needsProvider, router]);
+
   if (!needsProvider) return <>{children}</>;
 
-  if (loading) return <AppLoading />;
+  if (loading && !user) return <AppSplash />;
 
   if (!user) return <>{children}</>;
 
@@ -31,7 +32,15 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
       userLanguage={user.language}
       translationMode={user.translationMode}
     >
-      {children}
+      <div className="app-page-enter">{children}</div>
     </CallProvider>
+  );
+}
+
+export function ClientProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <CallBridge>{children}</CallBridge>
+    </AuthProvider>
   );
 }

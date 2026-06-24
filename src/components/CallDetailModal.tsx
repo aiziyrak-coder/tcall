@@ -7,6 +7,7 @@ import { formatTcallId } from "@/lib/tcallId";
 import { getUI } from "@/lib/languages";
 import { formatDuration } from "@/lib/status";
 import { useCallContext } from "@/components/providers/CallProvider";
+import { TcallLogo } from "@/components/TcallLogo";
 
 interface CallDetailModalProps {
   roomId: string;
@@ -38,7 +39,7 @@ export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: 
     return (
       <div className="ios-modal-overlay">
         <div className="ios-modal-panel flex items-center justify-center h-40">
-          <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          <TcallLogo size="sm" animate />
         </div>
       </div>
     );

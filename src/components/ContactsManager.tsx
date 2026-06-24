@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
 import { useCallContext } from "@/components/providers/CallProvider";
+import { TcallLogo } from "@/components/TcallLogo";
 
 interface Contact {
   id: string;
@@ -76,7 +77,11 @@ export function ContactsManager({ userLanguage }: ContactsManagerProps) {
   };
 
   if (loading) {
-    return <div className="ios-empty-state"><div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>;
+    return (
+      <div className="ios-empty-state">
+        <TcallLogo size="sm" animate />
+      </div>
+    );
   }
 
   const grouped = contacts.reduce<Record<string, Contact[]>>((acc, c) => {

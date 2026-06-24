@@ -19,6 +19,7 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { MessagesInbox } from "@/components/MessagesInbox";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
+import { TcallLogo } from "@/components/TcallLogo";
 
 interface CallRecord {
   id: string;
@@ -47,13 +48,8 @@ export default function DashboardPage() {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
-  if (loading || !user) {
-    return (
-      <div className="ios-phone-app flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading && !user) return null;
+  if (!user) return null;
 
   return (
     <DashboardInner
@@ -123,6 +119,11 @@ function DashboardInner({
 }) {
   const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget, socketConnected } = useCallContext();
   const ui = getUI(user.language);
+  const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
+
+  useEffect(() => {
+    setMountedTabs((prev) => new Set(prev).add(tab));
+  }, [tab]);
 
   const refresh = useCallback(() => {
     apiFetch("/api/calls")
@@ -137,6 +138,7 @@ function DashboardInner({
           ).length;
           setMissedCount(missedIncoming);
         }
+        setLoadError("");
       })
       .catch(() => setLoadError(ui.loadError));
 
@@ -157,6 +159,12 @@ function DashboardInner({
     const interval = setInterval(refresh, 30_000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!loadError) return;
+    const retry = setTimeout(() => refresh(), 4000);
+    return () => clearTimeout(retry);
+  }, [loadError, refresh]);
 
   useEffect(() => {
     if (tab === "recents") setMissedCount(0);
@@ -185,6 +193,7 @@ function DashboardInner({
     numbers: ui.vanityNumbers,
     messages: ui.messages,
   };
+  const showLogo = tab === "keypad" || tab === "room";
 
   const userLang = getLanguage(user.language);
 
@@ -198,6 +207,7 @@ function DashboardInner({
         header={
           <PhoneHeader
             title={tabTitles[tab]}
+            showLogo={showLogo}
             subtitle={tab === "keypad" ? `${userLang.flag} ${user.name}` : undefined}
             right={
               <div className="flex items-center gap-2">
@@ -219,15 +229,15 @@ function DashboardInner({
           />
         }
       >
-        {loadError && <div className="ios-error-banner mb-3">{loadError}</div>}
         {!socketConnected && (
-          <div className="ios-error-banner mb-3 bg-amber-50 border-amber-200 text-amber-800">
-            Ulanish yo&apos;q — qo&apos;ng&apos;iroq qabul qilinmaydi. Sahifani yangilang.
+          <div className="ios-reconnect-banner">
+            <TcallLogo size="xs" animate />
+            <span>{ui.reconnecting}</span>
           </div>
         )}
 
-        {tab === "keypad" && (
-          <>
+        {mountedTabs.has("keypad") && (
+          <div className={tab === "keypad" ? "app-tab-panel" : "hidden"}>
             <button onClick={copyId} className="ios-my-number">
               <span className="text-xs text-slate-500">{ui.yourNumber}</span>
               <span className="font-mono text-lg font-semibold text-brand-600 tracking-wider flex items-center gap-2">
@@ -237,27 +247,41 @@ function DashboardInner({
             </button>
             <SpeedDial userLanguage={user.language} favorites={favorites} />
             <Dialer userLanguage={user.language} />
-          </>
+          </div>
         )}
 
-        {tab === "recents" && (
-          <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+        {mountedTabs.has("recents") && (
+          <div className={tab === "recents" ? "app-tab-panel" : "hidden"}>
+            <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+          </div>
         )}
 
-        {tab === "messages" && (
-          <MessagesInbox userLanguage={user.language} onRead={() => setMessageCount(0)} />
+        {mountedTabs.has("messages") && (
+          <div className={tab === "messages" ? "app-tab-panel" : "hidden"}>
+            <MessagesInbox userLanguage={user.language} onRead={() => setMessageCount(0)} />
+          </div>
         )}
 
-        {tab === "contacts" && <ContactsManager userLanguage={user.language} />}
+        {mountedTabs.has("contacts") && (
+          <div className={tab === "contacts" ? "app-tab-panel" : "hidden"}>
+            <ContactsManager userLanguage={user.language} />
+          </div>
+        )}
 
-        {tab === "room" && <RoomPanel userLanguage={user.language} />}
+        {mountedTabs.has("room") && (
+          <div className={tab === "room" ? "app-tab-panel" : "hidden"}>
+            <RoomPanel userLanguage={user.language} />
+          </div>
+        )}
 
-        {tab === "numbers" && (
-          <VanityShop
-            userLanguage={user.language}
-            currentId={user.tcallId}
-            onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
-          />
+        {mountedTabs.has("numbers") && (
+          <div className={tab === "numbers" ? "app-tab-panel" : "hidden"}>
+            <VanityShop
+              userLanguage={user.language}
+              currentId={user.tcallId}
+              onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
+            />
+          </div>
         )}
       </PhoneShell>
 

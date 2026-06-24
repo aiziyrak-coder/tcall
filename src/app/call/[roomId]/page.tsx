@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { getUI } from "@/lib/languages";
 import { AudioCallRoom } from "@/components/AudioCallRoom";
+import { AppSplash } from "@/components/AppSplash";
+import { TcallLogo } from "@/components/TcallLogo";
 
 export default function CallPage({ params }: { params: { roomId: string } }) {
   const { user, loading } = useAuth();
@@ -49,25 +50,17 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
   }, [joinState, router]);
 
   if (loading || !user || joinState === "loading") {
-    return (
-      <div className="phone-screen flex items-center justify-center">
-        <div className="phone-avatar-ring phone-avatar-active">
-          <div className="phone-avatar"><span>...</span></div>
-        </div>
-      </div>
-    );
+    return <AppSplash message={ui.connecting} />;
   }
 
   if (joinState === "error") {
     return (
       <div className="phone-screen flex items-center justify-center px-4">
         <div className="glass rounded-2xl p-8 max-w-md text-center">
+          <TcallLogo size="md" animate className="mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Xatolik</h2>
           <p className="text-slate-500 mb-6">{joinError}</p>
-          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{ui.returningToDashboard}</span>
-          </div>
+          <p className="text-sm text-slate-400">{ui.returningToDashboard}</p>
         </div>
       </div>
     );

@@ -624,3 +624,68 @@
 .incoming-call-overlay .ios-call-body .text-white\/40 {
   @apply text-slate-500;
 }
+
+/* Tcall logo & app splash */
+.tcall-logo-wrap {
+  @apply flex flex-col items-center;
+}
+
+.tcall-logo-img {
+  @apply relative;
+  filter: drop-shadow(0 4px 12px rgba(0, 122, 255, 0.15));
+}
+
+.tcall-logo-pulse {
+  animation: logoPulse 1.8s ease-in-out infinite;
+}
+
+.tcall-logo-tagline {
+  @apply text-[9px] tracking-[0.22em] text-brand-500/80 mt-3 font-medium uppercase;
+}
+
+.app-splash {
+  @apply flex flex-col items-center justify-center gap-4;
+}
+
+.app-splash-full {
+  min-height: 100dvh;
+  background: var(--bg-primary);
+}
+
+.app-splash-inline {
+  @apply py-12;
+}
+
+.app-splash-msg {
+  @apply text-sm text-slate-500 animate-pulse;
+}
+
+.app-page-enter {
+  animation: appFadeIn 0.24s ease-out;
+}
+
+.app-tab-panel {
+  animation: appTabIn 0.18s ease-out;
+}
+
+.ios-reconnect-banner {
+  @apply flex items-center gap-2 mb-3 px-3 py-2 rounded-xl text-xs font-medium;
+  background: rgba(0, 122, 255, 0.08);
+  color: #007aff;
+  border: 1px solid rgba(0, 122, 255, 0.15);
+}
+
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.92; }
+}
+
+@keyframes appFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes appTabIn {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}

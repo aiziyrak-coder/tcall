@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import { Phone, Clock, Users, Link2, Sparkles, MessageSquare } from "lucide-react";
 import { getUI } from "@/lib/languages";
+import { TcallLogo } from "@/components/TcallLogo";
 
 export type PhoneTab = "keypad" | "recents" | "contacts" | "room" | "numbers" | "messages";
 
@@ -60,15 +61,24 @@ export function PhoneHeader({
   title,
   subtitle,
   right,
+  showLogo,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
+  showLogo?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between px-1">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        {showLogo ? (
+          <div className="flex items-center gap-2.5">
+            <TcallLogo size="sm" />
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+          </div>
+        ) : (
+          <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+        )}
         {subtitle && <p className="text-slate-500 text-sm mt-0.5">{subtitle}</p>}
       </div>
       {right}

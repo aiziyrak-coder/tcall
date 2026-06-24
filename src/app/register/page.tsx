@@ -3,12 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Phone } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
+import { useAuth } from "@/hooks/useAuth";
+import { TcallLogo } from "@/components/TcallLogo";
+import { AppSplash } from "@/components/AppSplash";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { setUser } = useAuth();
   const [form, setForm] = useState({ email: "", password: "", name: "", language: "uz" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +29,8 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      window.location.href = "/dashboard";
+      setUser(data.user);
+      router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -34,16 +38,21 @@ export default function RegisterPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <AppSplash message="Ro'yxatdan o'tish..." />
+      </div>
+    );
+  }
+
   return (
     <div className="page-shell flex items-center justify-center px-4 py-8">
       <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center">
-              <Phone className="w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold">Tcall</span>
+          <Link href="/" className="inline-flex flex-col items-center gap-3 mb-6">
+            <TcallLogo size="lg" showTagline />
           </Link>
           <h1 className="text-2xl font-bold">Ro&apos;yxatdan o&apos;tish</h1>
           <p className="text-slate-500 mt-2">Tilingizni tanlang — tarjima shu tilga bo&apos;ladi</p>
@@ -112,7 +121,7 @@ export default function RegisterPage() {
           </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? "Yuklanmoqda..." : "Ro'yxatdan o'tish"}
+            Ro&apos;yxatdan o&apos;tish
           </button>
 
           <p className="text-center text-sm text-slate-500">
