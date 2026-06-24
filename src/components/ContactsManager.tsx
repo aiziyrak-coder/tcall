@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Phone, Star, Plus, Trash2, Pencil } from "lucide-react";
+import { Phone, Star, Plus, Trash2, Pencil, MessageSquare } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
