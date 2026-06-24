@@ -1,7 +1,7 @@
 /** Whisper API qo'llab-quvvatlaydigan til kodlari (ISO-639-1) — qolganlari auto-detect */
 const WHISPER_LANGS = new Set([
-  "uz", "ru", "en", "tr", "ar", "zh", "ko", "ja", "de", "fr", "es", "hi", "kk",
-  "ky", "tg", "pt", "it", "pl", "uk", "fa", "ur", "bn", "vi", "th", "id", "ms",
+  "ru", "en", "tr", "ar", "zh", "ko", "ja", "de", "fr", "es", "hi", "kk",
+  "pt", "it", "pl", "uk", "fa", "ur", "bn", "vi", "th", "id", "ms",
   "nl", "sv", "no", "da", "fi", "cs", "sk", "hu", "ro", "bg", "hr", "sr", "sl",
   "he", "ta", "te", "mr", "gu", "ml", "pa", "ne", "si", "mn", "az", "ka", "hy",
   "sw", "af", "tl", "be", "ca", "eu", "gl", "is", "ga", "cy", "mt", "lb", "sq",

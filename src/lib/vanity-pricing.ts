@@ -1,4 +1,3 @@
-import { isPrettyNumber } from "@/lib/tcallId";
 import { toVanityUsdPrice, formatVanityPrice as formatUsd } from "@/lib/vanity-currency";
 
 export type VanityTier =
@@ -72,6 +71,52 @@ function baseTierFromTrailing(trailing: number): VanityTier {
   return "free";
 }
 
+function isSequentialRun(num: string, minLen = 6): boolean {
+  let asc = 1;
+  let desc = 1;
+  for (let i = 1; i < num.length; i++) {
+    const diff = Number(num[i]) - Number(num[i - 1]);
+    asc = diff === 1 ? asc + 1 : 1;
+    desc = diff === -1 ? desc + 1 : 1;
+    if (asc >= minLen || desc >= minLen) return true;
+  }
+  return false;
+}
+
+function isRepeatingPairs(num: string): boolean {
+  if (num.length < 6 || num.length % 2 !== 0) return false;
+  for (let i = 0; i < num.length; i += 2) {
+    if (num[i] !== num[i + 1]) return false;
+  }
+  return true;
+}
+
+function isPalindrome(num: string): boolean {
+  return num.length >= 7 && num === num.split("").reverse().join("");
+}
+
+function hasAlternatingPattern(num: string): boolean {
+  if (num.length < 6) return false;
+  const a = num[0];
+  const b = num[1];
+  if (a === b) return false;
+  for (let i = 0; i < num.length; i++) {
+    if (num[i] !== (i % 2 === 0 ? a : b)) return false;
+  }
+  return true;
+}
+
+/** Trailing/leading run bo'lmasa ham chiroyli deb hisoblanadigan patternlar */
+export function hasSpecialPrettyPattern(number: string): boolean {
+  if (runLengthFromEnd(number) >= 4 || runLengthFromStart(number) >= 4) return true;
+  return (
+    isSequentialRun(number) ||
+    isRepeatingPairs(number) ||
+    isPalindrome(number) ||
+    hasAlternatingPattern(number)
+  );
+}
+
 function applyPlusVariants(base: VanityTier, trailing: number, leading: number): VanityTier {
   if (base === "vip" || base === "bronze" || base === "free") return base;
 
@@ -102,7 +147,7 @@ export function classifyVanityNumber(raw: string): VanityQuote | null {
   let tier = baseTierFromTrailing(trailing);
 
   if (tier === "free") {
-    if (!isPrettyNumber(number)) {
+    if (!hasSpecialPrettyPattern(number)) {
       return { number, price: 0, tier: "free", pretty: false, trailingRun: trailing, leadingRun: leading };
     }
     tier = "bronze";

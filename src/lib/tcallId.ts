@@ -3,8 +3,10 @@ import { classifyVanityNumber, type VanityTier } from "./vanity-pricing";
 
 /** Chiroyli raqam patternlari — ro'yxatdan o'tganda berilmaydi */
 export function isPrettyNumber(num: string): boolean {
-  const q = classifyVanityNumber(num);
-  return !!q?.pretty;
+  const number = num.replace(/\D/g, "");
+  if (!/^[1-9]\d{8}$/.test(number)) return false;
+  const q = classifyVanityNumber(number);
+  return !!q && q.tier !== "free";
 }
 
 function randomNineDigit(): string {
