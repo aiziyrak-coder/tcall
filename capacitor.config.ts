@@ -1,6 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-/** Production server — local emas, haqiqiy tcall.vizara.uz */
 const PRODUCTION_URL = process.env.TCALL_APP_URL || "https://tcall.vizara.uz";
 
 const config: CapacitorConfig = {
@@ -10,16 +9,15 @@ const config: CapacitorConfig = {
   server: {
     url: PRODUCTION_URL,
     cleartext: false,
-    androidScheme: "https",
-    allowNavigation: ["tcall.vizara.uz", "tcallapi.vizara.uz", "*.vizara.uz"],
+    allowNavigation: [
+      "tcall.vizara.uz",
+      "tcallapi.vizara.uz",
+      "vizara.uz",
+    ],
   },
   android: {
     allowMixedContent: false,
     backgroundColor: "#f2f2f7",
-    buildOptions: {
-      keystorePath: undefined,
-      keystoreAlias: undefined,
-    },
   },
   ios: {
     backgroundColor: "#f2f2f7",
@@ -28,23 +26,20 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 1800,
+      launchShowDuration: 2000,
       launchAutoHide: true,
       backgroundColor: "#f2f2f7",
       androidSplashResourceName: "splash",
-      showSpinner: false,
+      showSpinner: true,
+      androidSpinnerStyle: "large",
     },
     StatusBar: {
       style: "LIGHT",
       backgroundColor: "#f2f2f7",
     },
-    PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
-    },
     LocalNotifications: {
       smallIcon: "ic_stat_tcall",
       iconColor: "#007AFF",
-      sound: "ringtone",
     },
     Keyboard: {
       resize: "body",

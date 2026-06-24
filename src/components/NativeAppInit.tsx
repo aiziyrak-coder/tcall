@@ -4,32 +4,49 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isNativeApp, initNativeApp, requestNativeNotificationPermission } from "@/lib/native-app";
 
-/** Native Capacitor ilova ishga tushirish */
+/** Native Capacitor ilova ishga tushirish — xatolik ilovani yopmasin */
 export function NativeAppInit() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!isNativeApp()) return;
-
-    void initNativeApp((path) => {
-      router.push(path);
-    });
-
-    void requestNativeNotificationPermission();
-
+    let cancelled = false;
     let removeTap: (() => void) | undefined;
 
-    void import("@capacitor/local-notifications").then(({ LocalNotifications }) => {
-      const sub = LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
-        const roomId = action.notification.extra?.roomId as string | undefined;
-        if (roomId) router.push(`/call/${String(roomId).toUpperCase()}`);
-      });
-      removeTap = () => {
-        void sub.then((h) => h.remove());
-      };
-    });
+    async function boot() {
+      try {
+        if (!isNativeApp()) return;
 
-    return () => removeTap?.();
+        await initNativeApp((path) => {
+          if (!cancelled) router.push(path);
+        });
+
+        if (cancelled) return;
+        await requestNativeNotificationPermission();
+
+        const { LocalNotifications } = await import("@capacitor/local-notifications");
+        const sub = await LocalNotifications.addListener(
+          "localNotificationActionPerformed",
+          (action) => {
+            const roomId = action.notification.extra?.roomId as string | undefined;
+            if (roomId && !cancelled) {
+              router.push(`/call/${String(roomId).toUpperCase()}`);
+            }
+          }
+        );
+        removeTap = () => {
+          void sub.remove();
+        };
+      } catch (e) {
+        console.warn("NativeAppInit failed:", e);
+      }
+    }
+
+    void boot();
+
+    return () => {
+      cancelled = true;
+      removeTap?.();
+    };
   }, [router]);
 
   return null;
