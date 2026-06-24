@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Sparkles, Crown, Search, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { formatVanityPrice } from "@/lib/vanity-pricing";
+import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
 import { getUI } from "@/lib/languages";
 import { TcallLogo } from "@/components/TcallLogo";
 import { VanityContactModal } from "@/components/VanityContactModal";
@@ -30,13 +30,32 @@ interface VanityShopProps {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  platinum: "from-purple-500/30 to-pink-500/20 border-purple-400/40",
+  vip: "from-amber-500/35 to-yellow-600/25 border-amber-400/50",
+  platinum_premium_plus_plus: "from-fuchsia-500/30 to-purple-600/20 border-fuchsia-400/40",
+  platinum_premium_plus: "from-purple-500/30 to-pink-500/20 border-purple-400/40",
+  platinum_premium: "from-violet-500/25 to-purple-500/15 border-violet-400/35",
+  platinum_plus_plus: "from-indigo-500/25 to-purple-500/15 border-indigo-400/35",
+  platinum_plus: "from-purple-500/25 to-indigo-500/15 border-purple-400/35",
+  platinum: "from-purple-500/20 to-blue-500/10 border-purple-400/30",
+  gold_plus_plus: "from-yellow-500/25 to-orange-500/15 border-yellow-400/40",
+  gold_plus: "from-yellow-500/20 to-amber-500/10 border-yellow-400/35",
   gold: "from-yellow-500/20 to-orange-500/10 border-yellow-400/30",
+  silver_plus_plus: "from-slate-300/25 to-slate-400/15 border-slate-400/35",
+  silver_plus: "from-slate-300/20 to-slate-400/10 border-slate-400/30",
   silver: "from-slate-400/20 to-slate-500/10 border-slate-400/30",
-  standard: "from-blue-400/15 to-slate-400/10 border-blue-300/30",
+  bronze: "from-orange-700/15 to-amber-800/10 border-orange-600/25",
+  free: "from-slate-200/20 to-slate-300/10 border-slate-300/25",
 };
 
-const TIERS = ["all", "platinum", "gold", "silver"] as const;
+const TIERS = [
+  "all",
+  "bronze",
+  "silver",
+  "gold",
+  "platinum",
+  "platinum_premium",
+  "vip",
+] as const;
 
 export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
   const ui = getUI(userLanguage);
@@ -238,7 +257,7 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
                 onClick={() => { setTier(t); setPage(1); }}
                 className={`vanity-tier-chip ${tier === t ? "vanity-tier-chip-active" : ""}`}
               >
-                {t === "all" ? ui.all : t}
+                {t === "all" ? ui.all : formatTierLabel(t, ui)}
               </button>
             ))}
           </div>
@@ -266,7 +285,7 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
                 >
                   <div>
                     <p className="font-mono font-bold text-lg">{formatTcallId(n.number)}</p>
-                    <p className="text-xs text-slate-500 capitalize">{n.tier} · {formatVanityPrice(n.price)}</p>
+                    <p className="text-xs text-slate-500">{formatTierLabel(n.tier, ui)} · {formatVanityPrice(n.price, ui.tier_free)}</p>
                   </div>
                   <button
                     type="button"
@@ -323,10 +342,14 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
           {!checking && !customCheckError && customCheck && (
             <div className={`vanity-custom-result ${customCheck.available ? "vanity-custom-free" : "vanity-custom-taken"}`}>
               {customCheck.available ? (
-                <>
-                  <p className="font-medium">{ui.vanityAvailable}</p>
-                  <p className="text-sm mt-1 capitalize">{customCheck.tier} · {customCheck.priceLabel}</p>
-                </>
+                customCheck.tier === "free" ? (
+                  <p className="font-medium">{ui.vanityFreeNumber}</p>
+                ) : (
+                  <>
+                    <p className="font-medium">{ui.vanityAvailable}</p>
+                    <p className="text-sm mt-1">{formatTierLabel(customCheck.tier, ui)} · {customCheck.priceLabel}</p>
+                  </>
+                )
               ) : (
                 <p className="font-medium">{ui.vanityTaken}</p>
               )}
@@ -356,7 +379,8 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
               blocked ||
               !!requesting ||
               customDigits.replace(/\D/g, "").length !== 9 ||
-              !customCheck?.available
+              !customCheck?.available ||
+              customCheck?.tier === "free"
             }
             onClick={() => submitRequest({ number: customDigits.replace(/\D/g, "") })}
             className="btn-primary w-full mt-4 flex items-center justify-center gap-2"

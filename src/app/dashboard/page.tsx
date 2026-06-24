@@ -286,7 +286,15 @@ function DashboardInner({
         {mountedTabs.has("recents") && (
           <div className={tab === "recents" ? "app-tab-panel" : "hidden"}>
             <div className="app-tab-scroll">
-              <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+              <RecentsList
+                userLanguage={user.language}
+                userTcallId={user.tcallId}
+                calls={calls}
+                onOpenChat={(tcallId) => {
+                  setTab("messages");
+                  setChatOpenTcallId(tcallId);
+                }}
+              />
             </div>
           </div>
         )}

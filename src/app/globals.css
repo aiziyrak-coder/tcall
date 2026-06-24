@@ -1787,3 +1787,76 @@ body.has-mini-call .chat-app-thread .chat-composer {
 .friends-block-item {
   @apply gap-2;
 }
+
+.user-profile-card {
+  @apply p-4 rounded-2xl bg-white border border-black/[0.06] shadow-sm;
+}
+
+.user-profile-head {
+  @apply flex gap-3 items-start;
+}
+
+.user-profile-avatar {
+  @apply w-14 h-14 rounded-2xl bg-brand-100 text-brand-700 font-bold text-lg flex items-center justify-center shrink-0;
+}
+
+.user-profile-name {
+  @apply font-semibold text-base truncate;
+}
+
+.user-profile-id {
+  @apply text-xs text-slate-500 mt-0.5;
+}
+
+.user-profile-meta {
+  @apply text-xs text-slate-400 mt-1;
+}
+
+.user-profile-bio {
+  @apply text-sm text-slate-600 mt-2 leading-snug;
+}
+
+.user-profile-warn {
+  @apply text-xs text-red-500 font-medium mt-1.5;
+}
+
+.user-profile-unblock-banner {
+  @apply mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200;
+}
+
+.user-profile-actions {
+  @apply flex gap-2 mt-4;
+}
+
+.user-profile-action {
+  @apply flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium touch-manipulation disabled:opacity-40;
+  min-height: 44px;
+}
+
+.user-profile-action-msg {
+  @apply bg-brand-50 border border-brand-200 text-brand-700;
+}
+
+.user-profile-action-call {
+  @apply bg-green-50 border border-green-200 text-green-700;
+}
+
+.user-profile-secondary {
+  @apply flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-black/[0.06];
+}
+
+.user-profile-link-btn {
+  @apply inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 px-2 py-1.5 rounded-lg touch-manipulation disabled:opacity-40;
+}
+
+.user-profile-link-danger {
+  @apply text-red-600;
+}
+
+.user-profile-modal {
+  @apply max-w-md w-full;
+}
+
+.friends-unblock-item {
+  @apply gap-2;
+}

@@ -73,6 +73,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Raqam band" }, { status: 409 });
     }
 
+    if (tier === "free" || price <= 0) {
+      return NextResponse.json({ error: "Oddiy raqamlar bepul — sotib olish shart emas" }, { status: 400 });
+    }
+
     const request = await prisma.vanityNumberRequest.create({
       data: {
         userId: session.userId,

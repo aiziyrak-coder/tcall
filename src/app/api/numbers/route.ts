@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUserVanityState } from "@/lib/vanity-service";
@@ -15,13 +16,11 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const limit = Math.min(80, Math.max(20, Number(searchParams.get("limit") || 50)));
 
-  const where: {
-    available: boolean;
-    tier?: string;
-    number?: { contains: string };
-  } = { available: true };
+  const where: Prisma.VanityNumberWhereInput = { available: true };
 
-  if (tier && tier !== "all") where.tier = tier;
+  if (tier && tier !== "all") {
+    where.tier = { startsWith: tier };
+  }
   if (q.length >= 2) where.number = { contains: q };
 
   const [numbers, total, vanityState] = await Promise.all([

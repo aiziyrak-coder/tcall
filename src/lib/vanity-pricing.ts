@@ -1,69 +1,143 @@
 import { isPrettyNumber } from "@/lib/tcallId";
-import { toVanityUsdPrice } from "@/lib/vanity-currency";
+import { toVanityUsdPrice, formatVanityPrice as formatUsd } from "@/lib/vanity-currency";
 
-export type VanityTier = "platinum" | "gold" | "silver" | "standard";
+export type VanityTier =
+  | "free"
+  | "bronze"
+  | "silver"
+  | "silver_plus"
+  | "silver_plus_plus"
+  | "gold"
+  | "gold_plus"
+  | "gold_plus_plus"
+  | "platinum"
+  | "platinum_plus"
+  | "platinum_plus_plus"
+  | "platinum_premium"
+  | "platinum_premium_plus"
+  | "platinum_premium_plus_plus"
+  | "vip";
 
 export interface VanityQuote {
   number: string;
   price: number;
   tier: VanityTier;
   pretty: boolean;
+  trailingRun: number;
+  leadingRun: number;
 }
 
-const TIER_BASE_SOM: Record<VanityTier, number> = {
-  platinum: 550_000,
-  gold: 280_000,
-  silver: 140_000,
-  standard: 90_000,
+/** Narxlar so'mda — USD ga toVanityUsdPrice orqali */
+const TIER_PRICE_SOM: Record<VanityTier, number> = {
+  free: 0,
+  bronze: 80_000,
+  silver: 220_000,
+  silver_plus: 380_000,
+  silver_plus_plus: 580_000,
+  gold: 850_000,
+  gold_plus: 1_200_000,
+  gold_plus_plus: 1_750_000,
+  platinum: 2_500_000,
+  platinum_plus: 3_400_000,
+  platinum_plus_plus: 4_600_000,
+  platinum_premium: 6_500_000,
+  platinum_premium_plus: 8_500_000,
+  platinum_premium_plus_plus: 11_000_000,
+  vip: 18_000_000,
 };
 
-function scorePattern(num: string): number {
-  const digits = num.split("").map(Number);
-  let score = 0;
-
-  if (new Set(digits).size <= 2) score += 40;
-  if (/^(\d)\1+$/.test(num)) score += 50;
-  if (num === num.split("").reverse().join("")) score += 35;
-
-  const asc = digits.every((d, i) => i === 0 || d === digits[i - 1] + 1);
-  const desc = digits.every((d, i) => i === 0 || d === digits[i - 1] - 1);
-  if (asc || desc) score += 30;
-
-  if (/(\d{2,3})\1/.test(num)) score += 20;
-  if (/000000|111111|222222|333333|444444|555555|666666|777777|888888|999999/.test(num)) score += 45;
-  if (num.endsWith("000000") || num.endsWith("00000")) score += 25;
-  if (/^900/.test(num)) score += 10;
-  if (/^90\d000000/.test(num)) score += 15;
-
-  return score;
+export function runLengthFromEnd(num: string): number {
+  if (!num) return 0;
+  const d = num[num.length - 1];
+  let n = 0;
+  for (let i = num.length - 1; i >= 0 && num[i] === d; i--) n++;
+  return n;
 }
 
-export function tierFromScore(score: number, pretty: boolean): VanityTier {
-  if (!pretty) return "standard";
-  if (score >= 45) return "platinum";
-  if (score >= 28) return "gold";
-  return "silver";
+export function runLengthFromStart(num: string): number {
+  if (!num) return 0;
+  const d = num[0];
+  let n = 0;
+  for (let i = 0; i < num.length && num[i] === d; i++) n++;
+  return n;
 }
 
-export function quoteVanityNumber(raw: string): VanityQuote | null {
+function baseTierFromTrailing(trailing: number): VanityTier {
+  if (trailing >= 9) return "vip";
+  if (trailing >= 8) return "platinum_premium";
+  if (trailing >= 7) return "platinum";
+  if (trailing >= 6) return "gold";
+  if (trailing >= 5) return "silver";
+  if (trailing >= 4) return "bronze";
+  return "free";
+}
+
+function applyPlusVariants(base: VanityTier, trailing: number, leading: number): VanityTier {
+  if (base === "vip" || base === "bronze" || base === "free") return base;
+
+  const canPlus = trailing >= 5 && leading >= 3;
+  if (!canPlus) return base;
+
+  if (leading >= 4) {
+    if (base === "silver") return "silver_plus_plus";
+    if (base === "gold") return "gold_plus_plus";
+    if (base === "platinum") return "platinum_plus_plus";
+    if (base === "platinum_premium") return "platinum_premium_plus_plus";
+  }
+
+  if (base === "silver") return "silver_plus";
+  if (base === "gold") return "gold_plus";
+  if (base === "platinum") return "platinum_plus";
+  if (base === "platinum_premium") return "platinum_premium_plus";
+
+  return base;
+}
+
+export function classifyVanityNumber(raw: string): VanityQuote | null {
   const number = raw.replace(/\D/g, "");
   if (!/^[1-9]\d{8}$/.test(number)) return null;
 
-  const pretty = isPrettyNumber(number);
-  const score = scorePattern(number);
-  const tier = tierFromScore(score, pretty);
-  const base = TIER_BASE_SOM[tier];
+  const trailing = runLengthFromEnd(number);
+  const leading = runLengthFromStart(number);
+  let tier = baseTierFromTrailing(trailing);
 
-  let priceSom = base;
-  if (pretty) {
-    priceSom += Math.min(score * 2500, 450_000);
+  if (tier === "free") {
+    if (!isPrettyNumber(number)) {
+      return { number, price: 0, tier: "free", pretty: false, trailingRun: trailing, leadingRun: leading };
+    }
+    tier = "bronze";
+  } else {
+    tier = applyPlusVariants(tier, trailing, leading);
   }
 
-  const lastDigit = Number(number.slice(-1));
-  priceSom += lastDigit * 1200;
-  priceSom = Math.round(priceSom / 1000) * 1000;
+  const priceSom = TIER_PRICE_SOM[tier];
+  const price = tier === "free" ? 0 : toVanityUsdPrice(priceSom);
 
-  return { number, price: toVanityUsdPrice(priceSom), tier, pretty };
+  return {
+    number,
+    price,
+    tier,
+    pretty: tier !== "free",
+    trailingRun: trailing,
+    leadingRun: leading,
+  };
 }
 
-export { formatVanityPrice, toVanityUsdPrice } from "@/lib/vanity-currency";
+/** @deprecated use classifyVanityNumber */
+export function quoteVanityNumber(raw: string): VanityQuote | null {
+  return classifyVanityNumber(raw);
+}
+
+export function formatVanityPrice(priceUsd: number, freeLabel = "Bepul"): string {
+  if (priceUsd <= 0) return freeLabel;
+  return formatUsd(priceUsd);
+}
+
+export function formatTierLabel(tier: string, ui: Record<string, string>): string {
+  const key = `tier_${tier}` as keyof typeof ui;
+  const label = ui[key as string];
+  if (typeof label === "string") return label;
+  return tier.replace(/_/g, " ");
+}
+
+export { toVanityUsdPrice } from "@/lib/vanity-currency";

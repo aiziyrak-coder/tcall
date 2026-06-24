@@ -22,6 +22,7 @@ import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { ChatGroupMembersPanel } from "@/components/ChatGroupMembersPanel";
 import { ChatThreadMenuSheet } from "@/components/ChatThreadMenuSheet";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { TcallLogo } from "@/components/TcallLogo";
 
 const EMOJIS = [
@@ -97,6 +98,7 @@ export function ChatMessenger({
   const [showMembers, setShowMembers] = useState(false);
   const [editGroupName, setEditGroupName] = useState("");
   const [showRenameGroup, setShowRenameGroup] = useState(false);
+  const [showPartnerProfile, setShowPartnerProfile] = useState(false);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -440,28 +442,39 @@ export function ChatMessenger({
           <button type="button" onClick={closeThread} className="ios-icon-btn shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className={`chat-thread-avatar ${isGroup ? "chat-conv-avatar-group" : ""}`}>
+          <button
+            type="button"
+            className={`chat-thread-avatar ${isGroup ? "chat-conv-avatar-group" : "touch-manipulation"}`}
+            onClick={() => !isGroup && partner?.tcallId && setShowPartnerProfile(true)}
+          >
             {isGroup ? (
               <Users className="w-5 h-5" />
             ) : (
               activeConv.title.slice(0, 2).toUpperCase()
             )}
-          </div>
-          <div className="flex-1 min-w-0">
+          </button>
+          <button
+            type="button"
+            className="flex-1 min-w-0 text-left touch-manipulation"
+            onClick={() => !isGroup && partner?.tcallId && setShowPartnerProfile(true)}
+          >
             <p className="chat-thread-title">{activeConv.title}</p>
             {!isGroup && partner?.tcallId && (
               <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
             )}
             {isGroup && (
-              <button
-                type="button"
-                className="text-xs text-slate-500 mt-0.5 hover:text-brand-600 touch-manipulation"
-                onClick={() => void refreshAndOpenMembers()}
+              <span
+                className="text-xs text-slate-500 mt-0.5 inline-block"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void refreshAndOpenMembers();
+                }}
+                role="button"
               >
                 {activeConv.members.length} {ui.chatMembers} · {ui.chatViewMembers}
-              </button>
+              </span>
             )}
-          </div>
+          </button>
           <div className="flex items-center gap-1.5 shrink-0">
             {!isGroup && partner?.tcallId && (
               <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
@@ -585,6 +598,17 @@ export function ChatMessenger({
             onDeleteGroup={() => {
               if (window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
             }}
+            onViewProfile={
+              !isGroup && partner?.tcallId ? () => setShowPartnerProfile(true) : undefined
+            }
+          />
+        )}
+
+        {!isGroup && partner?.tcallId && showPartnerProfile && (
+          <UserProfileModal
+            tcallId={partner.tcallId}
+            ui={ui}
+            onClose={() => setShowPartnerProfile(false)}
           />
         )}
 

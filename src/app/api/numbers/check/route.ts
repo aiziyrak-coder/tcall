@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
       select: { price: true, tier: true, available: true },
     });
 
-    const price = catalog?.available ? catalog.price : quote.price;
     const tier = catalog?.tier || quote.tier;
+    const price = quote.tier === "free" ? 0 : catalog?.available ? catalog.price : quote.price;
 
     return NextResponse.json({
       number: quote.number,
@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
       tier,
       pretty: quote.pretty,
       priceLabel: formatVanityPrice(price),
+      trailingRun: quote.trailingRun,
+      leadingRun: quote.leadingRun,
     });
   } catch (e) {
     console.error("Check number error:", e);

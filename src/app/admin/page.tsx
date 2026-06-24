@@ -6,7 +6,8 @@ import { Check, X, ArrowLeft, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { formatVanityPrice } from "@/lib/vanity-pricing";
+import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
+import { getUI } from "@/lib/languages";
 import { AppSplash } from "@/components/AppSplash";
 import { TcallLogo } from "@/components/TcallLogo";
 
@@ -22,6 +23,7 @@ interface VanityRequestRow {
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
+  const ui = getUI("uz");
   const [requests, setRequests] = useState<VanityRequestRow[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -108,7 +110,7 @@ export default function AdminPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-mono text-xl font-bold text-brand-600">{formatTcallId(r.number)}</p>
-                    <p className="text-sm text-slate-600 capitalize mt-1">{r.tier} · {formatVanityPrice(r.price)}</p>
+                    <p className="text-sm text-slate-600 mt-1">{formatTierLabel(r.tier, ui)} · {formatVanityPrice(r.price, ui.tier_free)}</p>
                   </div>
                   <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">pending</span>
                 </div>

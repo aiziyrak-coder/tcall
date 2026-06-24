@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info } from "lucide-react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info, User } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage, getUI } from "@/lib/languages";
 import { formatDuration } from "@/lib/status";
 import { useCallContext, DialError } from "@/components/providers/CallProvider";
 import { CallDetailModal } from "@/components/CallDetailModal";
+import { UserProfileModal } from "@/components/UserProfileModal";
 
 interface CallRecord {
   id: string;
@@ -23,13 +24,15 @@ interface RecentsListProps {
   userLanguage: string;
   userTcallId: string;
   calls: CallRecord[];
+  onOpenChat?: (tcallId: string) => void;
 }
 
-export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListProps) {
+export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: RecentsListProps) {
   const ui = getUI(userLanguage);
   const { dial } = useCallContext();
   const [dialError, setDialError] = useState("");
   const [detailRoomId, setDetailRoomId] = useState<string | null>(null);
+  const [profileTcallId, setProfileTcallId] = useState<string | null>(null);
 
   const handleDial = async (tcallId: string) => {
     setDialError("");
@@ -81,17 +84,30 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
           return (
             <li key={call.id} className="ios-list-item">
               <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
-              <div className="flex-1 min-w-0" onClick={() => partner?.tcallId && void handleDial(partner.tcallId)}>
+              <button
+                type="button"
+                className="flex-1 min-w-0 text-left touch-manipulation"
+                onClick={() => partner?.tcallId && setProfileTcallId(partner.tcallId)}
+              >
                 <p className="font-medium truncate">{partner?.name || ui.unknown}</p>
                 <p className="text-xs text-slate-500">
                   {partnerLang?.flag}{" "}
                   {partner?.tcallId ? formatTcallId(partner.tcallId) : ""}
                   {call.durationSec ? ` · ${formatDuration(call.durationSec)}` : ""}
                 </p>
-              </div>
+              </button>
               <div className="flex flex-col items-end gap-1">
                 <span className="text-xs text-slate-400">{timeStr}</span>
                 <div className="flex gap-1">
+                  {partner?.tcallId && (
+                    <button
+                      onClick={() => setProfileTcallId(partner.tcallId)}
+                      className="ios-icon-btn w-8 h-8"
+                      aria-label={ui.viewProfile}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setDetailRoomId(call.roomId)}
                     className="ios-icon-btn w-8 h-8"
@@ -121,6 +137,15 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
           userLanguage={userLanguage}
           userTcallId={userTcallId}
           onClose={() => setDetailRoomId(null)}
+        />
+      )}
+
+      {profileTcallId && (
+        <UserProfileModal
+          tcallId={profileTcallId}
+          ui={ui}
+          onClose={() => setProfileTcallId(null)}
+          onOpenChat={onOpenChat}
         />
       )}
     </>

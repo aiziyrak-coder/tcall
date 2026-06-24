@@ -2,7 +2,7 @@
 
 import { MessageCircle, X } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
-import { formatVanityPrice } from "@/lib/vanity-pricing";
+import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
 import { ADMIN_TELEGRAM_URL, ADMIN_TELEGRAM_USERNAME } from "@/lib/admin-config";
 
 interface VanityContactModalProps {
@@ -14,8 +14,9 @@ interface VanityContactModalProps {
 }
 
 export function VanityContactModal({ number, price, tier, ui, onClose }: VanityContactModalProps) {
+  const tierLabel = formatTierLabel(tier, ui);
   const telegramText = encodeURIComponent(
-    `Assalomu alaykum! Tcall chiroyli raqam so'rovi:\nRaqam: ${formatTcallId(number)}\nNarx: ${formatVanityPrice(price)}\nTier: ${tier}`
+    `Assalomu alaykum! Tcall chiroyli raqam so'rovi:\nRaqam: ${formatTcallId(number)}\nNarx: ${formatVanityPrice(price, ui.tier_free)}\nDaraja: ${tierLabel}`
   );
   const telegramUrl = `${ADMIN_TELEGRAM_URL}?text=${telegramText}`;
 
@@ -34,8 +35,8 @@ export function VanityContactModal({ number, price, tier, ui, onClose }: VanityC
         <div className="vanity-contact-card">
           <p className="text-xs text-slate-500 mb-1">{ui.selectedNumber}</p>
           <p className="font-mono text-2xl font-bold text-brand-600">{formatTcallId(number)}</p>
-          <p className="text-sm text-slate-600 mt-2 capitalize">
-            {tier} · {formatVanityPrice(price)}
+          <p className="text-sm text-slate-600 mt-2">
+            {tierLabel} · {formatVanityPrice(price, ui.tier_free)}
           </p>
         </div>
 

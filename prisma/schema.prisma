@@ -27,6 +27,8 @@ model User {
   vanityRequests    VanityNumberRequest[]
   contacts          Contact[]         @relation("OwnerContacts")
   blocks            BlockedUser[]     @relation("Blocker")
+  unblockRequestsSent     UnblockRequest[] @relation("UnblockRequestsSent")
+  unblockRequestsReceived UnblockRequest[] @relation("UnblockRequestsReceived")
   quickMessagesSent QuickMessage[]    @relation("MessageSender")
   conversationsCreated Conversation[] @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
@@ -56,6 +58,20 @@ model BlockedUser {
   createdAt      DateTime @default(now())
 
   @@unique([blockerId, blockedTcallId])
+}
+
+model UnblockRequest {
+  id          String   @id @default(cuid())
+  requesterId String
+  requester   User     @relation("UnblockRequestsSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  blockerId   String
+  blocker     User     @relation("UnblockRequestsReceived", fields: [blockerId], references: [id], onDelete: Cascade)
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+
+  @@unique([requesterId, blockerId])
+  @@index([blockerId, status])
 }
 
 model VanityNumber {

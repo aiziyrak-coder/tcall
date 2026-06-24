@@ -6,6 +6,7 @@ import {
   Trash2,
   UserPlus,
   Users,
+  User,
   X,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ interface ChatThreadMenuSheetProps {
   onRenameGroup: () => void;
   onLeave: () => void;
   onDeleteGroup: () => void;
+  onViewProfile?: () => void;
 }
 
 export function ChatThreadMenuSheet({
@@ -33,6 +35,7 @@ export function ChatThreadMenuSheet({
   onRenameGroup,
   onLeave,
   onDeleteGroup,
+  onViewProfile,
 }: ChatThreadMenuSheetProps) {
   const item = (label: string, icon: React.ReactNode, action: () => void, danger = false) => (
     <button
@@ -62,6 +65,7 @@ export function ChatThreadMenuSheet({
         </div>
 
         <div className="chat-menu-sheet-list">
+          {!isGroup && onViewProfile && item(ui.viewProfile, <User className="w-5 h-5" />, onViewProfile)}
           {isGroup && item(ui.chatViewMembers, <Users className="w-5 h-5" />, onViewMembers)}
           {isGroup && canManageGroup && item(ui.chatAddMembers, <UserPlus className="w-5 h-5" />, onAddMembers)}
           {isGroup && canManageGroup && item(ui.chatRenameGroup, <MessageSquare className="w-5 h-5" />, onRenameGroup)}

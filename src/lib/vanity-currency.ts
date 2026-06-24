@@ -4,6 +4,7 @@ export const VANITY_PRICE_MULTIPLIER = 100;
 export const UZS_PER_USD = 10_000;
 
 export function roundVanityUsd(usd: number): number {
+  if (usd <= 0) return 0;
   let rounded: number;
   if (usd >= 50_000) rounded = Math.round(usd / 5_000) * 5_000;
   else if (usd >= 10_000) rounded = Math.round(usd / 1_000) * 1_000;

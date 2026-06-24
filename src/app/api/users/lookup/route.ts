@@ -48,6 +48,16 @@ export async function GET(req: NextRequest) {
     where: { ownerId: session.userId, tcallId },
   }));
 
+  const unblockRequest = await prisma.unblockRequest.findUnique({
+    where: { requesterId_blockerId: { requesterId: session.userId, blockerId: user.id } },
+    select: { status: true },
+  });
+
+  const incomingUnblock = await prisma.unblockRequest.findUnique({
+    where: { requesterId_blockerId: { requesterId: user.id, blockerId: session.userId } },
+    select: { status: true },
+  });
+
   return NextResponse.json({
     found: true,
     user: {
@@ -56,6 +66,8 @@ export async function GET(req: NextRequest) {
       blockedYou: !!blockedYou,
       blockedByYou: !!blockedByYou,
       isFriend,
+      unblockRequestPending: unblockRequest?.status === "pending",
+      unblockRequestFromThem: incomingUnblock?.status === "pending",
     },
   });
 }
