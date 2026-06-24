@@ -89,15 +89,19 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="page-shell flex items-center justify-center px-4 py-8">
+    <div className="page-shell app-page-enter flex items-center justify-center px-4 py-8">
       <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
-      <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex flex-col items-center gap-3 mb-6">
-            <TcallLogo size="xl" showTagline />
+      <div className="relative w-full max-w-lg">
+        <div className="flex justify-center mb-8 sm:mb-10">
+          <Link href="/" className="touch-manipulation">
+            <TcallLogo
+              size="xl"
+              layout="horizontal"
+              showTagline
+              title="Kirish"
+              subtitle="Hisobingizga kiring"
+            />
           </Link>
-          <h1 className="text-2xl font-bold">Kirish</h1>
-          <p className="text-slate-500 mt-2">Hisobingizga kiring</p>
         </div>
 
         <Suspense fallback={<AppSplash fullscreen={false} />}>

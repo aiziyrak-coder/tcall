@@ -47,15 +47,19 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="page-shell flex items-center justify-center px-4 py-8">
+    <div className="page-shell app-page-enter flex items-center justify-center px-4 py-8">
       <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
-      <div className="relative w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex flex-col items-center gap-3 mb-6">
-            <TcallLogo size="xl" showTagline />
+      <div className="relative w-full max-w-lg">
+        <div className="flex justify-center mb-8 sm:mb-10">
+          <Link href="/" className="touch-manipulation">
+            <TcallLogo
+              size="xl"
+              layout="horizontal"
+              showTagline
+              title="Ro'yxatdan o'tish"
+              subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
+            />
           </Link>
-          <h1 className="text-2xl font-bold">Ro&apos;yxatdan o&apos;tish</h1>
-          <p className="text-slate-500 mt-2">Tilingizni tanlang — tarjima shu tilga bo&apos;ladi</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">

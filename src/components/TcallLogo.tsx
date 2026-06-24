@@ -3,20 +3,24 @@
 import Image from "next/image";
 
 type LogoSize = "xs" | "sm" | "md" | "lg" | "xl" | "splash";
+type LogoLayout = "vertical" | "horizontal";
 
 const SIZES: Record<LogoSize, number> = {
-  xs: 36,
-  sm: 52,
-  md: 72,
-  lg: 96,
-  xl: 128,
-  splash: 200,
+  xs: 40,
+  sm: 56,
+  md: 80,
+  lg: 108,
+  xl: 140,
+  splash: 180,
 };
 
 interface TcallLogoProps {
   size?: LogoSize;
   animate?: boolean;
   showTagline?: boolean;
+  layout?: LogoLayout;
+  title?: string;
+  subtitle?: string;
   className?: string;
 }
 
@@ -24,12 +28,28 @@ export function TcallLogo({
   size = "md",
   animate = false,
   showTagline = false,
+  layout = "vertical",
+  title,
+  subtitle,
   className = "",
 }: TcallLogoProps) {
   const px = SIZES[size];
+  const horizontal = layout === "horizontal";
+
+  const textBlock = (showTagline || title || subtitle) && (
+    <div className={`tcall-logo-text ${horizontal ? "tcall-logo-text-side" : ""}`}>
+      {showTagline && (
+        <p className="tcall-logo-tagline">Translate · Call · Connect</p>
+      )}
+      {title && <p className="tcall-logo-title">{title}</p>}
+      {subtitle && <p className="tcall-logo-subtitle">{subtitle}</p>}
+    </div>
+  );
 
   return (
-    <div className={`tcall-logo-wrap ${className}`}>
+    <div
+      className={`tcall-logo-wrap ${horizontal ? "tcall-logo-horizontal" : ""} ${className}`}
+    >
       <div className={`tcall-logo-img ${animate ? "tcall-logo-pulse" : ""}`}>
         <Image
           src="/logo.png"
@@ -41,9 +61,7 @@ export function TcallLogo({
           style={{ width: px, height: "auto", maxWidth: "100%" }}
         />
       </div>
-      {showTagline && (
-        <p className="tcall-logo-tagline">TRANSLATE · CALL · CONNECT</p>
-      )}
+      {textBlock}
     </div>
   );
 }

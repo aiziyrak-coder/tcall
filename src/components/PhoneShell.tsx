@@ -69,19 +69,26 @@ export function PhoneHeader({
   showLogo?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between px-1">
-      <div>
-        {showLogo ? (
-          <div className="flex items-center gap-3">
-            <TcallLogo size="md" />
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-          </div>
-        ) : (
-          <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        )}
-        {subtitle && <p className="text-slate-500 text-sm mt-0.5">{subtitle}</p>}
-      </div>
-      {right}
+    <div className="flex items-center justify-between gap-3 px-1 min-h-[52px]">
+      {showLogo ? (
+        <TcallLogo
+          size="sm"
+          layout="horizontal"
+          title={title}
+          subtitle={subtitle}
+          className="min-w-0 flex-1"
+        />
+      ) : (
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-slate-500 text-sm sm:text-base mt-0.5 leading-snug">{subtitle}</p>
+          )}
+        </div>
+      )}
+      {right && <div className="shrink-0 flex items-center gap-2">{right}</div>}
     </div>
   );
 }

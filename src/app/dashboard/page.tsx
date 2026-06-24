@@ -186,10 +186,10 @@ function DashboardInner({
   };
 
   const tabTitles: Record<PhoneTab, string> = {
-    keypad: "Tcall",
+    keypad: ui.keypad,
     recents: ui.recents,
     contacts: ui.contacts,
-    room: "Tcall",
+    room: ui.roomTab,
     numbers: ui.vanityNumbers,
     messages: ui.messages,
   };

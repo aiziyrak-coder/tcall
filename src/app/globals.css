@@ -27,9 +27,14 @@
     background: var(--bg-primary);
     color: var(--text-primary);
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    overscroll-behavior: none;
   }
   input, select, textarea {
     font-size: 16px;
+  }
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -38,10 +43,12 @@
     @apply bg-white border border-black/10 shadow-sm;
   }
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-brand-600/20 active:scale-[0.97] min-h-[48px] touch-manipulation;
+    @apply bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-brand-600/20 active:scale-[0.97] min-h-[48px] touch-manipulation;
+    transition: background-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s ease;
   }
   .btn-secondary {
-    @apply bg-white border border-black/10 hover:bg-slate-50 active:bg-slate-100 text-slate-900 font-medium px-6 py-3.5 rounded-xl transition-all duration-200 min-h-[48px] touch-manipulation shadow-sm;
+    @apply bg-white border border-black/10 hover:bg-slate-50 active:bg-slate-100 text-slate-900 font-medium px-6 py-3.5 rounded-xl min-h-[48px] touch-manipulation shadow-sm active:scale-[0.98];
+    transition: background-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), transform 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
   }
   .input-field {
     @apply w-full bg-white border border-black/10 rounded-xl px-4 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all min-h-[48px];
@@ -221,9 +228,10 @@
 }
 
 .ios-tab-item {
-  @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium touch-manipulation transition-colors;
+  @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium touch-manipulation;
   color: var(--text-tertiary);
   min-height: 52px;
+  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .ios-tab-active {
@@ -272,11 +280,12 @@
 }
 
 .ios-key {
-  @apply flex flex-col items-center justify-center rounded-full touch-manipulation active:bg-slate-100 transition-colors text-slate-900;
+  @apply flex flex-col items-center justify-center rounded-full touch-manipulation active:bg-slate-100 text-slate-900;
   aspect-ratio: 1;
   max-height: 80px;
   background: var(--key-bg);
   box-shadow: var(--key-shadow);
+  transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), background-color 0.15s ease;
 }
 
 .ios-key-digit {
@@ -361,11 +370,11 @@
 }
 
 .room-hero-title {
-  @apply text-lg font-bold text-slate-900 tracking-tight;
+  @apply text-xl sm:text-2xl font-bold text-slate-900 tracking-tight;
 }
 
 .room-hero-desc {
-  @apply text-sm text-slate-500 mt-1.5 leading-relaxed max-w-xs mx-auto;
+  @apply text-sm sm:text-base text-slate-600 mt-2 leading-relaxed max-w-sm mx-auto;
 }
 
 .room-card {
@@ -468,24 +477,20 @@
 
 /* ===== Mic permission gate ===== */
 .mic-gate-card {
-  @apply w-full max-w-sm rounded-3xl bg-white border border-black/[0.08] p-8 text-center shadow-lg;
+  @apply w-full max-w-md rounded-3xl bg-white border border-black/[0.08] p-6 sm:p-8 shadow-lg;
   background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
 }
 
-.mic-gate-icon {
-  @apply w-16 h-16 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-5;
-}
-
-.mic-gate-icon-denied {
-  @apply bg-red-50 text-red-500;
+.mic-gate-brand {
+  @apply mb-6;
 }
 
 .mic-gate-title {
-  @apply text-xl font-bold text-slate-900 mb-2;
+  @apply text-xl sm:text-2xl font-bold text-slate-900 mb-2;
 }
 
 .mic-gate-desc {
-  @apply text-sm text-slate-500 leading-relaxed mb-6;
+  @apply text-sm sm:text-base text-slate-600 leading-relaxed mb-6;
 }
 
 .mic-gate-btn {
@@ -630,25 +635,46 @@
   @apply flex flex-col items-center;
 }
 
+.tcall-logo-horizontal {
+  @apply flex-row items-center gap-4 sm:gap-5 text-left;
+}
+
 .tcall-logo-img {
-  @apply relative bg-transparent;
+  @apply relative bg-transparent shrink-0;
 }
 
 .tcall-logo-image {
   @apply object-contain bg-transparent;
   display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
 }
 
 .tcall-logo-pulse {
-  animation: logoPulse 1.8s ease-in-out infinite;
+  animation: logoPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.tcall-logo-text {
+  @apply flex flex-col gap-1 min-w-0;
+}
+
+.tcall-logo-text-side {
+  @apply items-start justify-center;
 }
 
 .tcall-logo-tagline {
-  @apply text-[9px] tracking-[0.22em] text-brand-500/80 mt-3 font-medium uppercase;
+  @apply text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-brand-600 leading-snug;
+}
+
+.tcall-logo-title {
+  @apply text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 leading-tight tracking-tight;
+}
+
+.tcall-logo-subtitle {
+  @apply text-sm sm:text-base text-slate-600 leading-snug;
 }
 
 .app-splash {
-  @apply flex flex-col items-center justify-center gap-4;
+  @apply flex flex-col items-center justify-center;
 }
 
 .app-splash-full {
@@ -661,15 +687,15 @@
 }
 
 .app-splash-msg {
-  @apply text-sm text-slate-500 animate-pulse;
+  @apply text-base text-slate-600;
 }
 
 .app-page-enter {
-  animation: appFadeIn 0.24s ease-out;
+  animation: appFadeIn 0.32s cubic-bezier(0.25, 0.1, 0.25, 1) both;
 }
 
 .app-tab-panel {
-  animation: appTabIn 0.18s ease-out;
+  animation: appTabIn 0.22s cubic-bezier(0.25, 0.1, 0.25, 1) both;
 }
 
 .ios-reconnect-banner {
@@ -681,17 +707,17 @@
 
 @keyframes logoPulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.04); opacity: 0.92; }
+  50% { transform: scale(1.03); opacity: 0.95; }
 }
 
 @keyframes appFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: none; }
 }
 
 @keyframes appTabIn {
-  from { opacity: 0.6; }
-  to { opacity: 1; }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Vanity shop */

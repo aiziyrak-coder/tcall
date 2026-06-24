@@ -17,24 +17,21 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
 
   const denied = status === "denied";
   const tap = status === "tap";
+  const gateTitle = denied ? ui.micDeniedTitle : tap ? ui.micTapTitle : ui.micPermissionTitle;
+  const gateDesc = denied ? ui.micDeniedDesc : tap ? ui.micTapDesc : ui.micPermissionDesc;
 
   return (
     <div className="phone-screen flex items-center justify-center p-5">
       <div className="mic-gate-card">
-        {denied ? (
-          <div className="mic-gate-icon mic-gate-icon-denied">
-            <AlertCircle className="w-8 h-8" />
-          </div>
-        ) : (
-          <TcallLogo size="xl" animate className="mb-1" />
-        )}
-
-        <h2 className="mic-gate-title">
-          {denied ? ui.micDeniedTitle : tap ? ui.micTapTitle : ui.micPermissionTitle}
-        </h2>
-        <p className="mic-gate-desc">
-          {denied ? ui.micDeniedDesc : tap ? ui.micTapDesc : ui.micPermissionDesc}
-        </p>
+        <div className="mic-gate-brand">
+          <TcallLogo
+            size="lg"
+            animate={!denied}
+            layout="horizontal"
+            title={gateTitle}
+            subtitle={gateDesc}
+          />
+        </div>
 
         {status === "requesting" ? (
           <div className="mic-gate-loading">
