@@ -12,7 +12,7 @@ import { useAuth, type User } from "@/hooks/useAuth";
 import { isNativeApp } from "@/lib/native-app";
 
 interface SettingsPanelProps {
-  user: import("@/hooks/useAuth").User;
+  user: User;
   userLanguage: string;
   onClose: () => void;
   onUpdate: (updates: Partial<User>) => void;

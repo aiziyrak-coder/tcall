@@ -7,6 +7,9 @@ import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeApp } from "@/lib/native-app";
+import { loadRememberedLogin, saveRememberMe } from "@/lib/remember-login";
+import { completeOnboarding, hasCompletedOnboarding } from "@/lib/onboarding";
+import { NativeOnboarding } from "@/components/NativeOnboarding";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
 import { AppCopyright } from "@/components/AppCopyright";
@@ -17,8 +20,17 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"));
   const [form, setForm] = useState({ email: "", password: "" });
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const saved = loadRememberedLogin();
+    if (saved) {
+      setForm((f) => ({ ...f, email: saved.email }));
+      setRememberMe(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
@@ -28,12 +40,13 @@ function LoginForm() {
     e.preventDefault();
     setError("");
     setSubmitting(true);
+    saveRememberMe(form.email, rememberMe);
 
     try {
       const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, remember: rememberMe || isNativeApp() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -71,7 +84,12 @@ function LoginForm() {
       </div>
 
       <div>
-        <label className="block text-sm text-slate-600 mb-2">Parol</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm text-slate-600">Parol</label>
+          <Link href="/forgot-password" className="text-xs font-medium text-brand-600 touch-manipulation">
+            Parolni unutdim
+          </Link>
+        </div>
         <input
           type="password"
           className="input-field"
@@ -81,6 +99,16 @@ function LoginForm() {
           autoComplete="current-password"
         />
       </div>
+
+      <label className="flex items-center gap-2.5 text-sm text-slate-600 touch-manipulation select-none">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+        />
+        Eslab qolish
+      </label>
 
       <button type="submit" disabled={submitting} className="btn-primary w-full">
         Kirish
@@ -100,6 +128,29 @@ function LoginForm() {
 
 export default function LoginPage() {
   const nativeApp = isNativeApp();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingReady, setOnboardingReady] = useState(!nativeApp);
+
+  useEffect(() => {
+    if (!nativeApp) return;
+    setShowOnboarding(!hasCompletedOnboarding());
+    setOnboardingReady(true);
+  }, [nativeApp]);
+
+  if (nativeApp && !onboardingReady) {
+    return <AppSplash message="Tcall" />;
+  }
+
+  if (nativeApp && showOnboarding) {
+    return (
+      <NativeOnboarding
+        onComplete={() => {
+          completeOnboarding();
+          setShowOnboarding(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="page-shell app-page-enter">

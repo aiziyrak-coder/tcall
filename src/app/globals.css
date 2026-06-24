@@ -2533,3 +2533,135 @@ body.native-app .phone-header-shell {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Native onboarding — birinchi ochish */
+.native-onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: #f2f2f7;
+  overflow: hidden;
+}
+
+.native-onboarding-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.native-onboarding-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: max(0.75rem, env(safe-area-inset-top)) 1.25rem 0;
+}
+
+.native-onboarding-skip {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(60, 60, 67, 0.55);
+  padding: 0.5rem 0.75rem;
+  touch-action: manipulation;
+}
+
+.native-onboarding-body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 2rem 1rem;
+  text-align: center;
+}
+
+.native-onboarding-logo {
+  margin-bottom: 2rem;
+  opacity: 0.95;
+}
+
+.native-onboarding-icon-wrap {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 1.75rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.75rem;
+}
+
+.native-onboarding-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: #1c1c1e;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.875rem;
+  max-width: 18rem;
+}
+
+.native-onboarding-desc {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(60, 60, 67, 0.72);
+  max-width: 20rem;
+}
+
+.native-onboarding-footer {
+  position: relative;
+  z-index: 2;
+  padding: 1rem 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.native-onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.native-onboarding-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: rgba(60, 60, 67, 0.18);
+  transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.native-onboarding-dot-active {
+  width: 1.375rem;
+  background: #007aff;
+}
+
+.native-onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.native-onboarding-nav {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1c1c1e;
+  touch-action: manipulation;
+}
+
+.native-onboarding-start {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+}

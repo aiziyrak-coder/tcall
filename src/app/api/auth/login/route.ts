@@ -8,6 +8,7 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 const schema = z.object({
   email: z.string().email().transform((e) => e.trim().toLowerCase()),
   password: z.string().min(1).max(128),
+  remember: z.boolean().optional().default(false),
 });
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
       await prisma.user.update({ where: { id: user.id }, data: { tcallId } });
     }
 
+    const persistent =
+      req.headers.get("x-tcall-native") === "1" || data.remember === true;
+
     const token = await createToken(
       {
         userId: user.id,
@@ -44,10 +48,9 @@ export async function POST(req: NextRequest) {
         tcallId,
         translationMode: user.translationMode,
       },
-      req.headers.get("x-tcall-native") === "1"
+      persistent
     );
 
-    const persistent = req.headers.get("x-tcall-native") === "1";
     return jsonWithSession(
       {
         user: {
