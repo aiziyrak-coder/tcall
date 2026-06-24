@@ -22,14 +22,17 @@ function getJwtSecret() {
 
 export type SessionPayload = z.infer<typeof sessionSchema>;
 
-function sessionCookieOptions() {
+function sessionCookieOptions(opts?: { persistent?: boolean }) {
   const domain = process.env.COOKIE_DOMAIN;
+  const maxAge = opts?.persistent
+    ? 60 * 60 * 24 * 365 * 10
+    : 60 * 60 * 24 * 7;
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: (domain ? "none" : "lax") as "none" | "lax" | "strict",
     ...(domain ? { domain } : {}),
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge,
     path: "/",
   };
 }
@@ -42,11 +45,11 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createToken(payload: SessionPayload) {
+export async function createToken(payload: SessionPayload, persistent = false) {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(persistent ? "10y" : "7d")
     .sign(getJwtSecret());
 }
 
@@ -68,14 +71,23 @@ export async function getSession(req?: NextRequest): Promise<SessionPayload | nu
 }
 
 /** Response ga session cookie qo'shish — register/login uchun */
-export function withSessionCookie<T>(response: NextResponse<T>, token: string): NextResponse<T> {
-  response.cookies.set("session", token, sessionCookieOptions());
+export function withSessionCookie<T>(
+  response: NextResponse<T>,
+  token: string,
+  persistent = false
+): NextResponse<T> {
+  response.cookies.set("session", token, sessionCookieOptions({ persistent }));
   return response;
 }
 
-export function jsonWithSession(data: unknown, token: string, status = 200) {
+export function jsonWithSession(
+  data: unknown,
+  token: string,
+  status = 200,
+  persistent = false
+) {
   const res = NextResponse.json(data, { status });
-  return withSessionCookie(res, token);
+  return withSessionCookie(res, token, persistent);
 }
 
 export function jsonClearSession(data: unknown = { ok: true }) {

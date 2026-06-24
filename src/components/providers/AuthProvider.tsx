@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { apiFetch } from "@/lib/api";
+import { cacheUser, readCachedUser } from "@/lib/auth-cache";
+import { isNativeApp } from "@/lib/native-app";
 
 export interface User {
   userId: string;
@@ -17,27 +19,6 @@ export interface User {
   language: string;
   tcallId: string;
   translationMode: string;
-}
-
-const USER_CACHE_KEY = "tcall:user";
-
-function readCachedUser(): User | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(USER_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
-  } catch {
-    return null;
-  }
-}
-
-function cacheUser(user: User | null) {
-  try {
-    if (user) sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
-    else sessionStorage.removeItem(USER_CACHE_KEY);
-  } catch {
-    /* ignore */
-  }
 }
 
 interface AuthContextValue {
@@ -85,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     await apiFetch("/api/auth/session", { method: "DELETE" });
     setUser(null);
-    window.location.href = "/";
+    window.location.href = isNativeApp() ? "/login" : "/";
   }, [setUser]);
 
   return (

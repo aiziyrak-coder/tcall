@@ -21,7 +21,14 @@ export function apiUrl(path: string): string {
 }
 
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(apiUrl(path), { ...init, credentials: "include" });
+  const headers = new Headers(init?.headers);
+  if (
+    typeof window !== "undefined" &&
+    window.Capacitor?.isNativePlatform?.()
+  ) {
+    headers.set("X-Tcall-Native", "1");
+  }
+  return fetch(apiUrl(path), { ...init, headers, credentials: "include" });
 }
 
 /** API javobini xavfsiz JSON ga aylantirish — HTML xato sahifalarini ushlaydi */

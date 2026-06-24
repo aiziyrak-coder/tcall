@@ -8,10 +8,11 @@ import { useUI } from "@/components/providers/LocaleProvider";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
 import { AppCopyright } from "@/components/AppCopyright";
 import { UserAvatar } from "@/components/UserAvatar";
-import type { User } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { isNativeApp } from "@/lib/native-app";
 
 interface SettingsPanelProps {
-  user: User;
+  user: import("@/hooks/useAuth").User;
   userLanguage: string;
   onClose: () => void;
   onUpdate: (updates: Partial<User>) => void;
@@ -38,6 +39,11 @@ interface ProfileForm {
 
 export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: SettingsPanelProps) {
   const ui = useUI(userLanguage);
+  const { logout } = useAuth();
+  const nativeApp = isNativeApp();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [logoutPhrase, setLogoutPhrase] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
     name: user.name,
     language: user.language,
@@ -283,6 +289,55 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           </div>
 
           <AppCopyright userLanguage={userLanguage} compact className="mt-4 pt-3 border-t border-black/5" />
+
+          {nativeApp && (
+            <section className="mt-6 pt-4 border-t border-black/5">
+              {!logoutOpen ? (
+                <button
+                  type="button"
+                  className="w-full text-left text-sm font-medium text-red-500/80 py-2 touch-manipulation"
+                  onClick={() => setLogoutOpen(true)}
+                >
+                  {ui.logoutFromSettings}
+                </button>
+              ) : (
+                <div className="rounded-2xl border border-red-100 bg-red-50/60 p-4 space-y-3">
+                  <p className="text-sm text-red-700">{ui.logoutConfirmHint}</p>
+                  <input
+                    className="input-field-compact w-full uppercase tracking-wider"
+                    value={logoutPhrase}
+                    onChange={(e) => setLogoutPhrase(e.target.value.toUpperCase())}
+                    placeholder={ui.logoutTypePhrase}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-compact flex-1"
+                      onClick={() => {
+                        setLogoutOpen(false);
+                        setLogoutPhrase("");
+                      }}
+                    >
+                      {ui.logoutCancel}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-compact flex-1 rounded-xl bg-red-500 text-white font-semibold disabled:opacity-40"
+                      disabled={logoutPhrase !== ui.logoutTypePhrase || loggingOut}
+                      onClick={() => {
+                        setLoggingOut(true);
+                        void logout();
+                      }}
+                    >
+                      {loggingOut ? "..." : ui.logoutConfirmAction}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
         <div className="ios-settings-footer">

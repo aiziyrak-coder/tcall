@@ -35,15 +35,19 @@ export async function POST(req: NextRequest) {
       await prisma.user.update({ where: { id: user.id }, data: { tcallId } });
     }
 
-    const token = await createToken({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      language: user.language,
-      tcallId,
-      translationMode: user.translationMode,
-    });
+    const token = await createToken(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        language: user.language,
+        tcallId,
+        translationMode: user.translationMode,
+      },
+      req.headers.get("x-tcall-native") === "1"
+    );
 
+    const persistent = req.headers.get("x-tcall-native") === "1";
     return jsonWithSession(
       {
         user: {
@@ -55,7 +59,9 @@ export async function POST(req: NextRequest) {
           translationMode: user.translationMode,
         },
       },
-      token
+      token,
+      200,
+      persistent
     );
   } catch (err) {
     if (err instanceof z.ZodError) {

@@ -1,28 +1,33 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeApp } from "@/lib/native-app";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
 import { AppCopyright } from "@/components/AppCopyright";
 
 function LoginForm() {
   const router = useRouter();
-  const { setUser } = useAuth();
+  const { user, loading, setUser } = useAuth();
   const searchParams = useSearchParams();
   const redirect = safeRedirectPath(searchParams.get("redirect"));
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) router.replace("/dashboard");
+  }, [user, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       const res = await apiFetch("/api/auth/login", {
@@ -37,11 +42,12 @@ function LoginForm() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (loading) return <AppSplash message="Kirish..." />;
+  if (loading || user) return <AppSplash message="Kirish..." />;
+  if (submitting) return <AppSplash message="Kirish..." />;
 
   return (
     <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
@@ -60,6 +66,7 @@ function LoginForm() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           placeholder="ali@example.com"
           required
+          autoComplete="email"
         />
       </div>
 
@@ -71,38 +78,52 @@ function LoginForm() {
           value={form.password}
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           required
+          autoComplete="current-password"
         />
       </div>
 
-      <button type="submit" disabled={loading} className="btn-primary w-full">
+      <button type="submit" disabled={submitting} className="btn-primary w-full">
         Kirish
       </button>
 
-      <p className="text-center text-sm text-slate-500">
-        Hisobingiz yo&apos;qmi?{" "}
-        <Link href="/register" className="text-brand-600 hover:underline">
-          Ro&apos;yxatdan o&apos;tish
-        </Link>
-      </p>
+      {!isNativeApp() && (
+        <p className="text-center text-sm text-slate-500">
+          Hisobingiz yo&apos;qmi?{" "}
+          <Link href="/register" className="text-brand-600 hover:underline">
+            Ro&apos;yxatdan o&apos;tish
+          </Link>
+        </p>
+      )}
     </form>
   );
 }
 
 export default function LoginPage() {
+  const nativeApp = isNativeApp();
+
   return (
     <div className="page-shell app-page-enter">
       <div className="auth-page-scroll flex items-center justify-center px-4 py-8">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
         <div className="relative w-full max-w-lg">
           <div className="flex justify-center mb-8 sm:mb-10">
-            <Link href="/" className="touch-manipulation">
+            {nativeApp ? (
               <TcallLogo
                 size="xl"
                 layout="horizontal"
                 title="Kirish"
                 subtitle="Hisobingizga kiring"
               />
-            </Link>
+            ) : (
+              <Link href="/" className="touch-manipulation">
+                <TcallLogo
+                  size="xl"
+                  layout="horizontal"
+                  title="Kirish"
+                  subtitle="Hisobingizga kiring"
+                />
+              </Link>
+            )}
           </div>
 
           <Suspense fallback={<AppSplash fullscreen={false} />}>

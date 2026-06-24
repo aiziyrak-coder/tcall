@@ -22,6 +22,7 @@ import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { LiveInterpreter } from "@/components/LiveInterpreter";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 import { TcallLogo } from "@/components/TcallLogo";
+import { isNativeApp } from "@/lib/native-app";
 
 interface CallRecord {
   id: string;
@@ -221,6 +222,7 @@ function DashboardInner({
   const useContextHeader = showLogo || tab === "messages";
 
   const userLang = getLanguage(user.language);
+  const nativeApp = isNativeApp();
 
   return (
     <>
@@ -257,9 +259,11 @@ function DashboardInner({
                     <BellOff className="w-5 h-5 text-yellow-400" />
                   )}
                 </button>
-                <button onClick={logout} className="ios-icon-btn">
-                  <LogOut className="w-5 h-5" />
-                </button>
+                {!nativeApp && (
+                  <button onClick={() => void logout()} className="ios-icon-btn" title={ui.logout}>
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                )}
               </div>
             }
           />
