@@ -29,7 +29,7 @@ function CallBridge({ children }: { children: React.ReactNode }) {
   if (!user) return <>{children}</>;
 
   return (
-    <LocaleProvider lang={user.language} key={user.language}>
+    <LocaleProvider lang={user.language}>
       <CallProvider user={user}>
         <div className="app-page-enter">{children}</div>
       </CallProvider>

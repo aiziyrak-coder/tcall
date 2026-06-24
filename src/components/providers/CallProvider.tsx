@@ -388,6 +388,14 @@ export function CallProvider({ user, children }: CallProviderProps) {
     return () => document.body.classList.remove("has-mini-call");
   }, [activeCall, callMinimized]);
 
+  useEffect(() => {
+    if (activeCall?.roomId && outgoingCall?.roomId.toUpperCase() === activeCall.roomId) {
+      clearRingTimeout();
+      stopRingback();
+      setOutgoingCall(null);
+    }
+  }, [activeCall, outgoingCall, clearRingTimeout]);
+
   const dial = useCallback(async (tcallId: string) => {
     setDialError(null);
     await unlockAudio();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { transcribeAudio } from "@/lib/openai";
+import { getTranscriptionAttempts, isValidTranscript } from "@/lib/call-translation";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
@@ -40,7 +41,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ text: "" });
     }
 
-    const text = await transcribeAudio(buffer, audio.name || "audio.webm", language);
+    const hintLang = (language || session.language || "uz").split("-")[0].toLowerCase();
+    const attempts = getTranscriptionAttempts(hintLang);
+    let text = "";
+
+    for (const attempt of attempts) {
+      const candidate = await transcribeAudio(
+        buffer,
+        audio.name || "audio.webm",
+        attempt.hintLang || hintLang,
+        attempt.whisperLang
+      );
+      if (candidate && isValidTranscript(candidate)) {
+        text = candidate;
+        break;
+      }
+    }
+
     return NextResponse.json({ text });
   } catch (e) {
     console.error("Transcribe API error:", e);

@@ -114,13 +114,20 @@ export async function canJoinCall(
   const isHost = call.hostId === userId;
   const isParticipant = call.participants.some((p) => p.userId === userId);
 
-  if (call.callType === "dial" && call.calleeTcallId) {
-    const isCallee = userTcallId === call.calleeTcallId;
-    if (!isHost && !isCallee && !isParticipant) {
+  let effectiveTcallId = userTcallId;
+  if (call.callType === "dial" && call.calleeTcallId && !effectiveTcallId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { tcallId: true },
+    });
+    effectiveTcallId = user?.tcallId ?? null;
+  }
+
+  if (call.callType === "dial" && call.calleeTcallId && !isHost && !isParticipant) {
+    const isCallee = effectiveTcallId === call.calleeTcallId;
+    if (!isCallee) {
       return { ok: false, reason: "Bu qo'ng'iroqqa ruxsat yo'q" };
     }
-  } else if (call.callType === "room" && !isHost && !isParticipant) {
-    return { ok: false, reason: "Bu qo'ng'iroqqa ruxsat yo'q" };
   }
 
   const count = call.participants.length;

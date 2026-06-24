@@ -111,7 +111,14 @@ export function useCall({
     callStatusRef.current = callStatus;
   }, [callStatus]);
 
+  const serverIsHostRef = useRef(isHost);
+  const sessionIdRef = useRef(0);
+  const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const detachSocketRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    serverIsHostRef.current = isHost;
+  }, [isHost]);
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
@@ -446,7 +453,7 @@ export function useCall({
       const peer = otherParticipantRef.current;
       if (!s || !sock?.connected || !peer) return;
 
-      if (optsRef.current.isHost) {
+      if (optsRef.current.isHost || serverIsHostRef.current) {
         void sendOffer(s, sock, peer, true);
       } else {
         sock.emit("request-reoffer", { targetId: peer.socketId });
@@ -461,8 +468,11 @@ export function useCall({
       setParticipants(users);
       const { userId: uid, isHost: host } = optsRef.current;
 
+      const self = users.find((u) => u.userId === uid);
+      if (self) serverIsHostRef.current = !!self.isHost;
+
       if (users.length < 2) {
-        setCallStatus(host ? "ringing" : "waiting");
+        setCallStatus(self?.isHost || host ? "ringing" : "waiting");
         return;
       }
 
@@ -489,8 +499,8 @@ export function useCall({
 
       if (pcBroken) resetPeerConnection();
 
-      const shouldOffer =
-        optsRef.current.isHost || (!other.isHost && socket.id! < other.socketId);
+      const iAmHost = self?.isHost ?? serverIsHostRef.current;
+      const shouldOffer = iAmHost || (!other.isHost && socket.id! < other.socketId);
       if (!shouldOffer) {
         setCallStatus("connecting");
         return;
@@ -575,10 +585,18 @@ export function useCall({
   useEffect(() => {
     if (!enabled || !userId) return;
 
+    if (cleanupTimerRef.current) {
+      clearTimeout(cleanupTimerRef.current);
+      cleanupTimerRef.current = null;
+    }
+
+    const mySessionId = ++sessionIdRef.current;
     let mounted = true;
     sessionActiveRef.current = true;
     intentionalEndRef.current = false;
     offerRetryRef.current = 0;
+    sessionStartedRef.current = false;
+    serverIsHostRef.current = isHost;
 
     const audioQueue = new TranslationAudioQueue();
     audioQueue.setSpeakingCallback(setIsSpeaking);
@@ -640,7 +658,7 @@ export function useCall({
 
         const onOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
           if (!streamRef.current) return;
-          const polite = !optsRef.current.isHost;
+          const polite = !serverIsHostRef.current;
           if (makingOfferRef.current && !polite) return;
           remoteIdRef.current = senderId;
 
@@ -687,7 +705,7 @@ export function useCall({
         };
 
         const onReoffer = () => {
-          if (!optsRef.current.isHost || !streamRef.current || !otherParticipantRef.current) return;
+          if (!serverIsHostRef.current || !streamRef.current || !otherParticipantRef.current) return;
           void handlersRef.current.sendOffer(
             streamRef.current,
             socket,
@@ -864,47 +882,55 @@ export function useCall({
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       mounted = false;
-      sessionStartedRef.current = false;
-      sessionActiveRef.current = false;
+
       handlersRef.current.stopTimer();
       handlersRef.current.clearOfferRetry();
       handlersRef.current.stopRecording();
       audioQueue.stop();
-      audioQueueRef.current = null;
-      wakeLockRef.current?.release().catch(() => {});
-      remoteAudioCtxRef.current?.close().catch(() => {});
-      remoteAudioCtxRef.current = null;
-      handlersRef.current.resetPeerConnection();
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-
       detachSocketRef.current?.();
       detachSocketRef.current = null;
 
       const hadRemote = !!remoteStreamRef.current;
       const socket = socketRef.current;
-      const host = optsRef.current.isHost;
+      const host = serverIsHostRef.current || optsRef.current.isHost;
       const rid = optsRef.current.roomId;
+      const shouldEnd = !intentionalEndRef.current;
+      const closedSessionId = mySessionId;
 
-      if (!intentionalEndRef.current) {
-        if (host && !hadRemote && callStatusRef.current === "ringing" && socket?.connected) {
-          socket.emit("call-cancel", { roomId: rid });
-        } else if (socket?.connected) {
-          socket.emit("call-ended");
+      cleanupTimerRef.current = setTimeout(() => {
+        cleanupTimerRef.current = null;
+        if (closedSessionId !== sessionIdRef.current) return;
+
+        sessionActiveRef.current = false;
+        sessionStartedRef.current = false;
+        audioQueueRef.current = null;
+        wakeLockRef.current?.release().catch(() => {});
+        remoteAudioCtxRef.current?.close().catch(() => {});
+        remoteAudioCtxRef.current = null;
+        handlersRef.current.resetPeerConnection();
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+
+        if (shouldEnd) {
+          if (host && !hadRemote && callStatusRef.current === "ringing" && socket?.connected) {
+            socket.emit("call-cancel", { roomId: rid });
+          } else if (socket?.connected) {
+            socket.emit("call-ended");
+          }
+          void apiFetch("/api/calls/end", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ roomId: rid }),
+          });
         }
-        void apiFetch("/api/calls/end", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId: rid }),
-        });
-      }
 
-      if (socket?.connected) {
-        socket.emit("leave-room", { roomId: rid });
-      }
-      socketRef.current = null;
+        if (socket?.connected) {
+          socket.emit("leave-room", { roomId: rid });
+        }
+        socketRef.current = null;
+      }, 600);
     };
-  }, [enabled, roomId, userId]);
+  }, [enabled, roomId, userId, isHost]);
 
   const requestMicrophone = useCallback(async () => {
     setMicStatus("requesting");

@@ -194,7 +194,14 @@ app.prepare().then(async () => {
         isHost?: boolean;
       }) => {
         try {
-          if (!data?.roomId || data.userId !== session.userId) return;
+          if (!data?.roomId) {
+            socket.emit("room-error", { message: "Xona kodi kerak" });
+            return;
+          }
+          if (data.userId !== session.userId) {
+            socket.emit("room-error", { message: "Avtorizatsiya xatosi" });
+            return;
+          }
 
           const roomId = data.roomId.toUpperCase();
           const call = await getCallByRoomId(roomId);
@@ -203,16 +210,25 @@ app.prepare().then(async () => {
             return;
           }
 
-          const access = await canJoinCall(call, session.userId, session.tcallId);
+          const dbUser = await prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { name: true, language: true, tcallId: true, translationMode: true },
+          });
+          const effectiveTcallId = session.tcallId ?? dbUser?.tcallId ?? null;
+
+          const access = await canJoinCall(call, session.userId, effectiveTcallId);
           if (!access.ok) {
             socket.emit("room-error", { message: access.reason });
             return;
           }
 
           const userId = session.userId;
-          const name = session.name.slice(0, 80);
-          const language = session.language || "uz";
-          const translationMode = data.translationMode === "voice" ? "voice" : "text";
+          const name = (dbUser?.name || session.name || "User").slice(0, 80);
+          const language = dbUser?.language || session.language || "uz";
+          const translationMode =
+            data.translationMode === "voice" || dbUser?.translationMode === "voice"
+              ? "voice"
+              : "text";
           const dbIsHost = call.hostId === session.userId;
           currentRoom = roomId;
           registerUserSocket(userId, socket.id);
