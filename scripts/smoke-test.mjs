@@ -59,8 +59,8 @@ async function main() {
   else fail("Health check", String(healthRes.status));
 
   const unauth = await req("/api/auth/session");
-  if (unauth.res.status === 401) pass("Unauthenticated session rejected");
-  else fail("Unauthenticated session rejected", String(unauth.res.status));
+  if (unauth.res.ok && unauth.body?.user === null) pass("Unauthenticated session returns null user");
+  else fail("Unauthenticated session returns null user", JSON.stringify(unauth.body));
 
   const ts = Date.now();
   const emailA = `smoke_a_${ts}@test.local`;
@@ -139,6 +139,19 @@ async function main() {
     const len = room.body.roomId.length;
     if (len >= 6 && len <= 8) pass("Room ID format", String(len));
     else fail("Room ID format", String(len));
+
+    const endRoom = await req(
+      "/api/calls/end",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId: room.body.roomId }),
+      },
+      jarA
+    );
+    jarA = endRoom.jar;
+    if (endRoom.res.ok) pass("End waiting room");
+    else fail("End waiting room", JSON.stringify(endRoom.body));
   } else {
     fail("Create room", JSON.stringify(room.body));
   }
