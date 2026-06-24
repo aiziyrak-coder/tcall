@@ -84,6 +84,7 @@ export function ChatMessenger({
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<HTMLInputElement>(null);
@@ -97,6 +98,12 @@ export function ChatMessenger({
   useEffect(() => {
     return () => onThreadChange?.(false);
   }, [onThreadChange]);
+
+  useEffect(() => {
+    if (!uploadError) return;
+    const t = setTimeout(() => setUploadError(""), 6000);
+    return () => clearTimeout(t);
+  }, [uploadError]);
 
   const loadConversations = useCallback(async () => {
     const r = await apiFetch("/api/chat/conversations");
@@ -201,14 +208,28 @@ export function ChatMessenger({
 
   const uploadAndSend = async (file: File) => {
     if (!activeId || uploading) return;
+    setUploadError("");
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const up = await apiFetch("/api/chat/upload", { method: "POST", body: fd });
-      const media = await up.json();
-      if (!up.ok) return;
-      await apiFetch(`/api/chat/conversations/${activeId}/messages`, {
+      let media: { url?: string; mime?: string; name?: string; size?: number; type?: string; error?: string };
+      try {
+        media = await up.json();
+      } catch {
+        setUploadError(ui.chatUploadFailed);
+        return;
+      }
+      if (!up.ok) {
+        setUploadError(media.error || ui.chatUploadFailed);
+        return;
+      }
+      if (!media.url || !media.type) {
+        setUploadError(ui.chatUploadFailed);
+        return;
+      }
+      const msgRes = await apiFetch(`/api/chat/conversations/${activeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -220,8 +241,15 @@ export function ChatMessenger({
           text: text.trim() || undefined,
         }),
       });
+      if (!msgRes.ok) {
+        const err = await msgRes.json().catch(() => ({}));
+        setUploadError((err as { error?: string }).error || ui.chatUploadFailed);
+        return;
+      }
       setText("");
       await openConversation(activeId);
+    } catch {
+      setUploadError(ui.chatUploadFailed);
     } finally {
       setUploading(false);
     }
@@ -304,6 +332,8 @@ export function ChatMessenger({
         </div>
 
         <div className="chat-composer">
+          {uploadError && <div className="chat-upload-error">{uploadError}</div>}
+          {uploading && <div className="chat-upload-status">{ui.chatUploading}</div>}
           {showEmoji && (
             <div className="chat-emoji-panel">
               {EMOJIS.map((e) => (
@@ -317,16 +347,16 @@ export function ChatMessenger({
             <button type="button" className="chat-tool-btn" onClick={() => setShowEmoji((v) => !v)}>
               <Smile className="w-5 h-5" />
             </button>
-            <button type="button" className="chat-tool-btn" onClick={() => mediaRef.current?.click()}>
+            <button type="button" className="chat-tool-btn" disabled={uploading} onClick={() => mediaRef.current?.click()}>
               <ImagePlus className="w-5 h-5" />
             </button>
-            <button type="button" className="chat-tool-btn" onClick={() => fileRef.current?.click()}>
+            <button type="button" className="chat-tool-btn" disabled={uploading} onClick={() => fileRef.current?.click()}>
               <Paperclip className="w-5 h-5" />
             </button>
             <input
               ref={mediaRef}
               type="file"
-              accept="image/*,video/*"
+              accept="image/*,video/*,.heic,.heif,.HEIC,.HEIF"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -486,7 +516,11 @@ function MessageBubble({
   ui: Record<string, string>;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
+  const [mediaBroken, setMediaBroken] = useState(false);
   const body = showOriginal ? msg.originalText : msg.displayText;
+  const mediaSrc = msg.mediaUrl || "";
+  const isImage = msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/"));
+  const isVideo = msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/"));
 
   return (
     <div className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"}`}>
@@ -494,16 +528,30 @@ function MessageBubble({
         <p className="chat-bubble-sender">{msg.sender.name}</p>
       )}
       <div className={`chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`}>
-        {msg.type === "image" && msg.mediaUrl && (
-          <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer">
-            <img src={msg.mediaUrl} alt="" className="chat-media-image" />
+        {isImage && mediaSrc && !mediaBroken && (
+          <a href={mediaSrc} target="_blank" rel="noopener noreferrer">
+            <img
+              src={mediaSrc}
+              alt={msg.mediaName || ui.chatPhoto}
+              className="chat-media-image"
+              onError={() => setMediaBroken(true)}
+            />
           </a>
         )}
-        {msg.type === "video" && msg.mediaUrl && (
-          <video src={msg.mediaUrl} controls className="chat-media-video" playsInline />
+        {isImage && mediaSrc && mediaBroken && (
+          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
+            📷 {msg.mediaName || ui.chatOpenFile}
+          </a>
         )}
-        {msg.type === "file" && msg.mediaUrl && (
-          <a href={msg.mediaUrl} target="_blank" rel="noopener noreferrer" className="chat-file-link">
+        {isVideo && mediaSrc && (
+          <video src={mediaSrc} controls className="chat-media-video" playsInline preload="metadata">
+            <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
+              {ui.chatOpenFile}
+            </a>
+          </video>
+        )}
+        {msg.type === "file" && mediaSrc && !isImage && !isVideo && (
+          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
             📎 {msg.mediaName || ui.chatFile}
           </a>
         )}

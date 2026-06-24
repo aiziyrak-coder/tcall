@@ -4,25 +4,20 @@ import { join } from "path";
 import { randomUUID } from "crypto";
 import { getSession } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  detectChatMediaKind,
+  maxSizeForKind,
+  resolveChatMime,
+  sanitizeUploadExt,
+} from "@/lib/chat-media";
 
-const MAX_IMAGE = 10 * 1024 * 1024;
-const MAX_VIDEO = 50 * 1024 * 1024;
-const MAX_FILE = 20 * 1024 * 1024;
-
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
-
-function messageType(mime: string): "image" | "video" | "file" {
-  if (IMAGE_TYPES.has(mime)) return "image";
-  if (VIDEO_TYPES.has(mime)) return "video";
-  return "file";
-}
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
-  const limited = rateLimit(`upload:${session.userId}`, 20, 60_000);
+  const limited = rateLimit(`upload:${session.userId}`, 30, 60_000);
   if (!limited.ok) {
     return NextResponse.json({ error: "Juda ko'p yuklash" }, { status: 429 });
   }
@@ -34,14 +29,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Fayl kerak" }, { status: 400 });
     }
 
-    const mime = file.type || "application/octet-stream";
-    const type = messageType(mime);
-    const maxSize = type === "video" ? MAX_VIDEO : type === "image" ? MAX_IMAGE : MAX_FILE;
-    if (file.size > maxSize) {
-      return NextResponse.json({ error: "Fayl juda katta" }, { status: 400 });
+    if (!file.size) {
+      return NextResponse.json({ error: "Bo'sh fayl" }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop()?.slice(0, 8) || "bin";
+    const kind = detectChatMediaKind(file.name, file.type);
+    const mime = resolveChatMime(file.name, file.type);
+    const maxSize = maxSizeForKind(kind);
+    if (file.size > maxSize) {
+      const mb = Math.round(maxSize / (1024 * 1024));
+      return NextResponse.json({ error: `Fayl juda katta (max ${mb} MB)` }, { status: 400 });
+    }
+
+    const ext = sanitizeUploadExt(file.name, kind);
     const filename = `${randomUUID()}.${ext}`;
     const dir = join(process.cwd(), "public", "uploads", "chat", session.userId);
     await mkdir(dir, { recursive: true });
@@ -49,13 +49,13 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(join(dir, filename), buffer);
 
-    const url = `/uploads/chat/${session.userId}/${filename}`;
+    const url = `/api/chat/file/${session.userId}/${filename}`;
     return NextResponse.json({
       url,
       mime,
       name: file.name.slice(0, 200),
       size: file.size,
-      type,
+      type: kind,
     });
   } catch (e) {
     console.error("Upload error:", e);
