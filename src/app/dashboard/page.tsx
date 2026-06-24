@@ -178,7 +178,7 @@ function DashboardInner({
   };
 
   const tabTitles: Record<PhoneTab, string> = {
-    keypad: ui.keypad,
+    keypad: "Tcall",
     recents: ui.recents,
     contacts: ui.contacts,
     room: ui.roomTab,
