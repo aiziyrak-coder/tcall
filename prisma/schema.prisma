@@ -44,6 +44,20 @@ model User {
   conversationsCreated Conversation[] @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
   chatMessagesSent     ChatMessage[]  @relation("ChatMessageSender")
+  deviceTokens         DeviceToken[]
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, token])
+  @@index([userId])
 }
 
 model Contact {

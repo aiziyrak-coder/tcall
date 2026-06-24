@@ -1,4 +1,14 @@
+import {
+  requestNativeNotificationPermission,
+  showNativeIncomingCallNotification,
+  cancelNativeIncomingNotification,
+  isNativeApp,
+} from "./native-app";
+
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (isNativeApp()) {
+    return requestNativeNotificationPermission();
+  }
   if (typeof window === "undefined" || !("Notification" in window)) return false;
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") return false;
@@ -6,7 +16,15 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return result === "granted";
 }
 
-export function showIncomingCallNotification(callerName: string, tcallId: string) {
+export function showIncomingCallNotification(
+  callerName: string,
+  tcallId: string,
+  roomId?: string
+) {
+  if (isNativeApp() && roomId) {
+    void showNativeIncomingCallNotification(callerName, tcallId, roomId);
+    return;
+  }
   if (typeof window === "undefined" || !("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   if (document.visibilityState === "visible") return;
@@ -28,6 +46,8 @@ export function showIncomingCallNotification(callerName: string, tcallId: string
   }
 }
 
-export function closeNotifications() {
-  /* Notifications auto-close on interaction */
+export function closeNotifications(roomId?: string) {
+  if (isNativeApp()) {
+    void cancelNativeIncomingNotification(roomId);
+  }
 }

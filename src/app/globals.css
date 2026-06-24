@@ -2297,3 +2297,21 @@ body.has-mini-call .chat-app-thread .chat-composer {
 .chat-translation-badge {
   @apply text-[10px] text-slate-500 mb-1 font-medium;
 }
+
+/* Capacitor native ilova — safe area */
+body.native-app {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body.native-app .ios-phone-app {
+  min-height: 100dvh;
+}
+
+body.native-android .incoming-call-overlay {
+  padding-top: max(env(safe-area-inset-top), 12px);
+}

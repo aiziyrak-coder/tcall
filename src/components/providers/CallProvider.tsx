@@ -24,6 +24,7 @@ import {
 import {
   requestNotificationPermission,
   showIncomingCallNotification,
+  closeNotifications,
 } from "@/lib/notifications";
 import { formatTcallId } from "@/lib/tcallId";
 import { RING_TIMEOUT_MS } from "@/lib/call-service";
@@ -199,7 +200,11 @@ export function CallProvider({ user, children }: CallProviderProps) {
 
       socket.on("incoming-call", (data: IncomingCall) => {
         setIncomingCall(data);
-        showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
+        showIncomingCallNotification(
+          data.caller.name,
+          formatTcallId(data.caller.tcallId),
+          data.roomId
+        );
         void unlockAudio();
       });
 
@@ -308,8 +313,11 @@ export function CallProvider({ user, children }: CallProviderProps) {
     await unlockAudio();
     stopRingtone();
     playCallEndTone();
-    if (incomingCall && socketRef.current) {
-      socketRef.current.emit("call-reject", { roomId: incomingCall.roomId });
+    if (incomingCall) {
+      closeNotifications(incomingCall.roomId);
+      if (socketRef.current) {
+        socketRef.current.emit("call-reject", { roomId: incomingCall.roomId });
+      }
     }
     setIncomingCall(null);
   }, [incomingCall]);
@@ -323,6 +331,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
     await prefetchMicrophoneAccess();
     stopRingtone();
     const roomId = incomingCall.roomId;
+    closeNotifications(roomId);
 
     try {
       const res = await apiFetch("/api/calls/join", {

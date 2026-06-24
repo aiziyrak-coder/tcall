@@ -5,6 +5,7 @@ import { emitToUser, isUserOnline } from "@/lib/socket-io";
 import { generateRoomId } from "@/lib/utils";
 import { userHasActiveCall, endStaleCallsForUser } from "@/lib/call-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { sendIncomingCallPush } from "@/lib/push-service";
 
 export async function POST(req: NextRequest) {
   try {
@@ -128,6 +129,12 @@ export async function POST(req: NextRequest) {
         language: caller?.language || session.language,
         tcallId: caller?.tcallId || session.tcallId,
       },
+    });
+
+    void sendIncomingCallPush(callee.id, {
+      roomId: call.roomId,
+      callerName: caller?.name || session.name,
+      callerTcallId: caller?.tcallId || session.tcallId || "",
     });
 
     return NextResponse.json({
