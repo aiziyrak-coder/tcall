@@ -8,6 +8,7 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
+import { AppCopyright } from "@/components/AppCopyright";
 
 function LoginForm() {
   const router = useRouter();
@@ -107,6 +108,8 @@ export default function LoginPage() {
         <Suspense fallback={<AppSplash fullscreen={false} />}>
           <LoginForm />
         </Suspense>
+
+        <AppCopyright className="mt-8" />
       </div>
     </div>
   );

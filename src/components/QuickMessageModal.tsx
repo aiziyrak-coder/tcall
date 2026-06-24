@@ -68,22 +68,28 @@ export function QuickMessageModal({
           <>
             <div className="flex flex-wrap gap-2 mb-3">
               {QUICK_TEMPLATES.map((t) => (
-                <button key={t} onClick={() => setMessage(t)} className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15">
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setMessage(t)}
+                  className="text-xs px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-black/5 active:bg-slate-200 touch-manipulation"
+                >
                   {t}
                 </button>
               ))}
             </div>
             <textarea
-              className="input-field min-h-[80px] resize-none"
+              className="input-field-compact min-h-[72px] resize-none"
               placeholder={ui.typeMessage}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={300}
             />
             <button
+              type="button"
               onClick={() => void send(message)}
               disabled={sending || !message.trim()}
-              className="btn-primary w-full mt-3 flex items-center justify-center gap-2"
+              className="btn-primary btn-compact w-full mt-3 flex items-center justify-center gap-2"
             >
               <Send className="w-4 h-4" /> {ui.sendMessage}
             </button>

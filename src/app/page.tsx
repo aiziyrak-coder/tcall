@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Phone, Globe, Shield, Zap } from "lucide-react";
 import { TcallLogo } from "@/components/TcallLogo";
+import { AppCopyright } from "@/components/AppCopyright";
 
 export default function HomePage() {
   return (
@@ -137,8 +138,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-black/10 py-8 text-center text-slate-400 text-sm safe-bottom">
-        <p>&copy; 2026 Tcall.uz — Til chegarasisiz aloqa</p>
+      <footer className="border-t border-black/10 py-6 sm:py-8 px-4 safe-bottom">
+        <AppCopyright />
       </footer>
     </div>
   );

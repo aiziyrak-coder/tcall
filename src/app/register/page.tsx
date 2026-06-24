@@ -8,6 +8,7 @@ import { LANGUAGES } from "@/lib/languages";
 import { useAuth } from "@/hooks/useAuth";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
+import { AppCopyright } from "@/components/AppCopyright";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -135,6 +136,8 @@ export default function RegisterPage() {
             </Link>
           </p>
         </form>
+
+        <AppCopyright className="mt-8" />
       </div>
     </div>
   );

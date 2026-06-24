@@ -5,6 +5,7 @@ import { X, Save, Shield, ShieldOff } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES, getUI } from "@/lib/languages";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
+import { AppCopyright } from "@/components/AppCopyright";
 import type { User } from "@/hooks/useAuth";
 
 interface SettingsPanelProps {
@@ -76,78 +77,120 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   };
 
   return (
-    <div className="ios-settings-overlay">
-      <div className="ios-settings-panel">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">{ui.settings}</h2>
-          <button onClick={onClose} className="ios-icon-btn"><X className="w-5 h-5" /></button>
+    <div className="ios-settings-overlay" onClick={onClose}>
+      <div className="ios-settings-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="ios-settings-header">
+          <h2 className="text-lg font-bold text-slate-900">{ui.settings}</h2>
+          <button type="button" onClick={onClose} className="ios-icon-btn" aria-label={ui.close}>
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-          <label className="block">
-            <span className="text-xs text-slate-500">{ui.name}</span>
-            <input className="input-field mt-1" value={name} onChange={(e) => setName(e.target.value)} />
-          </label>
+        <div className="ios-settings-body">
+          <div className="settings-grid">
+            <label className="settings-field">
+              <span className="settings-label">{ui.name}</span>
+              <input className="input-field-compact" value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
 
-          <label className="block">
-            <span className="text-xs text-slate-500">{ui.language}</span>
-            <select className="input-field mt-1" value={language} onChange={(e) => setLanguage(e.target.value)}>
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
-              ))}
-            </select>
-          </label>
+            <label className="settings-field">
+              <span className="settings-label">{ui.language}</span>
+              <select className="input-field-compact" value={language} onChange={(e) => setLanguage(e.target.value)}>
+                {LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.flag} {l.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block">
-            <span className="text-xs text-slate-500">{ui.translation}</span>
-            <select className="input-field mt-1" value={translationMode} onChange={(e) => setTranslationMode(e.target.value)}>
-              <option value="text">{ui.textTranslation}</option>
-              <option value="voice">{ui.voiceTranslation}</option>
-            </select>
-          </label>
+            <label className="settings-field">
+              <span className="settings-label">{ui.translation}</span>
+              <select
+                className="input-field-compact"
+                value={translationMode}
+                onChange={(e) => setTranslationMode(e.target.value)}
+              >
+                <option value="text">{ui.textTranslation}</option>
+                <option value="voice">{ui.voiceTranslation}</option>
+              </select>
+            </label>
 
-          <label className="block">
-            <span className="text-xs text-slate-500">{ui.profile}</span>
-            <select className="input-field mt-1" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{getStatusLabel(s.value, ui)}</option>
-              ))}
-            </select>
-          </label>
+            <label className="settings-field">
+              <span className="settings-label">{ui.profile}</span>
+              <select
+                className="input-field-compact"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as UserStatus)}
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {getStatusLabel(s.value, ui)}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="block">
-            <span className="text-xs text-slate-500">{ui.bio}</span>
-            <input className="input-field mt-1" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="..." />
-          </label>
-
-          <div className="pt-2 border-t border-white/10">
-            <p className="text-sm font-medium mb-2 flex items-center gap-2">
-              <Shield className="w-4 h-4" /> {ui.blocked}
-            </p>
-            <div className="flex gap-2 mb-2">
+            <label className="settings-field">
+              <span className="settings-label">{ui.bio}</span>
               <input
-                className="input-field flex-1 font-mono"
-                placeholder="123456789"
-                value={blockInput}
-                onChange={(e) => setBlockInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                className="input-field-compact"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={160}
+                placeholder="..."
               />
-              <button onClick={addBlock} className="btn-secondary text-sm px-3">{ui.block}</button>
-            </div>
-            {blocks.map((b) => (
-              <div key={b.blockedTcallId} className="flex items-center justify-between py-2 text-sm">
-                <span className="font-mono text-slate-600">{b.blockedTcallId}</span>
-                <button onClick={() => removeBlock(b.blockedTcallId)} className="text-red-400 flex items-center gap-1">
-                  <ShieldOff className="w-3.5 h-3.5" /> {ui.unblock}
+            </label>
+
+            <div className="settings-block-section">
+              <p className="settings-label flex items-center gap-1.5 mb-2">
+                <Shield className="w-3.5 h-3.5" /> {ui.blocked}
+              </p>
+              <div className="settings-block-row">
+                <input
+                  className="input-field-compact flex-1 min-w-0 font-mono"
+                  placeholder="123456789"
+                  value={blockInput}
+                  onChange={(e) => setBlockInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                  inputMode="numeric"
+                />
+                <button type="button" onClick={addBlock} className="btn-secondary btn-compact shrink-0 px-3">
+                  {ui.block}
                 </button>
               </div>
-            ))}
+              {blocks.length > 0 && (
+                <ul className="settings-block-list">
+                  {blocks.map((b) => (
+                    <li key={b.blockedTcallId} className="settings-block-item">
+                      <span className="font-mono text-slate-600">{b.blockedTcallId}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeBlock(b.blockedTcallId)}
+                        className="text-red-500 text-xs flex items-center gap-1 touch-manipulation"
+                      >
+                        <ShieldOff className="w-3 h-3" /> {ui.unblock}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
+
+          <AppCopyright userLanguage={userLanguage} compact className="mt-4 pt-3 border-t border-black/5" />
         </div>
 
-        <button onClick={save} disabled={saving} className="btn-primary w-full mt-6 flex items-center justify-center gap-2">
-          <Save className="w-4 h-4" />
-          {saved ? ui.saved : saving ? "..." : ui.save}
-        </button>
+        <div className="ios-settings-footer">
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="btn-primary btn-compact w-full flex items-center justify-center gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {saved ? ui.saved : saving ? "..." : ui.save}
+          </button>
+        </div>
       </div>
     </div>
   );

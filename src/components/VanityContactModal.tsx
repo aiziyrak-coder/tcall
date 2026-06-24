@@ -47,13 +47,13 @@ export function VanityContactModal({ number, price, tier, ui, onClose }: VanityC
           href={telegramUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-primary w-full flex items-center justify-center gap-2 mt-4"
+          className="btn-primary btn-compact w-full flex items-center justify-center gap-2 mt-4"
         >
           <MessageCircle className="w-5 h-5" />
           {ui.contactAdmin} @{ADMIN_TELEGRAM_USERNAME}
         </a>
 
-        <button type="button" onClick={onClose} className="btn-secondary w-full mt-3">
+        <button type="button" onClick={onClose} className="btn-secondary btn-compact w-full mt-2">
           {ui.close}
         </button>
       </div>

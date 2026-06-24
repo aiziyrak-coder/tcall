@@ -53,6 +53,12 @@
   .input-field {
     @apply w-full bg-white border border-black/10 rounded-xl px-4 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all min-h-[48px];
   }
+  .input-field-compact {
+    @apply w-full bg-slate-50 border border-black/10 rounded-lg px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-400 focus:bg-white transition-all min-h-[40px];
+  }
+  .btn-compact {
+    @apply py-2.5 min-h-[44px] text-sm rounded-xl px-4;
+  }
   .page-shell {
     @apply min-h-[100dvh] relative;
   }
@@ -251,7 +257,7 @@
 }
 
 .ios-keypad-display {
-  @apply text-center w-full min-h-[72px] flex flex-col items-center justify-end mb-6;
+  @apply text-center w-full min-h-[56px] flex flex-col items-center justify-end mb-4;
 }
 
 .ios-keypad-number {
@@ -274,15 +280,15 @@
 .ios-keypad-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px 16px;
+  gap: 6px 12px;
   width: 100%;
-  max-width: 320px;
+  max-width: 300px;
 }
 
 .ios-key {
   @apply flex flex-col items-center justify-center rounded-full touch-manipulation active:bg-slate-100 text-slate-900;
   aspect-ratio: 1;
-  max-height: 80px;
+  max-height: 72px;
   background: var(--key-bg);
   box-shadow: var(--key-shadow);
   transition: transform 0.12s cubic-bezier(0.25, 0.1, 0.25, 1), background-color 0.15s ease;
@@ -302,8 +308,8 @@
 
 .ios-call-green-btn {
   @apply rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/25 touch-manipulation active:scale-95 transition-all disabled:opacity-35 text-white;
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
 }
 
 .ios-key-delete {
@@ -522,19 +528,82 @@
 }
 
 .ios-settings-overlay {
-  @apply fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4;
+  @apply fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center;
 }
 
 .ios-settings-panel {
-  @apply w-full max-w-md bg-white rounded-2xl p-6 max-h-[90vh] overflow-hidden shadow-xl;
+  @apply w-full sm:max-w-md bg-white shadow-2xl flex flex-col overflow-hidden;
+  max-height: min(88dvh, 100%);
+  border-radius: 1.25rem 1.25rem 0 0;
+}
+
+@media (min-width: 640px) {
+  .ios-settings-panel {
+    border-radius: 1rem;
+    margin: 1rem;
+    max-height: min(85dvh, 640px);
+  }
+}
+
+.ios-settings-header {
+  @apply shrink-0 flex items-center justify-between px-4 py-3 border-b border-black/5;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.ios-settings-body {
+  @apply flex-1 overflow-y-auto overscroll-contain px-4 py-3 min-h-0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ios-settings-footer {
+  @apply shrink-0 px-4 py-3 border-t border-black/5 bg-white/95 backdrop-blur-sm;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.settings-grid {
+  @apply space-y-3;
+}
+
+.settings-field {
+  @apply block;
+}
+
+.settings-label {
+  @apply text-xs font-medium text-slate-600 mb-1 block;
+}
+
+.settings-block-section {
+  @apply pt-2 border-t border-black/5;
+}
+
+.settings-block-row {
+  @apply flex gap-2 items-center;
+}
+
+.settings-block-list {
+  @apply mt-2 divide-y divide-black/5;
+}
+
+.settings-block-item {
+  @apply flex items-center justify-between py-2 text-sm;
 }
 
 .ios-modal-overlay {
-  @apply fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4;
+  @apply fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4;
 }
 
 .ios-modal-panel {
-  @apply w-full max-w-md bg-white rounded-2xl p-6 shadow-xl;
+  @apply w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-xl overflow-y-auto overscroll-contain;
+  max-height: min(88dvh, 100%);
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+}
+
+.app-copyright {
+  @apply text-center text-[11px] leading-relaxed text-slate-400;
+}
+
+.app-copyright-compact {
+  @apply text-left text-[10px] leading-snug;
 }
 
 .ios-speed-dial-btn {

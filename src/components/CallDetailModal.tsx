@@ -95,7 +95,7 @@ export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: 
         {partner?.tcallId && (
           <button
             onClick={() => { void dial(partner.tcallId); onClose(); }}
-            className="btn-primary w-full mt-4 flex items-center justify-center gap-2"
+            className="btn-primary btn-compact w-full mt-4 flex items-center justify-center gap-2"
           >
             <Phone className="w-4 h-4" /> {ui.startCall}
           </button>
