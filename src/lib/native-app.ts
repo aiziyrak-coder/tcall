@@ -59,10 +59,13 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
   initDone = true;
 
   const platform = getNativePlatform();
-  document.body.classList.add("native-app", `native-${platform}`);
+  if (!document.body.classList.contains("native-app")) {
+    document.body.classList.add("native-app", `native-${platform}`);
+  }
 
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
+    await StatusBar.setOverlaysWebView({ overlay: false });
     await StatusBar.setStyle({ style: Style.Light });
     if (platform === "android") {
       await StatusBar.setBackgroundColor({ color: "#f2f2f7" });

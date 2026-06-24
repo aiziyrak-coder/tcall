@@ -36,6 +36,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="uz">
       <body className={`${inter.className} overflow-x-hidden`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var c=window.Capacitor;if(!c||!c.isNativePlatform||!c.isNativePlatform())return;var b=document.body,p=c.getPlatform&&c.getPlatform();b.classList.add("native-app");if(p)b.classList.add("native-"+p);}catch(e){}})();`,
+          }}
+        />
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>

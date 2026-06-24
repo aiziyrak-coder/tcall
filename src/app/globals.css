@@ -54,13 +54,16 @@
     @apply antialiased;
     background: var(--bg-primary);
     color: var(--text-primary);
+    height: 100vh;
+    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
     overscroll-behavior: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-  body.tg-webapp {
+  body.tg-webapp,
+  body.native-app {
     padding: 0;
   }
   input, select, textarea {
@@ -95,6 +98,8 @@
   }
   .page-shell {
     @apply relative overflow-hidden;
+    height: 100vh;
+    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
   }
@@ -117,6 +122,8 @@
 
 /* Audio qo'ng'iroq — light telefon uslubi */
 .phone-screen {
+  height: 100vh;
+  max-height: 100vh;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -262,6 +269,8 @@
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  height: 100vh;
+  max-height: 100vh;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -446,6 +455,8 @@
 .ios-phone-app {
   @apply flex flex-col;
   background: var(--bg-primary);
+  height: 100vh;
+  max-height: 100vh;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -1454,6 +1465,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .app-splash-full {
+  min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-primary);
 }
@@ -2298,20 +2310,8 @@ body.has-mini-call .chat-app-thread .chat-composer {
   @apply text-[10px] text-slate-500 mb-1 font-medium;
 }
 
-/* Capacitor native ilova — safe area */
+/* Capacitor native — web bilan bir xil layout (padding komponentlarda) */
 body.native-app {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
-}
-
-body.native-app .ios-phone-app {
-  min-height: 100dvh;
-}
-
-body.native-android .incoming-call-overlay {
-  padding-top: max(env(safe-area-inset-top), 12px);
 }
