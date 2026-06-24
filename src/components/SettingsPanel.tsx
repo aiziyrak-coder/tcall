@@ -8,7 +8,7 @@ import { useUI } from "@/components/providers/LocaleProvider";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
 import { AppCopyright } from "@/components/AppCopyright";
 import { UserAvatar } from "@/components/UserAvatar";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type User } from "@/hooks/useAuth";
 import { isNativeApp } from "@/lib/native-app";
 
 interface SettingsPanelProps {
