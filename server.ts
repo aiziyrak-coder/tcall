@@ -77,7 +77,7 @@ app.prepare().then(async () => {
     process.exit(1);
   }
 
-  await seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
+  void seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
   await migrateChatMemberRoles().catch((e) => console.error("Chat role migrate error:", e));
 
   setInterval(() => {
