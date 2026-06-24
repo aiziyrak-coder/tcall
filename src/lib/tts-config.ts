@@ -59,11 +59,11 @@ export function getTTSVoice(langCode?: string): OpenAIVoice {
 
 export function getTTSSpeed(langCode?: string): number {
   const base = langCode?.split("-")[0].toLowerCase() || "en";
-  if (["zh", "ja", "ko"].includes(base)) return 0.95;
-  if (["ar", "fa", "ur", "he"].includes(base)) return 0.92;
-  if (["uz", "ru", "tr", "kk", "ky", "tg", "az"].includes(base)) return 1.0;
-  if (["en", "es", "fr", "de", "pt", "it"].includes(base)) return 1.05;
-  return 1.0;
+  if (["zh", "ja", "ko"].includes(base)) return 1.0;
+  if (["ar", "fa", "ur", "he"].includes(base)) return 0.98;
+  if (["uz", "ru", "tr", "kk", "ky", "tg", "az"].includes(base)) return 1.05;
+  if (["en", "es", "fr", "de", "pt", "it"].includes(base)) return 1.08;
+  return 1.05;
 }
 
 export function getTTSModel(): "tts-1" | "tts-1-hd" {

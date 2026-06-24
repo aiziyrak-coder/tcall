@@ -1,4 +1,4 @@
-import { getAudioConstraints } from "./mobile";
+import { getAudioConstraints, getInterpreterAudioConstraints } from "./mobile";
 import { unlockBrowserAudio } from "./audio-unlock";
 import {
   cacheMicStream,
@@ -61,11 +61,12 @@ export function watchMicPermission(onGranted: () => void) {
 }
 
 /** User gesture kontekstida chaqiring — brauzer ruxsat oynasini ochadi */
-export async function requestMicrophoneStream(): Promise<MediaStream> {
+export async function requestMicrophoneStream(interpreter = false): Promise<MediaStream> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new Error("getUserMedia unavailable");
   }
-  const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+  const constraints = interpreter ? getInterpreterAudioConstraints() : getAudioConstraints();
+  const stream = await navigator.mediaDevices.getUserMedia(constraints);
   markMicGranted();
   void unlockBrowserAudio();
   return stream;
@@ -100,7 +101,7 @@ export async function prefetchMicrophoneAccess(): Promise<boolean> {
   }
 }
 
-export async function acquireMicrophoneStream(): Promise<MediaStream> {
+export async function acquireMicrophoneStream(interpreter = false): Promise<MediaStream> {
   const cached = takeCachedMicStream();
   if (cached) {
     markMicGranted();
@@ -112,9 +113,11 @@ export async function acquireMicrophoneStream(): Promise<MediaStream> {
     throw new Error("Mic denied");
   }
 
+  const constraints = interpreter ? getInterpreterAudioConstraints() : getAudioConstraints();
+
   if (perm === "granted" || wasMicGrantedBefore()) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       markMicGranted();
       void unlockBrowserAudio();
       return stream;
@@ -126,7 +129,7 @@ export async function acquireMicrophoneStream(): Promise<MediaStream> {
     }
   }
 
-  return requestMicrophoneStream();
+  return requestMicrophoneStream(interpreter);
 }
 
 export { takeCachedMicStream, hasCachedMicStream };

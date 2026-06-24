@@ -1,4 +1,32 @@
-/** Tarjima ovozini navbat bilan ijro etish (mobil autoplay muammosini yengish) */
+/** Tarjima ovozini navbat bilan ijro etish (mobil autoplay + baland ovoz) */
+const PLAYBACK_GAIN = 3.2;
+const TARGET_PEAK = 0.92;
+
+function normalizeAudioBuffer(ctx: AudioContext, buffer: AudioBuffer): AudioBuffer {
+  const channels = buffer.numberOfChannels;
+  let peak = 0;
+
+  for (let c = 0; c < channels; c++) {
+    const data = buffer.getChannelData(c);
+    for (let i = 0; i < data.length; i++) {
+      peak = Math.max(peak, Math.abs(data[i]));
+    }
+  }
+
+  if (peak < 0.001) return buffer;
+
+  const gain = TARGET_PEAK / peak;
+  const out = ctx.createBuffer(channels, buffer.length, buffer.sampleRate);
+  for (let c = 0; c < channels; c++) {
+    const src = buffer.getChannelData(c);
+    const dst = out.getChannelData(c);
+    for (let i = 0; i < src.length; i++) {
+      dst[i] = src[i] * gain;
+    }
+  }
+  return out;
+}
+
 export class TranslationAudioQueue {
   private queue: string[] = [];
   private playing = false;
@@ -6,6 +34,7 @@ export class TranslationAudioQueue {
   private unlocked = false;
   private ctx: AudioContext | null = null;
   private gainNode: GainNode | null = null;
+  private compressor: DynamicsCompressorNode | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
   private onSpeakingChange: ((speaking: boolean) => void) | null = null;
 
@@ -18,6 +47,23 @@ export class TranslationAudioQueue {
     this.onSpeakingChange = cb;
   }
 
+  private ensureGraph(ctx: AudioContext) {
+    if (!this.gainNode || !this.compressor) {
+      this.compressor = ctx.createDynamicsCompressor();
+      this.compressor.threshold.value = -18;
+      this.compressor.knee.value = 20;
+      this.compressor.ratio.value = 8;
+      this.compressor.attack.value = 0.003;
+      this.compressor.release.value = 0.15;
+
+      this.gainNode = ctx.createGain();
+      this.gainNode.gain.value = PLAYBACK_GAIN;
+
+      this.compressor.connect(this.gainNode);
+      this.gainNode.connect(ctx.destination);
+    }
+  }
+
   async unlock(): Promise<boolean> {
     if (this.unlocked && this.ctx?.state === "running") return true;
     try {
@@ -27,8 +73,7 @@ export class TranslationAudioQueue {
       if (!Ctx) return false;
       if (!this.ctx || this.ctx.state === "closed") {
         this.ctx = new Ctx();
-        this.gainNode = this.ctx.createGain();
-        this.gainNode.connect(this.ctx.destination);
+        this.ensureGraph(this.ctx);
       }
       if (this.ctx.state === "suspended") await this.ctx.resume();
       const buf = this.ctx.createBuffer(1, 1, 22050);
@@ -66,20 +111,23 @@ export class TranslationAudioQueue {
   private async playBase64Mp3(base64: string): Promise<void> {
     if (!this.unlocked) await this.unlock();
     const ctx = this.ctx;
-    const gain = this.gainNode;
-    if (!ctx || !gain) {
+    const compressor = this.compressor;
+    if (!ctx || !compressor) {
       await this.playWithHtmlAudio(base64);
       return;
     }
+
+    this.ensureGraph(ctx);
 
     try {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const audioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0));
+      const decoded = await ctx.decodeAudioData(bytes.buffer.slice(0));
+      const normalized = normalizeAudioBuffer(ctx, decoded);
       const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(gain);
+      source.buffer = normalized;
+      source.connect(compressor);
       this.currentSource = source;
 
       await new Promise<void>((resolve) => {
@@ -95,6 +143,24 @@ export class TranslationAudioQueue {
 
   private async playWithHtmlAudio(base64: string): Promise<void> {
     try {
+      if (!this.unlocked) await this.unlock();
+      const ctx = this.ctx;
+      if (ctx && this.compressor) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const decoded = await ctx.decodeAudioData(bytes.buffer.slice(0));
+        const normalized = normalizeAudioBuffer(ctx, decoded);
+        const source = ctx.createBufferSource();
+        source.buffer = normalized;
+        source.connect(this.compressor);
+        await new Promise<void>((resolve) => {
+          source.onended = () => resolve();
+          source.start(0);
+        });
+        return;
+      }
+
       const audio = new Audio(`data:audio/mp3;base64,${base64}`);
       audio.volume = 1;
       await new Promise<void>((resolve) => {

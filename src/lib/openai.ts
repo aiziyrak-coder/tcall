@@ -20,7 +20,8 @@ function getModel(): string {
 export async function transcribeAudio(
   audioBuffer: Buffer,
   filename: string,
-  language?: string
+  hintLang?: string,
+  whisperLangOverride?: string
 ): Promise<string> {
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)]);
@@ -29,9 +30,10 @@ export async function transcribeAudio(
   formData.append("response_format", "json");
   formData.append("temperature", "0");
 
-  const whisperLang = language ? getWhisperLanguage(language) : undefined;
+  const whisperLang =
+    whisperLangOverride ?? (hintLang ? getWhisperLanguage(hintLang) : undefined);
   if (whisperLang) formData.append("language", whisperLang);
-  if (language) formData.append("prompt", getWhisperPrompt(language));
+  if (hintLang) formData.append("prompt", getWhisperPrompt(hintLang));
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",

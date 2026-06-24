@@ -8,10 +8,60 @@ const WHISPER_LANGS = new Set([
   "mk", "bs", "ps", "am", "yo", "ha", "my", "km", "lo",
 ]);
 
+/** Whisper to'g'ridan-to'g'ri qo'llab-quvvatlamaydigan tillar uchun yaqin til fallback */
+export const WHISPER_FALLBACK_LANG: Record<string, string[]> = {
+  uz: ["tr", "ru", "az"],
+  ky: ["kk", "ru", "tr"],
+  tg: ["fa", "ru", "tr"],
+  tk: ["tr", "az"],
+  ug: ["tr", "ru"],
+  tt: ["ru", "tr"],
+  crh: ["tr", "ru"],
+};
+
 /** Whisper uchun til kodi — qo'llab-quvvatlanmasa auto-detect */
 export function getWhisperLanguage(code: string): string | undefined {
   const base = code.split("-")[0].toLowerCase();
   return WHISPER_LANGS.has(base) ? base : undefined;
+}
+
+export interface TranscriptionAttempt {
+  hintLang?: string;
+  whisperLang?: string;
+}
+
+/** Transkripsiya uchun ketma-ket urinishlar — barcha tillar uchun */
+export function getTranscriptionAttempts(hintLang?: string): TranscriptionAttempt[] {
+  const attempts: TranscriptionAttempt[] = [];
+  const seen = new Set<string>();
+
+  const add = (hint?: string, whisper?: string) => {
+    const key = `${hint || "_"}:${whisper || "auto"}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    attempts.push({ hintLang: hint, whisperLang: whisper });
+  };
+
+  if (!hintLang) {
+    add(undefined, undefined);
+    return attempts;
+  }
+
+  const base = hintLang.split("-")[0].toLowerCase();
+  const nativeWhisper = getWhisperLanguage(base);
+
+  if (nativeWhisper) {
+    add(base, nativeWhisper);
+  }
+
+  add(base, undefined);
+
+  for (const fb of WHISPER_FALLBACK_LANG[base] || []) {
+    if (getWhisperLanguage(fb)) add(base, fb);
+  }
+
+  add(undefined, undefined);
+  return attempts;
 }
 
 const WHISPER_HALLUCINATIONS = [
@@ -59,7 +109,7 @@ function normalizeForDedup(text: string): string {
 
 export function getWhisperPrompt(language: string): string {
   const prompts: Record<string, string> = {
-    uz: "Yuzma-yuz suhbat, o'zbek tilida gapirish.",
+    uz: "Assalomu alaykum. Qandaysiz? Men o'zbek tilida gapiryapman. Rahmat. Ha, yo'q. Iltimos, yaxshi, tushundim, qayerda, qachon, nima, kim, qanday.",
     ru: "Разговор лицом к лицу на русском языке.",
     en: "Face-to-face conversation in English.",
     tr: "Yüz yüze Türkçe konuşma.",

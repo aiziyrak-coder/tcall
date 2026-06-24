@@ -44,6 +44,24 @@ export function getAudioConstraints(): MediaStreamConstraints {
       autoGainControl: true,
       sampleRate: { ideal: 48000 },
       channelCount: { ideal: 1 },
+      // @ts-expect-error — ba'zi brauzerlar qo'llab-quvvatlaydi
+      voiceIsolation: true,
+    },
+    video: false,
+  };
+}
+
+/** Tarjimon uchun — balandroq va aniqroq yozuv */
+export function getInterpreterAudioConstraints(): MediaStreamConstraints {
+  return {
+    audio: {
+      echoCancellation: { ideal: true },
+      noiseSuppression: { ideal: true },
+      autoGainControl: { ideal: true },
+      sampleRate: { ideal: 48000, min: 16000 },
+      channelCount: { ideal: 1 },
+      // @ts-expect-error — Chrome/Telegram WebView
+      voiceIsolation: true,
     },
     video: false,
   };

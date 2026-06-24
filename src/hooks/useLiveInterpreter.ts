@@ -247,7 +247,7 @@ export function useLiveInterpreter(userLanguage: string) {
       const queue = ensureAudioQueue();
       await queue.unlock();
 
-      const stream = await acquireMicrophoneStream();
+      const stream = await acquireMicrophoneStream(true);
       streamRef.current = stream;
 
       const lock = await requestWakeLock();
