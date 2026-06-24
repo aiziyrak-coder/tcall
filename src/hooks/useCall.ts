@@ -6,7 +6,6 @@ import { apiFetch } from "@/lib/api";
 import { waitForSharedSocket } from "@/lib/call-socket";
 import { TranslationAudioQueue } from "@/lib/audioQueue";
 import {
-  getAudioConstraints,
   getPreferredAudioMimeType,
   requestWakeLock,
 } from "@/lib/mobile";
@@ -15,6 +14,9 @@ import {
   queryMicPermission,
   requestMicrophoneStream,
   wasMicGrantedBefore,
+  acquireMicrophoneStream,
+  watchMicPermission,
+  takeCachedMicStream,
 } from "@/lib/mic-permission";
 import {
   playMediaStreamOnElement,
@@ -30,7 +32,7 @@ export interface TranslationMessage extends TranslationPayload {
 
 export type CallStatus = "connecting" | "waiting" | "ringing" | "active" | "ended" | "error";
 export type CallError = "media_denied" | "room_full" | "room_error" | "ai_error" | null;
-export type MicStatus = "pending" | "requesting" | "granted" | "denied";
+export type MicStatus = "checking" | "pending" | "requesting" | "granted" | "denied" | "tap";
 export type TranslationMode = "text" | "voice";
 
 interface UseCallOptions {
@@ -66,7 +68,10 @@ export function useCall({
   const [socketConnected, setSocketConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const [micStatus, setMicStatus] = useState<MicStatus>("pending");
+  const [micStatus, setMicStatus] = useState<MicStatus>(() => {
+    if (typeof window !== "undefined" && wasMicGrantedBefore()) return "checking";
+    return "pending";
+  });
 
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -707,22 +712,40 @@ export function useCall({
     startSessionRef.current = startWithStream;
 
     async function bootstrap() {
+      watchMicPermission(() => {
+        if (mounted) void tryAcquire(false);
+      });
+
+      await tryAcquire(true);
+    }
+
+    async function tryAcquire(isInitial: boolean) {
       const perm = await queryMicPermission();
       if (perm === "denied") {
         if (mounted) setMicStatus("denied");
         return;
       }
-      if (perm === "granted" || wasMicGrantedBefore()) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
-          markMicGranted();
-          await startWithStream(stream);
-          return;
-        } catch {
-          /* iOS: birinchi marta user gesture kerak */
-        }
+
+      const cached = takeCachedMicStream();
+      if (cached) {
+        markMicGranted();
+        await startWithStream(cached);
+        return;
       }
-      if (mounted) setMicStatus("pending");
+
+      try {
+        const stream = await acquireMicrophoneStream();
+        await startWithStream(stream);
+        return;
+      } catch (err) {
+        const needsGesture =
+          err instanceof Error && err.message === "NEEDS_GESTURE";
+        if (needsGesture || wasMicGrantedBefore() || perm === "granted") {
+          if (mounted) setMicStatus("tap");
+          return;
+        }
+        if (isInitial && mounted) setMicStatus("pending");
+      }
     }
 
     void bootstrap();
@@ -775,13 +798,20 @@ export function useCall({
     setMicStatus("requesting");
     try {
       await unlockBrowserAudio();
-      const stream = await requestMicrophoneStream();
+      const cached = takeCachedMicStream();
+      const stream = cached ?? (await requestMicrophoneStream());
       await startSessionRef.current(stream);
       return true;
     } catch (err) {
       console.error("Mic permission error:", err);
       const perm = await queryMicPermission();
-      setMicStatus(perm === "denied" ? "denied" : "pending");
+      if (perm === "denied") {
+        setMicStatus("denied");
+      } else if (wasMicGrantedBefore()) {
+        setMicStatus("tap");
+      } else {
+        setMicStatus("pending");
+      }
       return false;
     }
   }, []);

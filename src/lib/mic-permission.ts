@@ -1,5 +1,10 @@
 import { getAudioConstraints } from "./mobile";
 import { unlockBrowserAudio } from "./audio-unlock";
+import {
+  cacheMicStream,
+  hasCachedMicStream,
+  takeCachedMicStream,
+} from "./mic-stream-cache";
 
 const MIC_GRANTED_KEY = "tcall:mic-granted";
 
@@ -25,14 +30,34 @@ export function wasMicGrantedBefore(): boolean {
 
 export async function queryMicPermission(): Promise<"granted" | "denied" | "prompt" | "unknown"> {
   if (typeof navigator === "undefined" || !navigator.permissions?.query) {
-    return "unknown";
+    return wasMicGrantedBefore() ? "granted" : "unknown";
   }
   try {
     const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+    if (result.state === "granted") markMicGranted();
     return result.state as "granted" | "denied" | "prompt";
   } catch {
-    return "unknown";
+    return wasMicGrantedBefore() ? "granted" : "unknown";
   }
+}
+
+export function watchMicPermission(onGranted: () => void) {
+  if (typeof navigator === "undefined" || !navigator.permissions?.query) return;
+  void navigator.permissions
+    .query({ name: "microphone" as PermissionName })
+    .then((result) => {
+      if (result.state === "granted") {
+        markMicGranted();
+        onGranted();
+      }
+      result.onchange = () => {
+        if (result.state === "granted") {
+          markMicGranted();
+          onGranted();
+        }
+      };
+    })
+    .catch(() => {});
 }
 
 /** User gesture kontekstida chaqiring — brauzer ruxsat oynasini ochadi */
@@ -46,19 +71,62 @@ export async function requestMicrophoneStream(): Promise<MediaStream> {
   return stream;
 }
 
-/** Dashboard dial/accept gesture ichida — ruxsatni oldindan so'rash */
+/** Dashboard dial/accept/join gesture ichida — streamni saqlab qoladi */
 export async function prefetchMicrophoneAccess(): Promise<boolean> {
   try {
-    const perm = await queryMicPermission();
-    if (perm === "granted") {
+    if (hasCachedMicStream()) {
       markMicGranted();
       return true;
     }
+
+    const perm = await queryMicPermission();
     if (perm === "denied") return false;
+    if (perm === "granted") {
+      markMicGranted();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+        cacheMicStream(stream);
+        return true;
+      } catch {
+        return wasMicGrantedBefore();
+      }
+    }
+
     const stream = await requestMicrophoneStream();
-    stream.getTracks().forEach((t) => t.stop());
+    cacheMicStream(stream);
     return true;
   } catch {
     return false;
   }
 }
+
+export async function acquireMicrophoneStream(): Promise<MediaStream> {
+  const cached = takeCachedMicStream();
+  if (cached) {
+    markMicGranted();
+    return cached;
+  }
+
+  const perm = await queryMicPermission();
+  if (perm === "denied") {
+    throw new Error("Mic denied");
+  }
+
+  if (perm === "granted" || wasMicGrantedBefore()) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+      markMicGranted();
+      void unlockBrowserAudio();
+      return stream;
+    } catch (err) {
+      if (wasMicGrantedBefore() || perm === "granted") {
+        throw new Error("NEEDS_GESTURE");
+      }
+      throw err;
+    }
+  }
+
+  return requestMicrophoneStream();
+}
+
+export { takeCachedMicStream, hasCachedMicStream };

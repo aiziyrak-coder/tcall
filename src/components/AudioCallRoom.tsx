@@ -108,14 +108,10 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
   }, [call.callStatus, call.micStatus, call, leaveToDashboard]);
 
   if (call.micStatus !== "granted" && call.callStatus !== "ended") {
-    const gateStatus =
-      call.micStatus === "requesting" ? "requesting"
-      : call.micStatus === "denied" ? "denied"
-      : "pending";
     return (
       <MicPermissionGate
         ui={ui}
-        status={gateStatus}
+        status={call.micStatus}
         onAllow={() => void call.requestMicrophone()}
       />
     );

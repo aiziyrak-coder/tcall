@@ -1,16 +1,22 @@
 "use client";
 
-import { Mic, AlertCircle, Settings } from "lucide-react";
+import { Mic, AlertCircle, Settings, Phone } from "lucide-react";
 import { TcallLogo } from "@/components/TcallLogo";
+import { AppSplash } from "@/components/AppSplash";
 
 interface MicPermissionGateProps {
   ui: Record<string, string>;
-  status: "pending" | "requesting" | "denied";
+  status: "checking" | "pending" | "requesting" | "denied" | "tap";
   onAllow: () => void;
 }
 
 export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProps) {
+  if (status === "checking") {
+    return <AppSplash message={ui.micPermissionWaiting} />;
+  }
+
   const denied = status === "denied";
+  const tap = status === "tap";
 
   return (
     <div className="phone-screen flex items-center justify-center p-5">
@@ -24,10 +30,10 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
         )}
 
         <h2 className="mic-gate-title">
-          {denied ? ui.micDeniedTitle : ui.micPermissionTitle}
+          {denied ? ui.micDeniedTitle : tap ? ui.micTapTitle : ui.micPermissionTitle}
         </h2>
         <p className="mic-gate-desc">
-          {denied ? ui.micDeniedDesc : ui.micPermissionDesc}
+          {denied ? ui.micDeniedDesc : tap ? ui.micTapDesc : ui.micPermissionDesc}
         </p>
 
         {status === "requesting" ? (
@@ -37,8 +43,8 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
           </div>
         ) : (
           <button type="button" onClick={onAllow} className="mic-gate-btn">
-            <Mic className="w-5 h-5" />
-            {denied ? ui.micRetry : ui.micAllow}
+            {tap ? <Phone className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            {denied ? ui.micRetry : tap ? ui.micTapBtn : ui.micAllow}
           </button>
         )}
 
