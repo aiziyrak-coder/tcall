@@ -61,6 +61,7 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
     priceLabel: string;
   } | null>(null);
   const [checking, setChecking] = useState(false);
+  const [customCheckError, setCustomCheckError] = useState("");
 
   const loadCatalog = useCallback(async () => {
     setLoading(true);
@@ -96,11 +97,18 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
     const digits = customDigits.replace(/\D/g, "");
     if (digits.length !== 9) {
       setCustomCheck(null);
+      setCustomCheckError("");
+      return;
+    }
+    if (digits[0] === "0") {
+      setCustomCheck(null);
+      setCustomCheckError(ui.vanityInvalidFirstDigit);
       return;
     }
 
     const timer = setTimeout(async () => {
       setChecking(true);
+      setCustomCheckError("");
       try {
         const res = await apiFetch("/api/numbers/check", {
           method: "POST",
@@ -115,15 +123,16 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
           tier: data.tier,
           priceLabel: data.priceLabel,
         });
-      } catch {
+      } catch (e) {
         setCustomCheck(null);
+        setCustomCheckError(e instanceof Error ? e.message : ui.chatActionFailed);
       } finally {
         setChecking(false);
       }
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [customDigits, mode]);
+  }, [customDigits, mode, ui.vanityInvalidFirstDigit, ui.chatActionFailed]);
 
   const submitRequest = async (opts: { numberId?: string; number?: string }) => {
     const key = opts.numberId || opts.number || "custom";
@@ -155,7 +164,9 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
   const appendDigit = (d: string) => {
     const clean = customDigits.replace(/\D/g, "");
     if (clean.length >= 9) return;
+    if (clean.length === 0 && d === "0") return;
     setCustomDigits(formatPartialTcallId(clean + d));
+    setCustomCheckError("");
   };
 
   const backspace = () => {
@@ -303,7 +314,13 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
             <div className="flex justify-center py-2"><TcallLogo size="xs" animate /></div>
           )}
 
-          {!checking && customCheck && (
+          {!checking && customCheckError && (
+            <div className="vanity-custom-result vanity-custom-taken">
+              <p className="font-medium">{customCheckError}</p>
+            </div>
+          )}
+
+          {!checking && !customCheckError && customCheck && (
             <div className={`vanity-custom-result ${customCheck.available ? "vanity-custom-free" : "vanity-custom-taken"}`}>
               {customCheck.available ? (
                 <>

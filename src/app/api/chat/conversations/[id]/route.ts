@@ -6,6 +6,7 @@ import {
   getMessagesForConversation,
   leaveConversation,
   markConversationRead,
+  updateGroupName,
 } from "@/lib/chat-service";
 
 export async function GET(
@@ -38,7 +39,14 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   try {
-    await markConversationRead(params.id, session.userId);
+    const body = await req.json().catch(() => ({}));
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+
+    if (name) {
+      await updateGroupName(params.id, session.userId, name);
+    } else {
+      await markConversationRead(params.id, session.userId);
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });

@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     let audioBase64: string | undefined;
     if (withSpeech && translated && sourceLang !== targetLang) {
-      const audio = await textToSpeech(translated);
+      const audio = await textToSpeech(translated, targetLang);
       if (audio) {
         audioBase64 = audio.toString("base64");
       }

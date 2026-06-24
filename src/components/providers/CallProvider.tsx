@@ -187,6 +187,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
     socket.on("incoming-call", (data: IncomingCall) => {
       setIncomingCall(data);
       showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
+      void unlockAudio().then(() => startRingtone());
     });
 
     socket.on("call-accepted", ({ roomId }: { roomId: string }) => {

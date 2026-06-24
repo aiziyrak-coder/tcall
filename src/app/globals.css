@@ -170,6 +170,12 @@
   @apply relative z-10 mx-4 mt-2 text-center;
 }
 
+.phone-subtitle-voice {
+  @apply mt-3 py-2 px-3 opacity-95;
+  max-height: 5.5rem;
+  overflow-y: auto;
+}
+
 .phone-voice-badge {
   @apply relative z-10 mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600 text-white text-sm;
   animation: voicePulse 1.2s ease-in-out infinite;
@@ -627,6 +633,38 @@ body.tg-webapp .ios-tab-bar {
   @apply border-brand-200;
   background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
   box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
+}
+
+.room-participants-box {
+  @apply mb-4 p-3 rounded-xl bg-white/80 border border-black/[0.06];
+}
+
+.room-participants-title {
+  @apply text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2;
+}
+
+.room-participants-list {
+  @apply space-y-2;
+}
+
+.room-participant-row {
+  @apply flex items-center gap-2.5;
+}
+
+.room-participant-avatar {
+  @apply w-9 h-9 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex items-center justify-center shrink-0;
+}
+
+.room-participant-host {
+  @apply text-[10px] font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full;
+}
+
+.room-participants-status {
+  @apply text-xs text-slate-500 mt-3 pt-2 border-t border-black/[0.05];
+}
+
+.room-participants-status-live {
+  @apply text-green-600 font-medium;
 }
 
 .room-card-head {
@@ -1590,4 +1628,45 @@ body.has-mini-call .chat-app-thread .chat-composer {
 
 .chat-manage-item-danger {
   @apply text-red-600;
+}
+
+.chat-members-panel {
+  max-height: min(80vh, 520px);
+  overflow-y: auto;
+}
+
+.chat-members-list {
+  @apply space-y-2;
+}
+
+.chat-member-row {
+  @apply flex flex-wrap items-center gap-2 p-3 rounded-xl bg-slate-50 border border-black/[0.05];
+}
+
+.chat-member-avatar {
+  @apply w-10 h-10 rounded-full bg-brand-100 text-brand-700 text-sm font-bold flex items-center justify-center shrink-0;
+}
+
+.chat-member-role {
+  @apply inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border border-black/[0.08] text-slate-600;
+}
+
+.chat-member-role-owner {
+  @apply text-amber-700 border-amber-200 bg-amber-50;
+}
+
+.chat-member-role-admin {
+  @apply text-brand-700 border-brand-200 bg-brand-50;
+}
+
+.chat-member-actions {
+  @apply flex flex-wrap gap-1.5 w-full sm:w-auto sm:ml-auto;
+}
+
+.chat-member-action-btn {
+  @apply text-[11px] font-medium px-2.5 py-1.5 rounded-lg bg-white border border-black/[0.08] text-slate-700 touch-manipulation;
+}
+
+.chat-member-action-danger {
+  @apply text-red-600 border-red-200 bg-red-50;
 }

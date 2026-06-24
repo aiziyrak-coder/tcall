@@ -83,9 +83,13 @@ export function Dialer({ userLanguage }: DialerProps) {
     }
     if (key === "*" || key === "#") return;
     if (digits.length >= 9) return;
+    if (digits.length === 0 && key === "0") {
+      setError(ui.dialInvalidFirstDigit);
+      return;
+    }
     setDigits((d) => d + key);
     setError("");
-  }, [digits.length]);
+  }, [digits.length, ui.dialInvalidFirstDigit]);
 
   const handleCall = useCallback(async () => {
     if (digits.length !== 9 || blockedYou) return;

@@ -28,6 +28,8 @@ export async function isBlockedBetween(userIdA: string, tcallIdA: string, userId
   return !!blocked;
 }
 
+export type MemberRole = "owner" | "admin" | "member";
+
 export async function findOrCreateDirectConversation(userIdA: string, userIdB: string) {
   const existing = await prisma.conversation.findMany({
     where: {
@@ -47,7 +49,7 @@ export async function findOrCreateDirectConversation(userIdA: string, userIdB: s
       type: "direct",
       createdById: userIdA,
       members: {
-        create: [{ userId: userIdA }, { userId: userIdB }],
+        create: [{ userId: userIdA, role: "member" }, { userId: userIdB, role: "member" }],
       },
     },
   });
@@ -66,7 +68,10 @@ export async function createGroupConversation(
       name: name.trim().slice(0, 80),
       createdById: creatorId,
       members: {
-        create: uniqueIds.map((userId) => ({ userId })),
+        create: uniqueIds.map((userId) => ({
+          userId,
+          role: userId === creatorId ? "owner" : "member",
+        })),
       },
     },
   });
@@ -79,6 +84,138 @@ export async function assertMember(conversationId: string, userId: string) {
   });
   if (!member) throw new Error("FORBIDDEN");
   return member;
+}
+
+export async function getMemberRole(conversationId: string, userId: string): Promise<MemberRole> {
+  const member = await assertMember(conversationId, userId);
+  return (member.role as MemberRole) || "member";
+}
+
+export async function assertCanManageGroup(conversationId: string, actorId: string) {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true, createdById: true },
+  });
+  if (!conv || conv.type !== "group") throw new Error("NOT_GROUP");
+  const role = await getMemberRole(conversationId, actorId);
+  if (role !== "owner" && role !== "admin") throw new Error("FORBIDDEN");
+  return conv;
+}
+
+export async function updateGroupName(conversationId: string, actorId: string, name: string) {
+  await assertCanManageGroup(conversationId, actorId);
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { name: name.trim().slice(0, 80), updatedAt: new Date() },
+  });
+}
+
+export async function setMemberRole(
+  conversationId: string,
+  actorId: string,
+  targetUserId: string,
+  role: MemberRole
+) {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { members: true },
+  });
+  if (!conv || conv.type !== "group") throw new Error("NOT_GROUP");
+
+  const actorRole = await getMemberRole(conversationId, actorId);
+  const target = conv.members.find((m) => m.userId === targetUserId);
+  if (!target) throw new Error("NOT_FOUND");
+  const targetRole = (target.role as MemberRole) || "member";
+
+  if (role === "owner") {
+    if (actorRole !== "owner") throw new Error("FORBIDDEN");
+    await prisma.$transaction([
+      prisma.conversationMember.update({
+        where: { conversationId_userId: { conversationId, userId: actorId } },
+        data: { role: "admin" },
+      }),
+      prisma.conversationMember.update({
+        where: { conversationId_userId: { conversationId, userId: targetUserId } },
+        data: { role: "owner" },
+      }),
+      prisma.conversation.update({
+        where: { id: conversationId },
+        data: { createdById: targetUserId },
+      }),
+    ]);
+    return { role: "owner" as const };
+  }
+
+  if (actorRole !== "owner") throw new Error("FORBIDDEN");
+  if (targetRole === "owner") throw new Error("FORBIDDEN");
+  if (role !== "admin" && role !== "member") throw new Error("INVALID_ROLE");
+
+  await prisma.conversationMember.update({
+    where: { conversationId_userId: { conversationId, userId: targetUserId } },
+    data: { role },
+  });
+  return { role };
+}
+
+export async function removeMemberFromGroup(
+  conversationId: string,
+  actorId: string,
+  targetUserId: string
+) {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { members: true },
+  });
+  if (!conv || conv.type !== "group") throw new Error("NOT_GROUP");
+
+  const actorRole = await getMemberRole(conversationId, actorId);
+  const target = conv.members.find((m) => m.userId === targetUserId);
+  if (!target) throw new Error("NOT_FOUND");
+  const targetRole = (target.role as MemberRole) || "member";
+
+  if (actorId === targetUserId) {
+    if (targetRole === "owner") {
+      const others = conv.members.filter((m) => m.userId !== actorId);
+      if (others.length === 0) {
+        await prisma.conversation.delete({ where: { id: conversationId } });
+        return { removed: true, purged: true };
+      }
+      const next =
+        others.find((m) => m.role === "admin") ||
+        others.find((m) => m.role === "member") ||
+        others[0];
+      await prisma.$transaction([
+        prisma.conversationMember.delete({
+          where: { conversationId_userId: { conversationId, userId: actorId } },
+        }),
+        prisma.conversationMember.update({
+          where: { conversationId_userId: { conversationId, userId: next.userId } },
+          data: { role: "owner" },
+        }),
+        prisma.conversation.update({
+          where: { id: conversationId },
+          data: { createdById: next.userId },
+        }),
+      ]);
+      return { removed: true, newOwnerId: next.userId };
+    }
+  } else {
+    if (actorRole !== "owner" && actorRole !== "admin") throw new Error("FORBIDDEN");
+    if (targetRole === "owner") throw new Error("FORBIDDEN");
+    if (targetRole === "admin" && actorRole !== "owner") throw new Error("FORBIDDEN");
+  }
+
+  await prisma.conversationMember.delete({
+    where: { conversationId_userId: { conversationId, userId: targetUserId } },
+  });
+
+  const remaining = await prisma.conversationMember.count({ where: { conversationId } });
+  if (remaining === 0) {
+    await prisma.conversation.delete({ where: { id: conversationId } });
+    return { removed: true, purged: true };
+  }
+
+  return { removed: true };
 }
 
 export async function sendChatMessage(input: SendMessageInput) {
@@ -267,6 +404,7 @@ export async function getConversationsForUser(userId: string, userLang: string) 
           name: cm.user.name,
           tcallId: cm.user.tcallId,
           language: cm.user.language,
+          role: (cm.role as MemberRole) || "member",
         })),
         lastMessage: lastMsg
           ? formatMessageForUser(
@@ -360,7 +498,13 @@ export async function addMembersToGroup(
     select: { type: true, createdById: true },
   });
   if (!conv || conv.type !== "group") throw new Error("NOT_GROUP");
-  await assertMember(conversationId, actorId);
+  await assertCanManageGroup(conversationId, actorId);
+
+  const actor = await prisma.user.findUnique({
+    where: { id: actorId },
+    select: { tcallId: true },
+  });
+  if (!actor?.tcallId) throw new Error("FORBIDDEN");
 
   const uniqueIds = [...new Set(memberTcallIds.map((s) => s.replace(/\D/g, "")).filter((s) => s.length === 9))];
   if (uniqueIds.length === 0) throw new Error("NO_MEMBERS");
@@ -376,11 +520,20 @@ export async function addMembersToGroup(
   });
   const existingIds = new Set(existing.map((m) => m.userId));
 
-  const toAdd = users.filter((u) => !existingIds.has(u.id));
-  if (toAdd.length === 0) return { added: 0 };
+  const toAdd: typeof users = [];
+  for (const u of users) {
+    if (existingIds.has(u.id)) continue;
+    if (u.tcallId) {
+      const blocked = await isBlockedBetween(actorId, actor.tcallId, u.id, u.tcallId);
+      if (blocked) continue;
+    }
+    toAdd.push(u);
+  }
+
+  if (toAdd.length === 0) return { added: 0, skipped: uniqueIds.length - users.length };
 
   await prisma.conversationMember.createMany({
-    data: toAdd.map((u) => ({ conversationId, userId: u.id })),
+    data: toAdd.map((u) => ({ conversationId, userId: u.id, role: "member" })),
   });
 
   await prisma.conversation.update({

@@ -5,7 +5,8 @@ export class TranslationAudioQueue {
   private enabled = true;
   private unlocked = false;
   private ctx: AudioContext | null = null;
-  private currentAudio: HTMLAudioElement | null = null;
+  private gainNode: GainNode | null = null;
+  private currentSource: AudioBufferSourceNode | null = null;
   private onSpeakingChange: ((speaking: boolean) => void) | null = null;
 
   setEnabled(enabled: boolean) {
@@ -18,11 +19,17 @@ export class TranslationAudioQueue {
   }
 
   async unlock(): Promise<boolean> {
-    if (this.unlocked) return true;
+    if (this.unlocked && this.ctx?.state === "running") return true;
     try {
-      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!Ctx) return false;
-      this.ctx = new Ctx();
+      if (!this.ctx || this.ctx.state === "closed") {
+        this.ctx = new Ctx();
+        this.gainNode = this.ctx.createGain();
+        this.gainNode.connect(this.ctx.destination);
+      }
       if (this.ctx.state === "suspended") await this.ctx.resume();
       const buf = this.ctx.createBuffer(1, 1, 22050);
       const src = this.ctx.createBufferSource();
@@ -44,12 +51,60 @@ export class TranslationAudioQueue {
 
   stop() {
     this.queue = [];
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio = null;
+    if (this.currentSource) {
+      try {
+        this.currentSource.stop();
+      } catch {
+        /* ignore */
+      }
+      this.currentSource = null;
     }
     this.playing = false;
     this.onSpeakingChange?.(false);
+  }
+
+  private async playBase64Mp3(base64: string): Promise<void> {
+    if (!this.unlocked) await this.unlock();
+    const ctx = this.ctx;
+    const gain = this.gainNode;
+    if (!ctx || !gain) {
+      await this.playWithHtmlAudio(base64);
+      return;
+    }
+
+    try {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const audioBuffer = await ctx.decodeAudioData(bytes.buffer.slice(0));
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(gain);
+      this.currentSource = source;
+
+      await new Promise<void>((resolve) => {
+        source.onended = () => resolve();
+        source.start(0);
+      });
+    } catch {
+      await this.playWithHtmlAudio(base64);
+    } finally {
+      this.currentSource = null;
+    }
+  }
+
+  private async playWithHtmlAudio(base64: string): Promise<void> {
+    try {
+      const audio = new Audio(`data:audio/mp3;base64,${base64}`);
+      audio.volume = 1;
+      await new Promise<void>((resolve) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   private async processQueue() {
@@ -62,21 +117,8 @@ export class TranslationAudioQueue {
     this.onSpeakingChange?.(true);
 
     const base64 = this.queue.shift()!;
-    try {
-      const audio = new Audio(`data:audio/mp3;base64,${base64}`);
-      audio.volume = 1;
-      this.currentAudio = audio;
+    await this.playBase64Mp3(base64);
 
-      await new Promise<void>((resolve) => {
-        audio.onended = () => resolve();
-        audio.onerror = () => resolve();
-        audio.play().catch(() => resolve());
-      });
-    } catch {
-      /* ignore */
-    }
-
-    this.currentAudio = null;
     this.playing = false;
 
     if (this.queue.length > 0) {

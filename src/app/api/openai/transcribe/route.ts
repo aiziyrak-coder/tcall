@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
     }
 
-    const limited = rateLimit(`transcribe:${session.userId}`, 60, 60_000);
+    const limited = rateLimit(`transcribe:${session.userId}`, 120, 60_000);
     if (!limited.ok) {
       return NextResponse.json(
         { error: `Limit. ${limited.retryAfterSec}s kuting` },
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await audio.arrayBuffer());
 
     // Juda kichik bo'laklar — ovoz yo'q
-    if (buffer.length < 1000) {
+    if (buffer.length < 600) {
       return NextResponse.json({ text: "" });
     }
 

@@ -23,6 +23,7 @@ import { getUI } from "@/lib/languages";
 import { resolveChatMediaUrl } from "@/lib/chat-media-url";
 import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
+import { ChatGroupMembersPanel } from "@/components/ChatGroupMembersPanel";
 import { TcallLogo } from "@/components/TcallLogo";
 
 const EMOJIS = [
@@ -53,7 +54,7 @@ interface ConversationItem {
   unreadCount: number;
   updatedAt: string;
   lastMessage: ChatMessageItem | null;
-  members: { userId: string; name: string; tcallId: string | null }[];
+  members: { userId: string; name: string; tcallId: string | null; role?: string }[];
 }
 
 interface ChatMessengerProps {
@@ -95,6 +96,9 @@ export function ChatMessenger({
   const [showManage, setShowManage] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [addMemberIds, setAddMemberIds] = useState("");
+  const [showMembers, setShowMembers] = useState(false);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [showRenameGroup, setShowRenameGroup] = useState(false);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -126,6 +130,8 @@ export function ChatMessenger({
     setActiveId(null);
     setShowManage(false);
     setShowAddMembers(false);
+    setShowMembers(false);
+    setShowRenameGroup(false);
   }, []);
 
   useEffect(() => {
@@ -173,13 +179,16 @@ export function ChatMessenger({
         body: JSON.stringify({ tcallId }),
       });
       const d = await r.json();
-      if (!r.ok) return;
+      if (!r.ok) {
+        setActionError((d as { error?: string }).error || ui.chatActionFailed);
+        return;
+      }
       await loadConversations();
       await openConversation(d.conversationId);
       setShowNewChat(false);
       setNewTcallId("");
     },
-    [loadConversations, openConversation]
+    [loadConversations, openConversation, ui.chatActionFailed]
   );
 
   useEffect(() => {
@@ -301,13 +310,67 @@ export function ChatMessenger({
       body: JSON.stringify({ type: "group", name: groupName, memberTcallIds: ids }),
     });
     const d = await r.json();
-    if (r.ok) {
-      setShowNewGroup(false);
-      setGroupName("");
-      setGroupMembers("");
-      await loadConversations();
-      await openConversation(d.conversationId);
+    if (!r.ok) {
+      setActionError((d as { error?: string }).error || ui.chatActionFailed);
+      return;
     }
+    setShowNewGroup(false);
+    setGroupName("");
+    setGroupMembers("");
+    await loadConversations();
+    await openConversation(d.conversationId);
+  };
+
+  const removeMember = async (targetUserId: string) => {
+    if (!activeId) return;
+    setActionError("");
+    const r = await apiFetch(`/api/chat/conversations/${activeId}/members`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: targetUserId }),
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+    if (targetUserId === userId) {
+      closeThread();
+      await loadConversations();
+      return;
+    }
+    await loadConversations();
+    setShowMembers(false);
+  };
+
+  const changeMemberRole = async (targetUserId: string, role: "admin" | "member" | "owner") => {
+    if (!activeId) return;
+    setActionError("");
+    const r = await apiFetch(`/api/chat/conversations/${activeId}/members`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: targetUserId, role }),
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+    await loadConversations();
+  };
+
+  const renameGroup = async () => {
+    if (!activeId || !editGroupName.trim()) return;
+    setActionError("");
+    const r = await apiFetch(`/api/chat/conversations/${activeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editGroupName.trim() }),
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+    setShowRenameGroup(false);
+    await loadConversations();
   };
 
   const leaveChat = async (purgeGroup = false) => {
@@ -343,6 +406,11 @@ export function ChatMessenger({
       setActionError(ui.chatActionFailed);
       return;
     }
+    const d = await r.json();
+    if (d.added === 0) {
+      setActionError(ui.chatNoMembersFound);
+      return;
+    }
     setShowAddMembers(false);
     setAddMemberIds("");
     setShowManage(false);
@@ -363,6 +431,9 @@ export function ChatMessenger({
     const partner = activeConv.members.find((m) => m.userId !== userId);
     const isGroup = activeConv.type === "group";
     const isGroupCreator = activeConv.createdById === userId;
+    const myMember = activeConv.members.find((m) => m.userId === userId);
+    const myRole = myMember?.role || (isGroupCreator ? "owner" : "member");
+    const canManageGroup = myRole === "owner" || myRole === "admin";
     return (
       <div className="chat-app chat-app-thread">
         <div className="chat-thread">
@@ -383,7 +454,13 @@ export function ChatMessenger({
               <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
             )}
             {isGroup && (
-              <p className="text-xs text-slate-500 mt-0.5">{activeConv.members.length} {ui.chatMembers}</p>
+              <button
+                type="button"
+                className="text-xs text-slate-500 mt-0.5 hover:text-brand-600"
+                onClick={() => setShowMembers(true)}
+              >
+                {activeConv.members.length} {ui.chatMembers} · {ui.chatViewMembers}
+              </button>
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -398,7 +475,7 @@ export function ChatMessenger({
               </button>
               {showManage && (
                 <div className="chat-manage-sheet">
-                  {isGroup && (
+                  {isGroup && canManageGroup && (
                     <button
                       type="button"
                       className="chat-manage-item flex items-center gap-2"
@@ -407,18 +484,40 @@ export function ChatMessenger({
                       <UserPlus className="w-4 h-4" /> {ui.chatAddMembers}
                     </button>
                   )}
+                  {isGroup && canManageGroup && (
+                    <button
+                      type="button"
+                      className="chat-manage-item flex items-center gap-2"
+                      onClick={() => {
+                        setShowManage(false);
+                        setEditGroupName(activeConv.title);
+                        setShowRenameGroup(true);
+                      }}
+                    >
+                      <MessageSquare className="w-4 h-4" /> {ui.chatRenameGroup}
+                    </button>
+                  )}
+                  {isGroup && (
+                    <button
+                      type="button"
+                      className="chat-manage-item flex items-center gap-2"
+                      onClick={() => { setShowManage(false); setShowMembers(true); }}
+                    >
+                      <Users className="w-4 h-4" /> {ui.chatViewMembers}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="chat-manage-item flex items-center gap-2"
                     onClick={() => {
-                      if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmLeave)) {
+                      if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
                         void leaveChat(false);
                       }
                     }}
                   >
                     <LogOut className="w-4 h-4" /> {isGroup ? ui.chatLeaveGroup : ui.chatDeleteChat}
                   </button>
-                  {isGroup && isGroupCreator && (
+                  {isGroup && myRole === "owner" && (
                     <button
                       type="button"
                       className="chat-manage-item chat-manage-item-danger flex items-center gap-2"
@@ -535,6 +634,37 @@ export function ChatMessenger({
               />
               <button type="button" className="btn-primary btn-compact w-full" onClick={() => void addMembersToGroup()}>
                 {ui.chatAddMembers}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showMembers && isGroup && (
+          <ChatGroupMembersPanel
+            ui={ui}
+            members={activeConv.members}
+            myUserId={userId}
+            myRole={myRole}
+            onClose={() => setShowMembers(false)}
+            onRemove={(id) => void removeMember(id)}
+            onSetRole={(id, role) => void changeMemberRole(id, role)}
+          />
+        )}
+
+        {showRenameGroup && (
+          <div className="ios-modal-overlay" onClick={() => setShowRenameGroup(false)}>
+            <div className="ios-modal-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold">{ui.chatRenameGroup}</h3>
+                <button type="button" onClick={() => setShowRenameGroup(false)} className="ios-icon-btn"><X className="w-5 h-5" /></button>
+              </div>
+              <input
+                className="input-field-compact mb-3"
+                value={editGroupName}
+                onChange={(e) => setEditGroupName(e.target.value)}
+              />
+              <button type="button" className="btn-primary btn-compact w-full" onClick={() => void renameGroup()}>
+                {ui.chatSave}
               </button>
             </div>
           </div>

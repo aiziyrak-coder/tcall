@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Copy,
@@ -14,12 +14,20 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { getUI } from "@/lib/languages";
+import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { unlockAudio } from "@/lib/ringtone";
 import { prefetchMicrophoneAccess } from "@/lib/mic-permission";
 
 interface RoomPanelProps {
   userLanguage: string;
+}
+
+interface RoomParticipant {
+  userId: string;
+  name: string;
+  tcallId: string | null;
+  isHost: boolean;
 }
 
 export function RoomPanel({ userLanguage }: RoomPanelProps) {
@@ -31,6 +39,25 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
   const [roomLink, setRoomLink] = useState("");
   const [roomId, setRoomId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [participants, setParticipants] = useState<RoomParticipant[]>([]);
+
+  const loadRoomStatus = useCallback(async (id: string) => {
+    try {
+      const res = await apiFetch(`/api/calls/room?roomId=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!res.ok) return;
+      setParticipants(data.participants || []);
+    } catch {
+      /* ignore poll errors */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!roomId) return;
+    void loadRoomStatus(roomId);
+    const timer = setInterval(() => void loadRoomStatus(roomId), 3000);
+    return () => clearInterval(timer);
+  }, [roomId, loadRoomStatus]);
 
   const createRoom = async () => {
     setError("");
@@ -44,6 +71,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
       const link = `${window.location.origin}/call/${data.roomId}`;
       setRoomLink(link);
       setRoomId(data.roomId);
+      setParticipants([]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Xatolik");
     } finally {
@@ -53,7 +81,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
 
   const joinRoom = async () => {
     const code = joinCode.trim().toUpperCase();
-    if (!code) return;
+    if (code.length < 8) return;
     setError("");
     setJoining(true);
     try {
@@ -102,6 +130,8 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
     window.location.href = `/call/${roomId}`;
   };
 
+  const guestJoined = participants.length >= 2;
+
   return (
     <div className="room-panel">
       {error && <div className="ios-error-banner">{error}</div>}
@@ -143,6 +173,28 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
             <span>{ui.roomLinkReady}</span>
           </div>
           <p className="room-code">{roomId}</p>
+
+          <div className="room-participants-box">
+            <p className="room-participants-title">{ui.roomParticipants}</p>
+            <ul className="room-participants-list">
+              {participants.map((p) => (
+                <li key={p.userId} className="room-participant-row">
+                  <span className="room-participant-avatar">{p.name.slice(0, 2).toUpperCase()}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium truncate">{p.name}</span>
+                    {p.tcallId && (
+                      <span className="block text-xs text-slate-500 font-mono">{formatTcallId(p.tcallId)}</span>
+                    )}
+                  </span>
+                  {p.isHost && <span className="room-participant-host">{ui.chatOwner}</span>}
+                </li>
+              ))}
+            </ul>
+            <p className={`room-participants-status ${guestJoined ? "room-participants-status-live" : ""}`}>
+              {guestJoined ? ui.roomGuestJoined : ui.roomWaitingGuest}
+            </p>
+          </div>
+
           <div className="room-link-box">
             <Link2 className="w-4 h-4 shrink-0 text-slate-400" />
             <span className="room-link-text">{roomLink}</span>
@@ -192,7 +244,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
           <button
             type="button"
             onClick={joinRoom}
-            disabled={joining || joinCode.length < 6}
+            disabled={joining || joinCode.length < 8}
             className="room-btn room-btn-primary room-btn-block"
           >
             {joining ? ui.loading : ui.joinCall}

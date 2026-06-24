@@ -43,7 +43,7 @@ export function MiniCallBar() {
         <span className="mini-call-bar-info">
           <span className="mini-call-bar-name">{partnerName}</span>
           <span className="mini-call-bar-status">{status}</span>
-          {latestTranslation && call.translationMode === "text" && (
+          {latestTranslation && (
             <span className="mini-call-bar-sub">{latestTranslation.translated}</span>
           )}
         </span>

@@ -1,4 +1,5 @@
 import { getLanguageName } from "./languages";
+import { getWhisperLanguage, getWhisperPrompt } from "./call-translation";
 
 function getApiKey(): string {
   const key = process.env.OPENAI_API_KEY;
@@ -20,7 +21,12 @@ export async function transcribeAudio(
   const blob = new Blob([new Uint8Array(audioBuffer)]);
   formData.append("file", blob, filename);
   formData.append("model", "whisper-1");
-  if (language) formData.append("language", language);
+  formData.append("response_format", "json");
+  formData.append("temperature", "0");
+
+  const whisperLang = language ? getWhisperLanguage(language) : undefined;
+  if (whisperLang) formData.append("language", whisperLang);
+  if (language) formData.append("prompt", getWhisperPrompt(language));
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -84,6 +90,59 @@ Rules:
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
+/** GPT — real-time qo'ng'iroq tarjimasi (kontekst bilan) */
+export async function translateForCall(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  recentLines: string[] = []
+): Promise<string> {
+  if (!text.trim() || sourceLang === targetLang) return text;
+
+  const sourceName = getLanguageName(sourceLang);
+  const targetName = getLanguageName(targetLang);
+
+  const contextBlock =
+    recentLines.length > 0
+      ? `\n\nRecent dialogue (context only — do NOT translate these lines):\n${recentLines.slice(-5).join("\n")}`
+      : "";
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getModel(),
+      temperature: 0.15,
+      max_tokens: 400,
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional simultaneous interpreter on a live phone call. Translate the speaker's words from ${sourceName} into natural spoken ${targetName}.
+
+Rules:
+- Preserve exact meaning, intent, and tone (formal/informal).
+- Use conversational ${targetName} as heard in real-time interpretation.
+- Keep names, numbers, brands, and proper nouns unchanged.
+- Do NOT add explanations, notes, or extra words.
+- Return ONLY the translated sentence.${contextBlock}`,
+        },
+        { role: "user", content: text },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    console.error("GPT call translate error:", await res.text());
+    return text;
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || text;
+}
+
 /** GPT — real-time tarjima */
 export async function translateWithGPT(
   text: string,
@@ -125,10 +184,11 @@ export async function translateWithGPT(
 }
 
 /** OpenAI TTS — tarjima qilingan matnni ovozga aylantirish */
-export async function textToSpeech(text: string): Promise<Buffer | null> {
+export async function textToSpeech(text: string, langHint?: string): Promise<Buffer | null> {
   if (!text.trim()) return null;
 
   const voice = process.env.OPENAI_TTS_VOICE || "nova";
+  const speed = langHint && ["uz", "ru", "tr", "kk", "ky", "tg"].includes(langHint) ? 1.0 : 1.05;
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
@@ -140,7 +200,7 @@ export async function textToSpeech(text: string): Promise<Buffer | null> {
       model: "tts-1",
       input: text.slice(0, 4096),
       voice,
-      speed: 1.05,
+      speed,
       response_format: "mp3",
     }),
   });

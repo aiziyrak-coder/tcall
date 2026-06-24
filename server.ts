@@ -4,6 +4,7 @@ import next from "next";
 import { Server as SocketIOServer } from "socket.io";
 import { translateText } from "./src/lib/translate";
 import { textToSpeech } from "./src/lib/openai";
+import { isValidTranscript } from "./src/lib/call-translation";
 import { verifyToken, type SessionPayload } from "./src/lib/auth";
 import { parseCookies } from "./src/lib/cookies";
 import { prisma } from "./src/lib/prisma";
@@ -26,6 +27,7 @@ import {
   emitToUser,
 } from "./src/lib/socket-io";
 import { seedVanityNumbers } from "./src/lib/tcallId";
+import { migrateChatMemberRoles } from "./src/lib/chat-migrate";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -50,6 +52,15 @@ interface RoomUser {
 
 const MAX_ROOM_SIZE = 2;
 const rooms = new Map<string, Map<string, RoomUser>>();
+/** Xona bo'yicha so'nggi transkriptlar — tarjima konteksti */
+const roomTranscriptContext = new Map<string, string[]>();
+
+function pushRoomContext(roomId: string, line: string) {
+  const arr = roomTranscriptContext.get(roomId) || [];
+  arr.push(line);
+  if (arr.length > 10) arr.splice(0, arr.length - 10);
+  roomTranscriptContext.set(roomId, arr);
+}
 
 function getSession(socket: { data: { session?: SessionPayload } }): SessionPayload | null {
   return socket.data.session ?? null;
@@ -67,6 +78,7 @@ app.prepare().then(async () => {
   }
 
   await seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
+  await migrateChatMemberRoles().catch((e) => console.error("Chat role migrate error:", e));
 
   setInterval(() => {
     expireStaleRingingCalls()
@@ -286,8 +298,10 @@ app.prepare().then(async () => {
       const room = rooms.get(roomId);
       if (room) {
         room.delete(socket.id);
-        if (room.size === 0) rooms.delete(roomId);
-        else {
+        if (room.size === 0) {
+          rooms.delete(roomId);
+          roomTranscriptContext.delete(roomId);
+        } else {
           io.to(roomId).emit(
             "room-users",
             Array.from(room.values()).map((u) => ({
@@ -312,49 +326,52 @@ app.prepare().then(async () => {
       try {
         if (!currentRoom || !currentUser || !data.isFinal) return;
 
-        const limited = rateLimit(`speech:${session.userId}`, 40, 60_000);
+        const limited = rateLimit(`speech:${session.userId}`, 120, 60_000);
         if (!limited.ok) return;
 
         const text = clampTranscript(data.text);
-        if (!text) return;
+        if (!text || !isValidTranscript(text)) return;
 
-      const room = rooms.get(currentRoom);
-      if (!room) return;
+        const room = rooms.get(currentRoom);
+        if (!room) return;
 
-      const recipients = Array.from(room.values()).filter((u) => u.socketId !== socket.id);
-      const callRecord = await prisma.call.findUnique({ where: { roomId: currentRoom } });
-      let savedTranslation: string | null = null;
+        const context = roomTranscriptContext.get(currentRoom) || [];
+        pushRoomContext(currentRoom, `${currentUser!.name}: ${text}`);
 
-      await Promise.all(
-        recipients.map(async (user) => {
-          const needsTranslation = user.language !== currentUser!.language;
-          const translated = needsTranslation
-            ? await translateText(text, currentUser!.language, user.language)
-            : text;
+        const recipients = Array.from(room.values()).filter((u) => u.socketId !== socket.id);
+        const callRecord = await prisma.call.findUnique({ where: { roomId: currentRoom } });
+        let savedTranslation: string | null = null;
 
-          if (needsTranslation && !savedTranslation) savedTranslation = translated;
+        await Promise.all(
+          recipients.map(async (user) => {
+            const needsTranslation = user.language !== currentUser!.language;
+            const translated = needsTranslation
+              ? await translateText(text, currentUser!.language, user.language, context)
+              : text;
 
-          let audioBase64: string | undefined;
-          if (needsTranslation && translated && user.translationMode === "voice") {
-            try {
-              const audio = await textToSpeech(translated);
-              if (audio) audioBase64 = audio.toString("base64");
-            } catch (e) {
-              console.error("TTS failed:", e);
+            if (needsTranslation && !savedTranslation) savedTranslation = translated;
+
+            let audioBase64: string | undefined;
+            if (needsTranslation && translated && user.translationMode === "voice") {
+              try {
+                const audio = await textToSpeech(translated, user.language);
+                if (audio) audioBase64 = audio.toString("base64");
+              } catch (e) {
+                console.error("TTS failed:", e);
+              }
             }
-          }
 
-          io.to(user.socketId).emit("translation", {
-            original: text,
-            translated,
-            sourceLang: currentUser!.language,
-            targetLang: user.language,
-            speaker: currentUser!.name,
-            isFinal: true,
-            audioBase64,
-          });
-        })
-      );
+            io.to(user.socketId).emit("translation", {
+              original: text,
+              translated,
+              sourceLang: currentUser!.language,
+              targetLang: user.language,
+              speaker: currentUser!.name,
+              isFinal: true,
+              audioBase64,
+            });
+          })
+        );
 
       if (callRecord) {
         prisma.callTranscript
@@ -435,6 +452,7 @@ app.prepare().then(async () => {
           room.delete(socket.id);
           if (room.size === 0) {
             rooms.delete(currentRoom);
+            roomTranscriptContext.delete(currentRoom);
           } else {
             io.to(currentRoom).emit(
               "room-users",

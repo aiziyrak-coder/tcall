@@ -8,7 +8,9 @@ import { TranslationAudioQueue } from "@/lib/audioQueue";
 import {
   getPreferredAudioMimeType,
   requestWakeLock,
+  isIOS,
 } from "@/lib/mobile";
+import { isValidTranscript, isDuplicateTranscript } from "@/lib/call-translation";
 import {
   markMicGranted,
   queryMicPermission,
@@ -77,6 +79,8 @@ export function useCall({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingActiveRef = useRef(false);
   const processingRef = useRef(false);
+  const chunkQueueRef = useRef<Blob[]>([]);
+  const recorderRestartTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTranscriptRef = useRef("");
   const remoteIdRef = useRef<string | null>(null);
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
@@ -143,27 +147,42 @@ export function useCall({
     }
   }, [clearOfferRetry]);
 
+  const clearRecorderRestartTimer = useCallback(() => {
+    if (recorderRestartTimerRef.current) {
+      clearInterval(recorderRestartTimerRef.current);
+      recorderRestartTimerRef.current = null;
+    }
+  }, []);
+
   const stopRecording = useCallback(() => {
     recordingActiveRef.current = false;
+    clearRecorderRestartTimer();
+    chunkQueueRef.current = [];
     const rec = recorderRef.current;
     recorderRef.current = null;
     if (rec && rec.state !== "inactive") {
       try { rec.stop(); } catch { /* ignore */ }
     }
     setIsListening(false);
-  }, []);
+  }, [clearRecorderRestartTimer]);
 
-  const processAudioChunk = useCallback(
+  const needsTranslation = useCallback(() => {
+    const partnerLang = partnerLanguageRef.current;
+    return !partnerLang || partnerLang !== userLanguage;
+  }, [userLanguage]);
+
+  const processAudioChunkInternal = useCallback(
     async (blob: Blob) => {
-      if (processingRef.current || isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
+      if (isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
       if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
-      const minSize = blob.type.includes("mp4") || blob.type.includes("aac") ? 1800 : 500;
+
+      const isMp4 = blob.type.includes("mp4") || blob.type.includes("aac");
+      const minSize = isMp4 ? 1400 : 400;
       if (blob.size < minSize) return;
 
-      processingRef.current = true;
       try {
         const formData = new FormData();
-        formData.append("audio", blob, blob.type.includes("mp4") ? "chunk.mp4" : "chunk.webm");
+        formData.append("audio", blob, isMp4 ? "chunk.mp4" : "chunk.webm");
         formData.append("language", userLanguage);
 
         const res = await apiFetch("/api/openai/transcribe", { method: "POST", body: formData });
@@ -171,7 +190,8 @@ export function useCall({
 
         const data = await res.json();
         const text = data.text?.trim();
-        if (!text || text === lastTranscriptRef.current) return;
+        if (!text || !isValidTranscript(text)) return;
+        if (isDuplicateTranscript(lastTranscriptRef.current, text)) return;
 
         lastTranscriptRef.current = text;
         if (sessionActiveRef.current && socketRef.current?.connected) {
@@ -194,14 +214,36 @@ export function useCall({
 
         setTimeout(() => {
           if (lastTranscriptRef.current === text) lastTranscriptRef.current = "";
-        }, 4000);
+        }, 5000);
       } catch (e) {
         console.error("Transcribe failed:", e);
-      } finally {
-        processingRef.current = false;
       }
     },
     [userLanguage]
+  );
+
+  const drainChunkQueue = useCallback(async () => {
+    if (processingRef.current) return;
+    processingRef.current = true;
+    try {
+      while (chunkQueueRef.current.length > 0) {
+        const blob = chunkQueueRef.current.shift()!;
+        await processAudioChunkInternal(blob);
+      }
+    } finally {
+      processingRef.current = false;
+    }
+  }, [processAudioChunkInternal]);
+
+  const enqueueAudioChunk = useCallback(
+    (blob: Blob) => {
+      if (processingRef.current && chunkQueueRef.current.length >= 6) {
+        chunkQueueRef.current.shift();
+      }
+      chunkQueueRef.current.push(blob);
+      void drainChunkQueue();
+    },
+    [drainChunkQueue]
   );
 
   const startRecording = useCallback(
@@ -209,7 +251,7 @@ export function useCall({
       if (recorderRef.current || isMutedRef.current) return;
       if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
       const audioTrack = stream.getAudioTracks()[0];
-      if (!audioTrack) return;
+      if (!audioTrack?.enabled) return;
 
       const audioStream = new MediaStream([audioTrack]);
       const mimeType = getPreferredAudioMimeType();
@@ -217,22 +259,38 @@ export function useCall({
       try {
         const recorder = new MediaRecorder(audioStream, { mimeType });
         recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) processAudioChunk(e.data);
+          if (e.data.size > 0) enqueueAudioChunk(e.data);
         };
         recorder.onerror = () => {
           recordingActiveRef.current = false;
           setIsListening(false);
         };
+        recorder.onstop = () => {
+          if (recordingActiveRef.current && streamRef.current && !isMutedRef.current && needsTranslation()) {
+            recorderRef.current = null;
+            startRecording(streamRef.current);
+          }
+        };
         recordingActiveRef.current = true;
-        const timeslice = mimeType.includes("mp4") || mimeType.includes("aac") ? 1500 : 800;
+        const timeslice = mimeType.includes("mp4") || mimeType.includes("aac") ? 1200 : 700;
         recorder.start(timeslice);
         recorderRef.current = recorder;
         setIsListening(true);
+
+        clearRecorderRestartTimer();
+        if (isIOS()) {
+          recorderRestartTimerRef.current = setInterval(() => {
+            const r = recorderRef.current;
+            if (r?.state === "recording") {
+              try { r.stop(); } catch { /* ignore */ }
+            }
+          }, 25_000);
+        }
       } catch (e) {
         console.error("MediaRecorder failed:", e);
       }
     },
-    [processAudioChunk, userLanguage]
+    [enqueueAudioChunk, needsTranslation, clearRecorderRestartTimer]
   );
 
   const playTranslationAudio = useCallback((audioBase64: string) => {
@@ -414,6 +472,17 @@ export function useCall({
       otherParticipantRef.current = other;
       partnerLanguageRef.current = other.language;
 
+      if (other.language === optsRef.current.userLanguage) {
+        handlersRef.current.stopRecording();
+      } else if (
+        streamRef.current &&
+        !recorderRef.current &&
+        !isMutedRef.current &&
+        (callStatusRef.current === "active" || callStatusRef.current === "connecting")
+      ) {
+        handlersRef.current.startRecording(streamRef.current);
+      }
+
       const pc = pcRef.current;
       const pcBroken = !pc || pc.connectionState === "failed" || pc.connectionState === "closed";
       if (pc && !pcBroken && remoteStreamRef.current) return;
@@ -469,6 +538,12 @@ export function useCall({
       void playRemoteAudio();
     }
   }, [remoteStream, playRemoteAudio]);
+
+  useEffect(() => {
+    const el = remoteAudioRef.current;
+    if (!el) return;
+    el.volume = isSpeaking ? 0.25 : 1;
+  }, [isSpeaking]);
 
   const handlersRef = useRef({
     handleRoomUsers,

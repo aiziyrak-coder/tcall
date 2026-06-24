@@ -153,8 +153,8 @@ export function AudioCallRoom() {
         </div>
       )}
 
-      {call.translationMode === "text" && latestTranslation && (
-        <div className="phone-subtitle">
+      {latestTranslation && (
+        <div className={`phone-subtitle ${call.translationMode === "voice" ? "phone-subtitle-voice" : ""}`}>
           <p className="text-slate-400 text-[10px] mb-1">{latestTranslation.speaker} · {ui.translated}</p>
           <p className="text-slate-900 font-medium">{latestTranslation.translated}</p>
           {latestTranslation.original !== latestTranslation.translated && (
@@ -163,7 +163,7 @@ export function AudioCallRoom() {
         </div>
       )}
 
-      {call.translationMode === "text" && latestOwn && (
+      {latestOwn && call.translationMode === "text" && (
         <div className="phone-subtitle-own">
           <p className="text-slate-500 text-xs">{ui.youSaid}: {latestOwn.original}</p>
         </div>
