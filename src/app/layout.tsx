@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Tcall" },
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
   formatDetection: { telephone: false },
+  other: { "mobile-web-app-capable": "yes" },
 };
 
 export const viewport: Viewport = {
