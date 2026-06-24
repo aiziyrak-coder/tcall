@@ -77,6 +77,7 @@ export function useCall({
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const userLeftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const otherParticipantRef = useRef<RoomParticipant | null>(null);
   const sessionActiveRef = useRef(false);
 
   useEffect(() => {
@@ -247,10 +248,8 @@ export function useCall({
           startTimer();
           clearOfferRetry();
           if (streamRef.current && !recorderRef.current) startRecording(streamRef.current);
-        } else if (state === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
-          offerRetryRef.current += 1;
-          resetPeerConnection();
-          setCallStatus("connecting");
+        } else if (state === "failed") {
+          scheduleReofferRef.current();
         }
       };
 
@@ -261,9 +260,8 @@ export function useCall({
           if (streamRef.current && !recorderRef.current && !isMutedRef.current) {
             startRecording(streamRef.current);
           }
-        } else if (ice === "failed" && offerRetryRef.current < MAX_OFFER_RETRIES) {
-          offerRetryRef.current += 1;
-          resetPeerConnection();
+        } else if (ice === "failed") {
+          scheduleReofferRef.current();
         }
       };
 
@@ -273,8 +271,14 @@ export function useCall({
     [attachRemoteTrack, clearOfferRetry, resetPeerConnection, startTimer, startRecording]
   );
 
+  const scheduleReofferRef = useRef<() => void>(() => {});
+
   const sendOffer = useCallback(
     async (stream: MediaStream, socket: Socket, other: RoomParticipant, forceNew = false) => {
+      if (pcRef.current && !forceNew) {
+        const state = pcRef.current.connectionState;
+        if (state !== "failed" && state !== "closed" && !remoteStreamRef.current) return;
+      }
       if (forceNew) resetPeerConnection();
       remoteIdRef.current = other.socketId;
 
@@ -306,6 +310,31 @@ export function useCall({
     [createPeerConnection, resetPeerConnection, clearOfferRetry]
   );
 
+  const scheduleReoffer = useCallback(() => {
+    if (!isHost || offerRetryRef.current >= MAX_OFFER_RETRIES) {
+      if (offerRetryRef.current >= MAX_OFFER_RETRIES) {
+        setCallError("room_error");
+        setCallStatus("error");
+      }
+      return;
+    }
+    const other = otherParticipantRef.current;
+    const stream = streamRef.current;
+    const socket = socketRef.current;
+    if (!other || !stream || !socket?.connected) return;
+
+    offerRetryRef.current += 1;
+    resetPeerConnection();
+    setCallStatus("connecting");
+    setTimeout(() => {
+      if (streamRef.current && socketRef.current?.connected && otherParticipantRef.current) {
+        void sendOffer(streamRef.current, socketRef.current, otherParticipantRef.current, true);
+      }
+    }, 1200);
+  }, [isHost, resetPeerConnection, sendOffer]);
+
+  scheduleReofferRef.current = scheduleReoffer;
+
   const handleRoomUsers = useCallback(
     async (users: RoomParticipant[], stream: MediaStream, socket: Socket) => {
       setParticipants(users);
@@ -318,7 +347,7 @@ export function useCall({
       const other = users.find((u) => u.userId !== userId);
       if (!other) return;
 
-      remoteIdRef.current = other.socketId;
+      otherParticipantRef.current = other;
 
       const pc = pcRef.current;
       const pcBroken = !pc || pc.connectionState === "failed" || pc.connectionState === "closed";
@@ -326,7 +355,7 @@ export function useCall({
 
       if (pcBroken) resetPeerConnection();
 
-      const shouldOffer = isHost || socket.id! < other.socketId;
+      const shouldOffer = isHost || (!other.isHost && socket.id! < other.socketId);
       if (!shouldOffer) {
         setCallStatus("connecting");
         return;
@@ -337,9 +366,21 @@ export function useCall({
     [userId, isHost, resetPeerConnection, sendOffer]
   );
 
+  const playRemoteAudio = useCallback(() => {
+    const el = remoteAudioRef.current;
+    if (el && remoteStreamRef.current) {
+      el.srcObject = remoteStreamRef.current;
+      el.volume = 1;
+      el.muted = false;
+      void el.play().catch((e) => console.warn("Remote audio play:", e));
+    }
+  }, []);
+
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.volume = 1;
+      remoteAudioRef.current.muted = false;
       remoteAudioRef.current.play().catch(() => {});
     }
   }, [remoteStream]);
@@ -366,7 +407,6 @@ export function useCall({
         }
 
         streamRef.current = stream;
-        await audioQueue.unlock();
 
         const socket = io(getSocketUrl(), {
           path: "/socket.io",
@@ -403,6 +443,7 @@ export function useCall({
 
         socket.on("offer", async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
           if (!streamRef.current) return;
+          if (isHost && makingOfferRef.current) return;
           remoteIdRef.current = senderId;
 
           try {
@@ -414,6 +455,17 @@ export function useCall({
             if (!pc) {
               pc = createPeerConnection(streamRef.current, socket);
               pcRef.current = pc;
+            }
+
+            if (pc.signalingState === "have-local-offer") {
+              if (isHost) return;
+              try {
+                await pc.setLocalDescription({ type: "rollback" } as RTCSessionDescriptionInit);
+              } catch {
+                resetPeerConnection();
+                pc = createPeerConnection(streamRef.current, socket);
+                pcRef.current = pc;
+              }
             }
 
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -591,6 +643,7 @@ export function useCall({
     isSpeaking,
     callDuration,
     unlockAudio,
+    playRemoteAudio,
     toggleMute,
     setTranslationMode,
     endCall,

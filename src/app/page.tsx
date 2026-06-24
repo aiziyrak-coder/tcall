@@ -6,7 +6,7 @@ export default function HomePage() {
     <div className="min-h-screen">
       {/* Hero */}
       <header className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/50 via-slate-950 to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-100/60 via-slate-50 to-white" />
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl animate-float" />
         <div className="absolute bottom-20 right-1/4 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl animate-float" style={{ animationDelay: "3s" }} />
 
@@ -28,7 +28,7 @@ export default function HomePage() {
         </nav>
 
         <div className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-32 text-center">
-          <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-sm text-brand-300 mb-8">
+          <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 text-sm text-brand-600 mb-8">
             <Globe className="w-4 h-4" />
             15+ til — aqlli real-time tarjima
           </div>
@@ -39,7 +39,7 @@ export default function HomePage() {
             </span>{" "}
             gaplashing
           </h1>
-          <p className="text-base sm:text-xl text-white/60 max-w-2xl mx-auto mb-10 px-2">
+          <p className="text-base sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 px-2">
             Audio qo&apos;ng&apos;iroq qiling — 9 xonali raqamingiz bilan dunyo bilan gaplashing.
             Real-time tarjima: matn yoki ovoz rejimida.
           </p>
@@ -77,10 +77,10 @@ export default function HomePage() {
           ].map((f) => (
             <div key={f.title} className="glass rounded-2xl p-8 hover:bg-white/10 transition-colors">
               <div className="w-12 h-12 bg-brand-600/20 rounded-xl flex items-center justify-center mb-5">
-                <f.icon className="w-6 h-6 text-brand-400" />
+                <f.icon className="w-6 h-6 text-brand-600" />
               </div>
               <h3 className="text-xl font-semibold mb-3">{f.title}</h3>
-              <p className="text-white/60 leading-relaxed">{f.desc}</p>
+              <p className="text-slate-600 leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -101,7 +101,7 @@ export default function HomePage() {
                 {s.step}
               </div>
               <h3 className="font-semibold mb-2">{s.title}</h3>
-              <p className="text-white/50 text-sm">{s.desc}</p>
+              <p className="text-slate-500 text-sm">{s.desc}</p>
             </div>
           ))}
         </div>
@@ -112,9 +112,9 @@ export default function HomePage() {
         <div className="glass rounded-3xl p-12 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-brand-600/10 to-purple-600/10" />
           <div className="relative">
-            <Zap className="w-10 h-10 text-brand-400 mx-auto mb-6" />
+            <Zap className="w-10 h-10 text-brand-600 mx-auto mb-6" />
             <h2 className="text-3xl font-bold mb-4">Hoziroq sinab ko&apos;ring</h2>
-            <p className="text-white/60 mb-8 max-w-lg mx-auto">
+            <p className="text-slate-600 mb-8 max-w-lg mx-auto">
               Ro&apos;yxatdan o&apos;ting, xona yarating va birinchi til chegarasisiz qo&apos;ng&apos;iroqingizni boshlang.
             </p>
             <Link href="/register" className="btn-primary inline-block">
@@ -124,7 +124,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-8 text-center text-white/40 text-sm">
+      <footer className="border-t border-black/10 py-8 text-center text-slate-400 text-sm">
         <p>&copy; 2026 Tcall.uz — Til chegarasisiz aloqa</p>
       </footer>
     </div>

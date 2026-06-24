@@ -85,12 +85,12 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
 
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <label className="block">
-            <span className="text-xs text-white/50">{ui.name}</span>
+            <span className="text-xs text-slate-500">{ui.name}</span>
             <input className="input-field mt-1" value={name} onChange={(e) => setName(e.target.value)} />
           </label>
 
           <label className="block">
-            <span className="text-xs text-white/50">{ui.language}</span>
+            <span className="text-xs text-slate-500">{ui.language}</span>
             <select className="input-field mt-1" value={language} onChange={(e) => setLanguage(e.target.value)}>
               {LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>{l.flag} {l.name}</option>
@@ -99,7 +99,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           </label>
 
           <label className="block">
-            <span className="text-xs text-white/50">{ui.translation}</span>
+            <span className="text-xs text-slate-500">{ui.translation}</span>
             <select className="input-field mt-1" value={translationMode} onChange={(e) => setTranslationMode(e.target.value)}>
               <option value="text">{ui.textTranslation}</option>
               <option value="voice">{ui.voiceTranslation}</option>
@@ -107,7 +107,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           </label>
 
           <label className="block">
-            <span className="text-xs text-white/50">{ui.profile}</span>
+            <span className="text-xs text-slate-500">{ui.profile}</span>
             <select className="input-field mt-1" value={status} onChange={(e) => setStatus(e.target.value as UserStatus)}>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s.value} value={s.value}>{getStatusLabel(s.value, ui)}</option>
@@ -116,7 +116,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           </label>
 
           <label className="block">
-            <span className="text-xs text-white/50">{ui.bio}</span>
+            <span className="text-xs text-slate-500">{ui.bio}</span>
             <input className="input-field mt-1" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} placeholder="..." />
           </label>
 
@@ -135,7 +135,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
             </div>
             {blocks.map((b) => (
               <div key={b.blockedTcallId} className="flex items-center justify-between py-2 text-sm">
-                <span className="font-mono text-white/70">{b.blockedTcallId}</span>
+                <span className="font-mono text-slate-600">{b.blockedTcallId}</span>
                 <button onClick={() => removeBlock(b.blockedTcallId)} className="text-red-400 flex items-center gap-1">
                   <ShieldOff className="w-3.5 h-3.5" /> {ui.unblock}
                 </button>

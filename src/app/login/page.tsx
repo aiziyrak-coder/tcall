@@ -45,7 +45,7 @@ function LoginForm() {
       )}
 
       <div>
-        <label className="block text-sm text-white/60 mb-2">Email</label>
+        <label className="block text-sm text-slate-600 mb-2">Email</label>
         <input
           type="email"
           className="input-field"
@@ -57,7 +57,7 @@ function LoginForm() {
       </div>
 
       <div>
-        <label className="block text-sm text-white/60 mb-2">Parol</label>
+        <label className="block text-sm text-slate-600 mb-2">Parol</label>
         <input
           type="password"
           className="input-field"
@@ -71,9 +71,9 @@ function LoginForm() {
         {loading ? "Yuklanmoqda..." : "Kirish"}
       </button>
 
-      <p className="text-center text-sm text-white/50">
+      <p className="text-center text-sm text-slate-500">
         Hisobingiz yo&apos;qmi?{" "}
-        <Link href="/register" className="text-brand-400 hover:underline">
+        <Link href="/register" className="text-brand-600 hover:underline">
           Ro&apos;yxatdan o&apos;tish
         </Link>
       </p>
@@ -84,7 +84,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="page-shell flex items-center justify-center px-4 py-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/30 via-slate-950 to-slate-950 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <span className="text-xl font-bold">Tcall</span>
           </Link>
           <h1 className="text-2xl font-bold">Kirish</h1>
-          <p className="text-white/50 mt-2">Hisobingizga kiring</p>
+          <p className="text-slate-500 mt-2">Hisobingizga kiring</p>
         </div>
 
         <Suspense fallback={<div className="glass rounded-2xl p-8 h-64 animate-pulse" />}>

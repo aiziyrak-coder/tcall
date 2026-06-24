@@ -53,6 +53,7 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
   const handleTap = useCallback(() => {
     void call.unlockAudio();
+    call.playRemoteAudio();
   }, [call]);
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
         <div className="glass rounded-2xl p-8 w-full max-w-md text-center">
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">{err.t}</h2>
-          <p className="text-white/50 mb-6 text-sm">{err.d}</p>
+          <p className="text-slate-500 mb-6 text-sm">{err.d}</p>
           <button onClick={() => router.push("/dashboard")} className="btn-primary w-full">{ui.backToDashboard}</button>
         </div>
       </div>
@@ -107,14 +108,20 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
       </div>
 
       <div className="phone-info">
-        <h1 className="text-2xl font-semibold">{call.partner?.name || ui.waiting}</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">{call.partner?.name || ui.waiting}</h1>
         {call.partner && partnerLang && (
-          <p className="text-white/50 text-sm mt-1">{partnerLang.flag} {partnerLang.name}</p>
+          <p className="text-slate-500 text-sm mt-1">{partnerLang.flag} {partnerLang.name}</p>
         )}
-        <p className={`text-sm mt-3 ${call.callStatus === "active" ? "text-green-400" : "text-white/60"}`}>
+        <p className={`text-sm mt-3 ${call.callStatus === "active" ? "text-green-600 font-medium" : "text-slate-500"}`}>
           {statusLabel}
         </p>
       </div>
+
+      {call.callStatus === "connecting" && call.partner && (
+        <p className="relative z-10 text-xs text-brand-600 mt-2 px-6 text-center">
+          Ovoz uchun ekranga bir marta bosing
+        </p>
+      )}
 
       {call.isListening && (
         <div className="phone-listening-badge">
@@ -124,17 +131,17 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
       {call.translationMode === "text" && latestTranslation && (
         <div className="phone-subtitle">
-          <p className="text-white/50 text-[10px] mb-1">{latestTranslation.speaker} · {ui.translated}</p>
-          <p className="text-white font-medium">{latestTranslation.translated}</p>
+          <p className="text-slate-400 text-[10px] mb-1">{latestTranslation.speaker} · {ui.translated}</p>
+          <p className="text-slate-900 font-medium">{latestTranslation.translated}</p>
           {latestTranslation.original !== latestTranslation.translated && (
-            <p className="text-white/40 text-xs mt-1 italic">{latestTranslation.original}</p>
+            <p className="text-slate-500 text-xs mt-1 italic">{latestTranslation.original}</p>
           )}
         </div>
       )}
 
       {call.translationMode === "text" && latestOwn && (
         <div className="phone-subtitle-own">
-          <p className="text-white/40 text-xs">{ui.youSaid}: {latestOwn.original}</p>
+          <p className="text-slate-500 text-xs">{ui.youSaid}: {latestOwn.original}</p>
         </div>
       )}
 
@@ -175,11 +182,11 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
       </footer>
 
       {showEndedModal && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-4 safe-bottom">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4 safe-bottom">
           <div className="glass rounded-t-3xl sm:rounded-2xl p-8 w-full max-w-sm text-center">
-            <PhoneOff className="w-11 h-11 text-white/40 mx-auto mb-4" />
-            <h2 className="text-lg font-bold mb-2">{ui.callEnded}</h2>
-            <p className="text-white/50 text-sm mb-6">{ui.callEndedDesc}</p>
+            <PhoneOff className="w-11 h-11 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-lg font-bold mb-2 text-slate-900">{ui.callEnded}</h2>
+            <p className="text-slate-500 text-sm mb-6">{ui.callEndedDesc}</p>
             <button onClick={() => router.push("/dashboard")} className="btn-primary w-full">{ui.backToDashboard}</button>
           </div>
         </div>

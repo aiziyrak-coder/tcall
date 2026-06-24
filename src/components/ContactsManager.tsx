@@ -118,7 +118,7 @@ export function ContactsManager({ userLanguage }: ContactsManagerProps) {
       {contacts.length === 0 ? (
         <div className="ios-empty-state">
           <p>{ui.noContacts}</p>
-          <p className="text-xs text-white/30 mt-2">{ui.noContactsDesc}</p>
+          <p className="text-xs text-slate-400 mt-2">{ui.noContactsDesc}</p>
         </div>
       ) : (
         <div className="ios-contacts">
@@ -134,8 +134,8 @@ export function ContactsManager({ userLanguage }: ContactsManagerProps) {
                         {contact.name}
                         {contact.favorite && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
                       </p>
-                      <p className="text-xs text-white/40 font-mono">{formatTcallId(contact.tcallId)}</p>
-                      {contact.notes && <p className="text-xs text-white/30 truncate">{contact.notes}</p>}
+                      <p className="text-xs text-slate-500 font-mono">{formatTcallId(contact.tcallId)}</p>
+                      {contact.notes && <p className="text-xs text-slate-400 truncate">{contact.notes}</p>}
                     </div>
                     <div className="flex gap-1">
                       <button

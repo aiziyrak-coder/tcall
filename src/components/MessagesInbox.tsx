@@ -42,7 +42,7 @@ export function MessagesInbox({ userLanguage, onRead }: MessagesInboxProps) {
   if (inbox.length === 0) {
     return (
       <div className="ios-empty-state">
-        <MessageSquare className="w-10 h-10 text-white/15 mb-2" />
+        <MessageSquare className="w-10 h-10 text-slate-300 mb-2" />
         <p>{ui.noMessages}</p>
       </div>
     );
@@ -54,11 +54,11 @@ export function MessagesInbox({ userLanguage, onRead }: MessagesInboxProps) {
         <li key={msg.id} className="ios-list-item flex-col items-start gap-1">
           <div className="flex w-full items-center justify-between">
             <p className="font-medium">{msg.sender.name}</p>
-            <span className="text-xs text-white/35">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+            <span className="text-xs text-slate-400">{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
-          <p className="text-sm text-white/60">{msg.message}</p>
+          <p className="text-sm text-slate-600">{msg.message}</p>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs font-mono text-white/30">{formatTcallId(msg.sender.tcallId)}</span>
+            <span className="text-xs font-mono text-slate-400">{formatTcallId(msg.sender.tcallId)}</span>
             <button
               onClick={() => void dial(msg.sender.tcallId)}
               className="text-xs text-brand-400 flex items-center gap-1"

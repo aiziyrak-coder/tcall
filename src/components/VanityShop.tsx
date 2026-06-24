@@ -79,7 +79,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
         </div>
         <div>
           <h2 className="text-lg font-semibold">{ui.vanityNumbers}</h2>
-          <p className="text-white/50 text-xs">{ui.vanityDesc}</p>
+          <p className="text-slate-500 text-xs">{ui.vanityDesc}</p>
         </div>
       </div>
 
@@ -90,8 +90,8 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
       )}
 
       <div className="bg-brand-600/10 border border-brand-500/20 rounded-xl p-4 mb-4">
-        <p className="text-white/50 text-xs mb-1">{ui.yourNumber}</p>
-        <p className="text-2xl font-mono font-bold text-brand-300">{formatTcallId(currentId)}</p>
+        <p className="text-slate-500 text-xs mb-1">{ui.yourNumber}</p>
+        <p className="text-2xl font-mono font-bold text-brand-600">{formatTcallId(currentId)}</p>
         {owned && (
           <p className="text-purple-300 text-xs mt-1 flex items-center gap-1">
             <Crown className="w-3 h-3" /> {ui.premiumNumber}
@@ -106,7 +106,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {numbers.length === 0 ? (
-            <p className="text-white/40 text-sm text-center py-4">{ui.noNumbersAvailable}</p>
+            <p className="text-slate-500 text-sm text-center py-4">{ui.noNumbersAvailable}</p>
           ) : (
             numbers.map((n) => (
               <div
@@ -115,7 +115,7 @@ export function VanityShop({ userLanguage, currentId, onPurchased }: VanityShopP
               >
                 <div>
                   <p className="font-mono font-bold text-lg">{formatTcallId(n.number)}</p>
-                  <p className="text-xs text-white/50 capitalize">{n.tier} · {formatPrice(n.price)}</p>
+                  <p className="text-xs text-slate-500 capitalize">{n.tier} · {formatPrice(n.price)}</p>
                 </div>
                 <button
                   onClick={() => purchase(n.id)}

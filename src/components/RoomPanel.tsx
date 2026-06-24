@@ -90,7 +90,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
         </div>
         <div className="flex-1">
           <h3 className="font-semibold">{ui.createRoom}</h3>
-          <p className="text-white/45 text-xs mt-0.5">{ui.createRoomDesc}</p>
+          <p className="text-slate-500 text-xs mt-0.5">{ui.createRoomDesc}</p>
         </div>
         <button onClick={createRoom} disabled={creating} className="ios-room-action-btn">
           {creating ? "..." : ui.startCall}
@@ -99,9 +99,9 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
 
       {roomId && (
         <div className="ios-room-created animate-fade-in">
-          <p className="text-xs text-white/40 mb-1">{ui.roomLinkReady}</p>
-          <p className="font-mono text-xl font-bold text-brand-300 tracking-widest">{roomId}</p>
-          <p className="text-xs text-white/30 mt-2 break-all">{roomLink}</p>
+          <p className="text-xs text-slate-500 mb-1">{ui.roomLinkReady}</p>
+          <p className="font-mono text-xl font-bold text-brand-600 tracking-widest">{roomId}</p>
+          <p className="text-xs text-slate-400 mt-2 break-all">{roomLink}</p>
           <div className="flex gap-2 mt-4">
             <button onClick={copyLink} className="btn-secondary flex-1 text-sm py-2.5 flex items-center justify-center gap-2 min-h-0">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -126,7 +126,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold">{ui.joinCall}</h3>
-          <p className="text-white/45 text-xs mt-0.5">{ui.joinRoomDesc}</p>
+          <p className="text-slate-500 text-xs mt-0.5">{ui.joinRoomDesc}</p>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
 
       <div className="ios-room-info mt-6">
         <Link2 className="w-4 h-4 text-brand-400 shrink-0" />
-        <p className="text-xs text-white/45 leading-relaxed">{ui.roomInfo}</p>
+        <p className="text-xs text-slate-500 leading-relaxed">{ui.roomInfo}</p>
       </div>
     </div>
   );

@@ -4,8 +4,8 @@
   "description": "Til chegarasisiz audio qo'ng'iroq va real-time tarjima",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "background_color": "#F2F2F7",
+  "theme_color": "#007AFF",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -206,7 +206,7 @@ function DashboardInner({
                 </button>
                 <button onClick={() => enableNotifications()} className="ios-icon-btn" title={ui.enableNotifications}>
                   {notificationsEnabled ? (
-                    <Bell className="w-5 h-5 text-green-400" />
+                    <Bell className="w-5 h-5 text-green-600" />
                   ) : (
                     <BellOff className="w-5 h-5 text-yellow-400" />
                   )}
@@ -224,10 +224,10 @@ function DashboardInner({
         {tab === "keypad" && (
           <>
             <button onClick={copyId} className="ios-my-number">
-              <span className="text-xs text-white/40">{ui.yourNumber}</span>
-              <span className="font-mono text-lg font-semibold text-brand-300 tracking-wider flex items-center gap-2">
+              <span className="text-xs text-slate-500">{ui.yourNumber}</span>
+              <span className="font-mono text-lg font-semibold text-brand-600 tracking-wider flex items-center gap-2">
                 {user.tcallId ? formatTcallId(user.tcallId) : "..."}
-                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-white/30" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
               </span>
             </button>
             <SpeedDial userLanguage={user.language} favorites={favorites} />

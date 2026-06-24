@@ -25,17 +25,17 @@ export function OutgoingCallModal({ call, userLanguage, onCancel }: OutgoingCall
       </div>
 
       <div className="ios-call-body">
-        <p className="text-white/50 text-sm mb-6">{ui.ringing}</p>
+        <p className="text-slate-500 text-sm mb-6">{ui.ringing}</p>
 
         <div className="phone-avatar ios-call-avatar mx-auto mb-5">
           <span>{call.callee.name.slice(0, 2).toUpperCase()}</span>
         </div>
 
-        <h2 className="text-3xl font-semibold tracking-tight">{call.callee.name}</h2>
-        <p className="text-white/60 font-mono text-lg mt-2">{formatTcallId(call.callee.tcallId)}</p>
-        <p className="text-white/40 text-sm mt-1">{lang.flag} {lang.name}</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-900">{call.callee.name}</h2>
+        <p className="text-slate-600 font-mono text-lg mt-2">{formatTcallId(call.callee.tcallId)}</p>
+        <p className="text-slate-500 text-sm mt-1">{lang.flag} {lang.name}</p>
 
-        <p className="text-white/30 text-xs mt-8 animate-pulse">{ui.waitingForAnswer}</p>
+        <p className="text-slate-400 text-xs mt-8 animate-pulse">{ui.waitingForAnswer}</p>
       </div>
 
       <div className="ios-call-actions">

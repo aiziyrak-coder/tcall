@@ -36,7 +36,7 @@ export default function RegisterPage() {
 
   return (
     <div className="page-shell flex items-center justify-center px-4 py-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-900/30 via-slate-950 to-slate-950 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
@@ -46,7 +46,7 @@ export default function RegisterPage() {
             <span className="text-xl font-bold">Tcall</span>
           </Link>
           <h1 className="text-2xl font-bold">Ro&apos;yxatdan o&apos;tish</h1>
-          <p className="text-white/50 mt-2">Tilingizni tanlang — tarjima shu tilga bo&apos;ladi</p>
+          <p className="text-slate-500 mt-2">Tilingizni tanlang — tarjima shu tilga bo&apos;ladi</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
@@ -57,7 +57,7 @@ export default function RegisterPage() {
           )}
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">Ismingiz</label>
+            <label className="block text-sm text-slate-600 mb-2">Ismingiz</label>
             <input
               className="input-field"
               value={form.name}
@@ -68,7 +68,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">Email</label>
+            <label className="block text-sm text-slate-600 mb-2">Email</label>
             <input
               type="email"
               className="input-field"
@@ -80,7 +80,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">Parol</label>
+            <label className="block text-sm text-slate-600 mb-2">Parol</label>
             <input
               type="password"
               className="input-field"
@@ -94,7 +94,7 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-white/60 mb-2">Sizning tilingiz</label>
+            <label className="block text-sm text-slate-600 mb-2">Sizning tilingiz</label>
             <select
               className="input-field"
               value={form.language}
@@ -106,7 +106,7 @@ export default function RegisterPage() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-white/40 mt-1.5">
+            <p className="text-xs text-slate-400 mt-1.5">
               Boshqalar gapirganda tarjima shu tilga keladi
             </p>
           </div>
@@ -115,9 +115,9 @@ export default function RegisterPage() {
             {loading ? "Yuklanmoqda..." : "Ro'yxatdan o'tish"}
           </button>
 
-          <p className="text-center text-sm text-white/50">
+          <p className="text-center text-sm text-slate-500">
             Hisobingiz bormi?{" "}
-            <Link href="/login" className="text-brand-400 hover:underline">
+            <Link href="/login" className="text-brand-600 hover:underline">
               Kirish
             </Link>
           </p>

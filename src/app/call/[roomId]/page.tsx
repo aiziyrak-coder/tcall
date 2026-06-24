@@ -54,7 +54,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
       <div className="phone-screen flex items-center justify-center px-4">
         <div className="glass rounded-2xl p-8 max-w-md text-center">
           <h2 className="text-xl font-bold mb-2">Xatolik</h2>
-          <p className="text-white/50 mb-6">{joinError}</p>
+          <p className="text-slate-500 mb-6">{joinError}</p>
           <button onClick={() => router.push("/dashboard")} className="btn-primary">
             Boshqaruv paneliga qaytish
           </button>

@@ -89,8 +89,13 @@ export async function markCallEnded(roomId: string, userId: string) {
 
 export async function acceptCall(roomId: string, userId: string, userTcallId?: string | null) {
   const call = await getCallByRoomId(roomId);
-  if (!call || call.status !== "ringing") {
+  if (!call || !["ringing", "active"].includes(call.status)) {
     return { ok: false as const, reason: "Qo'ng'iroq mavjud emas" };
+  }
+
+  if (call.status === "active") {
+    const already = call.participants.some((p) => p.userId === userId);
+    if (already) return { ok: true as const, hostId: call.hostId };
   }
 
   if (call.calleeTcallId && userTcallId !== call.calleeTcallId) {

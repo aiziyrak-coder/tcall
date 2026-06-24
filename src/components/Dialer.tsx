@@ -128,7 +128,7 @@ export function Dialer({ userLanguage }: DialerProps) {
         {lookupName ? (
           <>
             <p className="ios-keypad-name animate-fade-in">{lookupName} {partnerLang?.flag}</p>
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-slate-500">
               {lookupOnline ? ui.online : ui.offline}
               {lookupStatus && lookupStatus !== "available" && (
                 <> · {getStatusLabel(lookupStatus, ui)}</>
@@ -178,7 +178,7 @@ export function Dialer({ userLanguage }: DialerProps) {
           className="ios-key-delete w-16 h-16 flex items-center justify-center"
           aria-label="Delete"
         >
-          <Delete className="w-6 h-6 text-white/60" />
+          <Delete className="w-6 h-6 text-slate-600" />
         </button>
       </div>
     </div>

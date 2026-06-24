@@ -69,7 +69,7 @@ export function PhoneHeader({
     <div className="flex items-start justify-between px-1">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-        {subtitle && <p className="text-white/45 text-sm mt-0.5">{subtitle}</p>}
+        {subtitle && <p className="text-slate-500 text-sm mt-0.5">{subtitle}</p>}
       </div>
       {right}
     </div>

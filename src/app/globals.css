@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-primary: #f2f2f7;
+  --bg-secondary: #ffffff;
+  --bg-elevated: #ffffff;
+  --text-primary: #1c1c1e;
+  --text-secondary: rgba(60, 60, 67, 0.6);
+  --text-tertiary: rgba(60, 60, 67, 0.4);
+  --separator: rgba(60, 60, 67, 0.18);
+  --key-bg: #ffffff;
+  --key-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --ios-blue: #007aff;
+  --call-bg: linear-gradient(180deg, #e8eef5 0%, #f2f2f7 50%, #ffffff 100%);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -9,32 +23,34 @@
     -webkit-text-size-adjust: 100%;
   }
   body {
-    @apply bg-slate-950 text-white antialiased;
+    @apply antialiased;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   input, select, textarea {
-    font-size: 16px; /* iOS zoom oldini olish */
+    font-size: 16px;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+    @apply bg-white border border-black/10 shadow-sm;
   }
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-brand-600/25 active:scale-[0.97] min-h-[48px] touch-manipulation;
+    @apply bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-xl transition-all duration-200 shadow-lg shadow-brand-600/20 active:scale-[0.97] min-h-[48px] touch-manipulation;
   }
   .btn-secondary {
-    @apply bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-white/10 active:bg-white/15 text-white font-medium px-6 py-3.5 rounded-xl transition-all duration-200 min-h-[48px] touch-manipulation;
+    @apply bg-white border border-black/10 hover:bg-slate-50 active:bg-slate-100 text-slate-900 font-medium px-6 py-3.5 rounded-xl transition-all duration-200 min-h-[48px] touch-manipulation shadow-sm;
   }
   .input-field {
-    @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all min-h-[48px];
+    @apply w-full bg-white border border-black/10 rounded-xl px-4 py-3.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all min-h-[48px];
   }
   .page-shell {
     @apply min-h-[100dvh] relative;
   }
   .mobile-nav {
-    @apply sticky top-0 z-40 bg-slate-950/90 backdrop-blur-lg border-b border-white/10;
+    @apply sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-black/10;
     padding-top: env(safe-area-inset-top);
   }
   .safe-bottom {
@@ -42,7 +58,7 @@
   }
 }
 
-/* Audio qo'ng'iroq — telefon uslubi */
+/* Audio qo'ng'iroq — light telefon uslubi */
 .phone-screen {
   height: 100dvh;
   max-height: 100dvh;
@@ -51,14 +67,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: #020617;
+  background: var(--bg-primary);
   touch-action: manipulation;
 }
 
 .phone-bg {
   @apply absolute inset-0;
-  background: radial-gradient(ellipse at 50% 30%, rgba(37, 99, 235, 0.15) 0%, transparent 60%),
-              radial-gradient(ellipse at 50% 80%, rgba(88, 28, 135, 0.1) 0%, transparent 50%);
+  background: var(--call-bg);
 }
 
 .phone-avatar-ring {
@@ -67,18 +82,18 @@
   height: 140px;
   border-radius: 50%;
   padding: 4px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.15), rgba(79, 70, 229, 0.08));
 }
 
 .phone-avatar-active {
   animation: phonePulse 2s ease-in-out infinite;
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(37, 99, 235, 0.3));
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(0, 122, 255, 0.25));
 }
 
 .phone-avatar {
-  @apply w-full h-full rounded-full flex items-center justify-center text-3xl font-bold;
-  background: linear-gradient(135deg, #1e3a5f, #0f172a);
-  border: 2px solid rgba(255,255,255,0.1);
+  @apply w-full h-full rounded-full flex items-center justify-center text-3xl font-bold text-slate-700;
+  background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+  border: 2px solid rgba(0, 0, 0, 0.06);
 }
 
 .phone-info {
@@ -86,11 +101,11 @@
 }
 
 .phone-listening-badge {
-  @apply relative z-10 mt-4 text-xs text-green-300 bg-green-500/20 px-3 py-1 rounded-full flex items-center gap-1;
+  @apply relative z-10 mt-4 text-xs text-green-700 bg-green-100 px-3 py-1 rounded-full flex items-center gap-1;
 }
 
 .phone-subtitle {
-  @apply relative z-10 mx-4 mt-6 px-4 py-3 rounded-2xl bg-black/50 backdrop-blur border border-white/10 max-w-sm w-full;
+  @apply relative z-10 mx-4 mt-6 px-4 py-3 rounded-2xl bg-white border border-black/10 shadow-sm max-w-sm w-full;
   animation: fadeInUp 0.3s ease-out;
 }
 
@@ -99,20 +114,20 @@
 }
 
 .phone-voice-badge {
-  @apply relative z-10 mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600/80 text-sm;
+  @apply relative z-10 mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-brand-600 text-white text-sm;
   animation: voicePulse 1.2s ease-in-out infinite;
 }
 
 .phone-mode-toggle {
-  @apply relative z-10 flex gap-2 mt-auto mb-4 p-1 bg-white/5 rounded-xl;
+  @apply relative z-10 flex gap-2 mt-auto mb-4 p-1 bg-slate-200/80 rounded-xl;
 }
 
 .phone-mode-btn {
-  @apply flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-white/50 transition-all touch-manipulation;
+  @apply flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-medium text-slate-500 transition-all touch-manipulation;
 }
 
 .phone-mode-active {
-  @apply bg-brand-600 text-white;
+  @apply bg-brand-600 text-white shadow-sm;
 }
 
 .phone-controls {
@@ -121,13 +136,13 @@
 }
 
 .phone-control-btn {
-  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-all;
+  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-all bg-white border border-black/10 shadow-md text-slate-700;
   width: 60px;
   height: 60px;
 }
 
 .phone-end-btn {
-  @apply bg-red-600 shadow-lg shadow-red-600/40;
+  @apply bg-red-500 border-0 text-white shadow-lg shadow-red-500/30;
   width: 68px;
   height: 68px;
 }
@@ -137,79 +152,29 @@
   50% { transform: scale(1.03); opacity: 0.9; }
 }
 
-/* Dailer */
-.dialer {
-  @apply flex flex-col items-center;
-}
-
-.dialer-display {
-  @apply text-center mb-8 w-full;
-}
-
 .dialer-number {
-  @apply text-4xl font-mono font-light tracking-[0.2em] text-white;
+  @apply text-4xl font-mono font-light tracking-[0.2em] text-slate-900;
   min-height: 3rem;
 }
 
-.dialer-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  width: 100%;
-  max-width: 280px;
-}
-
-.dialer-key {
-  @apply aspect-square rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 active:bg-white/20;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  min-height: 64px;
-}
-
-.dialer-key-action {
-  @apply bg-transparent border-0;
-}
-
-.dialer-call-btn {
-  @apply mt-8 rounded-full bg-green-600 flex items-center justify-center shadow-lg shadow-green-600/30 touch-manipulation active:scale-95 transition-all disabled:opacity-40 disabled:scale-100;
-  width: 72px;
-  height: 72px;
-}
-
-/* Kiruvchi qo'ng'iroq */
 .incoming-call-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center;
-  background: rgba(2, 6, 23, 0.95);
+  background: rgba(242, 242, 247, 0.98);
 }
 
 .incoming-call-pulse {
   @apply absolute inset-0;
-  background: radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.2) 0%, transparent 50%);
+  background: radial-gradient(circle at 50% 40%, rgba(34, 197, 94, 0.12) 0%, transparent 50%);
   animation: phonePulse 1.5s ease-in-out infinite;
 }
 
-.incoming-call-content {
-  @apply relative z-10 text-center px-6;
-}
-
-.incoming-avatar {
-  width: 120px !important;
-  height: 120px !important;
-}
-
-.incoming-btn {
-  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-all;
-  width: 68px;
-  height: 68px;
-}
-
 .incoming-accept {
-  @apply bg-green-600 shadow-lg shadow-green-600/40;
+  @apply bg-green-500 shadow-lg shadow-green-500/30;
   animation: phonePulse 1s ease-in-out infinite;
 }
 
 .incoming-reject {
-  @apply bg-red-600 shadow-lg shadow-red-600/40;
+  @apply bg-red-500 shadow-lg shadow-red-500/30;
 }
 
 .animate-fade-in {
@@ -228,51 +193,53 @@
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { @apply bg-transparent; }
-::-webkit-scrollbar-thumb { @apply bg-white/20 rounded-full; }
+::-webkit-scrollbar-thumb { @apply bg-black/15 rounded-full; }
 
-/* ===== iOS Phone App ===== */
+/* ===== iOS Phone App — Light ===== */
 .ios-phone-app {
-  @apply flex flex-col bg-slate-950;
+  @apply flex flex-col;
+  background: var(--bg-primary);
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
 }
 
 .ios-phone-header {
-  @apply shrink-0 px-5 pt-2 pb-3;
+  @apply shrink-0 px-5 pt-2 pb-3 bg-white border-b border-black/5;
   padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
 .ios-phone-content {
-  @apply flex-1 overflow-y-auto overflow-x-hidden px-4;
+  @apply flex-1 overflow-y-auto overflow-x-hidden px-4 bg-white;
   -webkit-overflow-scrolling: touch;
 }
 
 .ios-tab-bar {
-  @apply shrink-0 flex items-stretch border-t border-white/10 bg-slate-950/95 backdrop-blur-xl;
+  @apply shrink-0 flex items-stretch border-t bg-white/95 backdrop-blur-xl;
+  border-color: var(--separator);
   padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
 }
 
 .ios-tab-item {
-  @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium text-white/40 touch-manipulation transition-colors;
+  @apply flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium touch-manipulation transition-colors;
+  color: var(--text-tertiary);
   min-height: 52px;
 }
 
 .ios-tab-active {
-  @apply text-brand-400;
+  color: var(--ios-blue);
 }
 
 .ios-icon-btn {
-  @apply w-10 h-10 rounded-full bg-white/10 flex items-center justify-center touch-manipulation;
+  @apply w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center touch-manipulation text-slate-700;
 }
 
 .ios-my-number {
   @apply w-full text-center py-3 mb-2 flex flex-col items-center gap-0.5 touch-manipulation;
 }
 
-/* Keypad */
 .ios-keypad {
-  @apply flex flex-col items-center pb-4;
+  @apply flex flex-col items-center pb-4 bg-white;
 }
 
 .ios-keypad-display {
@@ -280,20 +247,20 @@
 }
 
 .ios-keypad-number {
-  @apply text-4xl font-light tracking-[0.15em] text-white font-mono;
+  @apply text-4xl font-light tracking-[0.15em] text-slate-900 font-mono;
   min-height: 2.5rem;
 }
 
 .ios-keypad-name {
-  @apply text-brand-300 text-base font-medium mb-1;
+  @apply text-brand-600 text-base font-medium mb-1;
 }
 
 .ios-keypad-hint {
-  @apply text-white/35 text-sm mb-1;
+  @apply text-slate-400 text-sm mb-1;
 }
 
 .ios-keypad-error {
-  @apply text-red-400/80 text-sm;
+  @apply text-red-500 text-sm;
 }
 
 .ios-keypad-grid {
@@ -305,10 +272,11 @@
 }
 
 .ios-key {
-  @apply flex flex-col items-center justify-center rounded-full touch-manipulation active:bg-white/15 transition-colors;
+  @apply flex flex-col items-center justify-center rounded-full touch-manipulation active:bg-slate-100 transition-colors text-slate-900;
   aspect-ratio: 1;
   max-height: 80px;
-  background: rgba(255,255,255,0.07);
+  background: var(--key-bg);
+  box-shadow: var(--key-shadow);
 }
 
 .ios-key-digit {
@@ -316,7 +284,7 @@
 }
 
 .ios-key-letters {
-  @apply text-[10px] tracking-widest text-white/45 mt-0.5 font-medium;
+  @apply text-[10px] tracking-widest text-slate-500 mt-0.5 font-medium;
 }
 
 .ios-keypad-bottom {
@@ -324,49 +292,42 @@
 }
 
 .ios-call-green-btn {
-  @apply rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/30 touch-manipulation active:scale-95 transition-all disabled:opacity-35;
+  @apply rounded-full bg-green-500 flex items-center justify-center shadow-lg shadow-green-500/25 touch-manipulation active:scale-95 transition-all disabled:opacity-35 text-white;
   width: 72px;
   height: 72px;
 }
 
 .ios-key-delete {
-  @apply touch-manipulation active:opacity-60;
+  @apply touch-manipulation active:opacity-60 text-slate-600;
 }
 
-/* Lists */
 .ios-list {
-  @apply divide-y divide-white/10;
+  @apply divide-y;
+  border-color: var(--separator);
 }
 
 .ios-list-item {
-  @apply flex items-center gap-3 py-3.5 touch-manipulation active:bg-white/5;
+  @apply flex items-center gap-3 py-3.5 touch-manipulation active:bg-slate-50;
 }
 
 .ios-section-header {
-  @apply text-sm font-semibold text-brand-400 px-1 py-2 sticky top-0 bg-slate-950/90 backdrop-blur;
+  @apply text-sm font-semibold text-brand-600 px-1 py-2 sticky top-0 bg-white/95 backdrop-blur;
 }
 
 .ios-contact-avatar {
-  @apply w-10 h-10 rounded-full bg-gradient-to-br from-brand-600/40 to-purple-600/30 flex items-center justify-center font-semibold text-sm shrink-0;
+  @apply w-10 h-10 rounded-full bg-gradient-to-br from-brand-100 to-purple-100 text-brand-700 flex items-center justify-center font-semibold text-sm shrink-0;
 }
 
 .ios-mini-call-btn {
-  @apply w-9 h-9 rounded-full bg-green-600/90 flex items-center justify-center touch-manipulation active:scale-95;
+  @apply w-9 h-9 rounded-full bg-green-500 flex items-center justify-center touch-manipulation active:scale-95 text-white;
 }
 
 .ios-empty-state {
-  @apply flex flex-col items-center justify-center py-16 text-white/40 text-sm;
+  @apply flex flex-col items-center justify-center py-16 text-slate-400 text-sm;
 }
-
-/* Room panel */
-.ios-room-panel { @apply pb-4; }
 
 .ios-room-card {
-  @apply flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10;
-}
-
-.ios-room-icon {
-  @apply w-11 h-11 rounded-xl flex items-center justify-center shrink-0;
+  @apply flex items-center gap-3 p-4 rounded-2xl bg-white border border-black/10 shadow-sm;
 }
 
 .ios-room-action-btn {
@@ -374,15 +335,15 @@
 }
 
 .ios-room-created {
-  @apply mt-3 p-4 rounded-2xl bg-brand-600/10 border border-brand-500/25;
+  @apply mt-3 p-4 rounded-2xl bg-brand-50 border border-brand-200;
 }
 
 .ios-room-info {
-  @apply flex gap-3 p-4 rounded-xl bg-white/5;
+  @apply flex gap-3 p-4 rounded-xl bg-slate-50 border border-black/5;
 }
 
 .ios-error-banner {
-  @apply bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm mb-4;
+  @apply bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm mb-4;
 }
 
 .ios-tab-bar-6 {
@@ -398,26 +359,26 @@
 }
 
 .ios-settings-overlay {
-  @apply fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center p-4;
+  @apply fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-4;
 }
 
 .ios-settings-panel {
-  @apply w-full max-w-md glass rounded-2xl p-6 max-h-[90vh] overflow-hidden;
+  @apply w-full max-w-md bg-white rounded-2xl p-6 max-h-[90vh] overflow-hidden shadow-xl;
 }
 
 .ios-modal-overlay {
-  @apply fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4;
+  @apply fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4;
 }
 
 .ios-modal-panel {
-  @apply w-full max-w-md glass rounded-2xl p-6;
+  @apply w-full max-w-md bg-white rounded-2xl p-6 shadow-xl;
 }
 
 .ios-speed-dial-btn {
-  @apply flex flex-col items-center gap-1 p-2 rounded-xl bg-white/5 border border-white/10 touch-manipulation active:scale-95 min-w-[4.5rem];
+  @apply flex flex-col items-center gap-1 p-2 rounded-xl bg-white border border-black/10 shadow-sm touch-manipulation active:scale-95 min-w-[4.5rem];
 }
 
-/* Incoming / Outgoing call — iOS style */
+/* Incoming / Outgoing call — light */
 .ios-call-screen {
   @apply flex flex-col items-center justify-between;
   padding-top: max(3rem, env(safe-area-inset-top));
@@ -426,7 +387,7 @@
 
 .ios-call-bg {
   @apply absolute inset-0;
-  background: linear-gradient(180deg, #0a1628 0%, #020617 50%, #0a0f1a 100%);
+  background: var(--call-bg);
 }
 
 .ios-call-rings {
@@ -437,7 +398,7 @@
 }
 
 .ios-ring {
-  @apply absolute rounded-full border border-white/10;
+  @apply absolute rounded-full border border-brand-200;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -448,7 +409,7 @@
 .ios-ring-3 { width: 240px; height: 240px; animation: iosRing 2s ease-out 0.8s infinite; }
 
 @keyframes iosRing {
-  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.6; }
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
   100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
 }
 
@@ -471,19 +432,37 @@
 }
 
 .ios-call-btn {
-  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-transform;
+  @apply rounded-full flex items-center justify-center touch-manipulation active:scale-95 transition-transform text-white;
   width: 72px;
   height: 72px;
 }
 
 .ios-call-btn-accept {
-  @apply bg-green-500 shadow-xl shadow-green-500/40;
+  @apply bg-green-500 shadow-xl shadow-green-500/30;
 }
 
 .ios-call-btn-reject {
-  @apply bg-red-500 shadow-xl shadow-red-500/40;
+  @apply bg-red-500 shadow-xl shadow-red-500/30;
 }
 
 .ios-call-btn-label {
-  @apply text-sm text-white/70;
+  @apply text-sm text-slate-600;
+}
+
+.incoming-call-overlay.ios-call-screen {
+  background: var(--bg-primary);
+}
+
+.incoming-call-overlay .ios-call-body h2,
+.incoming-call-overlay .ios-call-body p {
+  @apply text-slate-900;
+}
+
+.incoming-call-overlay .ios-call-body .text-brand-300 {
+  @apply text-brand-600;
+}
+
+.incoming-call-overlay .ios-call-body .text-white\/50,
+.incoming-call-overlay .ios-call-body .text-white\/40 {
+  @apply text-slate-500;
 }

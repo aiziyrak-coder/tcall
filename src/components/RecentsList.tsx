@@ -43,7 +43,7 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
   if (calls.length === 0) {
     return (
       <div className="ios-empty-state">
-        <Phone className="w-12 h-12 text-white/15 mb-3" />
+        <Phone className="w-12 h-12 text-slate-300 mb-3" />
         <p>{ui.noCalls}</p>
       </div>
     );
@@ -69,7 +69,7 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
           const iconColor =
             isMissed && !isOutgoing ? "text-red-400"
             : isOutgoing ? "text-brand-400"
-            : "text-green-400";
+            : "text-green-600";
 
           const partnerLang = partner ? getLanguage(partner.language) : null;
           const date = new Date(call.createdAt);
@@ -83,14 +83,14 @@ export function RecentsList({ userLanguage, userTcallId, calls }: RecentsListPro
               <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
               <div className="flex-1 min-w-0" onClick={() => partner?.tcallId && void handleDial(partner.tcallId)}>
                 <p className="font-medium truncate">{partner?.name || ui.unknown}</p>
-                <p className="text-xs text-white/40">
+                <p className="text-xs text-slate-500">
                   {partnerLang?.flag}{" "}
                   {partner?.tcallId ? formatTcallId(partner.tcallId) : ""}
                   {call.durationSec ? ` · ${formatDuration(call.durationSec)}` : ""}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <span className="text-xs text-white/35">{timeStr}</span>
+                <span className="text-xs text-slate-400">{timeStr}</span>
                 <div className="flex gap-1">
                   <button
                     onClick={() => setDetailRoomId(call.roomId)}

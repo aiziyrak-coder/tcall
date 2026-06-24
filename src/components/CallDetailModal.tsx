@@ -60,8 +60,8 @@ export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: 
         <div className="space-y-4 max-h-[60vh] overflow-y-auto">
           <div className="text-center py-2">
             <p className="text-xl font-semibold">{partner?.name || ui.unknown}</p>
-            <p className="font-mono text-brand-300">{partner?.tcallId ? formatTcallId(partner.tcallId) : ""}</p>
-            <p className="text-xs text-white/40 mt-1">
+            <p className="font-mono text-brand-600">{partner?.tcallId ? formatTcallId(partner.tcallId) : ""}</p>
+            <p className="text-xs text-slate-500 mt-1">
               {new Date(call.createdAt).toLocaleString()} · {ui.duration}: {formatDuration(call.durationSec)}
             </p>
             <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-white/10 capitalize">{call.status}</span>
@@ -69,14 +69,14 @@ export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: 
 
           {call.transcriptSummary && (
             <div className="glass rounded-xl p-4">
-              <p className="text-xs text-white/50 mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> {ui.summary}</p>
-              <p className="text-sm text-white/80">{call.transcriptSummary}</p>
+              <p className="text-xs text-slate-500 mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> {ui.summary}</p>
+              <p className="text-sm text-slate-700">{call.transcriptSummary}</p>
             </div>
           )}
 
           {call.transcripts.length > 0 ? (
             <div>
-              <p className="text-xs text-white/50 mb-2">{ui.transcript}</p>
+              <p className="text-xs text-slate-500 mb-2">{ui.transcript}</p>
               <div className="space-y-2">
                 {call.transcripts.map((t, i) => (
                   <div key={i} className="text-sm bg-white/5 rounded-lg px-3 py-2">
@@ -87,7 +87,7 @@ export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: 
               </div>
             </div>
           ) : (
-            <p className="text-center text-white/40 text-sm">{ui.noTranscript}</p>
+            <p className="text-center text-slate-500 text-sm">{ui.noTranscript}</p>
           )}
         </div>
 

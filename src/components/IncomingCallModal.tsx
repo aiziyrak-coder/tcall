@@ -26,15 +26,15 @@ export function IncomingCallModal({ call, userLanguage, onAccept, onReject }: In
       </div>
 
       <div className="ios-call-body">
-        <p className="text-white/50 text-sm mb-6">{ui.incomingCall}</p>
+        <p className="text-slate-500 text-sm mb-6">{ui.incomingCall}</p>
 
         <div className="phone-avatar ios-call-avatar mx-auto mb-5">
           <span>{call.caller.name.slice(0, 2).toUpperCase()}</span>
         </div>
 
-        <h2 className="text-3xl font-semibold tracking-tight">{call.caller.name}</h2>
-        <p className="text-brand-300 font-mono text-lg mt-2">{formatTcallId(call.caller.tcallId)}</p>
-        <p className="text-white/40 text-sm mt-1">{callerLang.flag} {callerLang.name}</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-slate-900">{call.caller.name}</h2>
+        <p className="text-brand-600 font-mono text-lg mt-2">{formatTcallId(call.caller.tcallId)}</p>
+        <p className="text-slate-500 text-sm mt-1">{callerLang.flag} {callerLang.name}</p>
       </div>
 
       <div className="ios-call-actions">

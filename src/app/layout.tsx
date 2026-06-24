@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "Tcall — Audio qo'ng'iroq",
   description: "Real-time tarjima bilan audio qo'ng'iroq. Dunyo bilan o'z tilingizda gaplashing.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Tcall" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Tcall" },
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
   formatDetection: { telephone: false },
   other: { "mobile-web-app-capable": "yes" },
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0f172a",
+  themeColor: "#F2F2F7",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
