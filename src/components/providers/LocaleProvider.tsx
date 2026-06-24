@@ -51,7 +51,7 @@ export function LocaleProvider({ lang, children }: { lang: string; children: Rea
   const [ui, setUI] = useState<UIText>(() => staticUi || loadStoredLocale(code) || (getUI("en") as UIText));
   const [loading, setLoading] = useState(!staticUi && !loadStoredLocale(code));
 
-  const fetchLocale = () => {
+  const fetchLocale = (signal?: AbortSignal) => {
     if (isStaticLocale(code)) {
       setUI(getUI(code) as UIText);
       setLoading(false);
@@ -66,7 +66,7 @@ export function LocaleProvider({ lang, children }: { lang: string; children: Rea
       setLoading(true);
     }
 
-    void apiFetch(`/api/ui/locale?lang=${encodeURIComponent(code)}`)
+    void apiFetch(`/api/ui/locale?lang=${encodeURIComponent(code)}`, { signal })
       .then((r) => r.json())
       .then((d) => {
         if (d.ui) {
@@ -81,10 +81,12 @@ export function LocaleProvider({ lang, children }: { lang: string; children: Rea
   };
 
   useEffect(() => {
-    fetchLocale();
+    const controller = new AbortController();
+    fetchLocale(controller.signal);
     if (typeof document !== "undefined") {
       document.documentElement.lang = code;
     }
+    return () => controller.abort();
   }, [code]);
 
   const value = useMemo(

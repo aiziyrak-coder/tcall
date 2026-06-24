@@ -25,6 +25,19 @@ export interface UserProfileFields {
   unblockRequestFromThem?: boolean;
 }
 
+export const PUBLIC_LOOKUP_SELECT = {
+  id: true,
+  name: true,
+  language: true,
+  tcallId: true,
+  status: true,
+  avatar: true,
+  bio: true,
+  city: true,
+  country: true,
+  profession: true,
+} as const;
+
 export const PROFILE_SELECT = {
   id: true,
   name: true,
@@ -112,4 +125,18 @@ export function mapLookupUser(u: Record<string, unknown>): UserProfileFields & {
     unblockRequestPending: u.unblockRequestPending as boolean | undefined,
     unblockRequestFromThem: u.unblockRequestFromThem as boolean | undefined,
   };
+}
+
+/** Do'st bo'lmagan foydalanuvchilar uchun maxfiy maydonlarni yashirish */
+export function redactLookupProfile<T extends Record<string, unknown>>(
+  user: T,
+  isFriend: boolean
+): T {
+  if (isFriend) return user;
+  const hidden = ["address", "workplace", "education", "graduatedFrom", "interests", "skills", "about", "age"] as const;
+  const copy = { ...user };
+  for (const key of hidden) {
+    if (key in copy) (copy as Record<string, unknown>)[key] = null;
+  }
+  return copy;
 }

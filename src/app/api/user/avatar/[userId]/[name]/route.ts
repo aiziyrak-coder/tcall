@@ -18,22 +18,24 @@ export async function GET(
   { params }: { params: { userId: string; name: string } }
 ) {
   const session = await getSession(_req);
-  if (!session) return new NextResponse("Unauthorized", { status: 401 });
+  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
-  const name = params.name.replace(/[^a-zA-Z0-9._-]/g, "");
-  if (!name) return new NextResponse("Not found", { status: 404 });
+  const userId = params.userId?.replace(/[^a-zA-Z0-9_-]/g, "");
+  const name = params.name?.replace(/[^a-zA-Z0-9._-]/g, "");
+  if (!userId || !name) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
 
   try {
-    const path = join(process.cwd(), "public", "uploads", "avatars", params.userId, name);
+    const path = join(process.cwd(), "public", "uploads", "avatars", userId, name);
     const data = await readFile(path);
     const ext = name.split(".").pop()?.toLowerCase() || "jpg";
     return new NextResponse(data, {
       headers: {
         "Content-Type": MIME[ext] || "image/jpeg",
         "Cache-Control": "public, max-age=86400",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {
-    return new NextResponse("Not found", { status: 404 });
+    return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
   }
 }

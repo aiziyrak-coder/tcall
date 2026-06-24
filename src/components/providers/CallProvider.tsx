@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
-import { apiFetch, getSocketUrl } from "@/lib/api";
+import { apiFetch, getSocketUrl, parseApiJson } from "@/lib/api";
 import {
   startRingtone,
   stopRingtone,
@@ -36,6 +36,7 @@ import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 import { ActiveCallEngine } from "@/components/active-call/ActiveCallEngine";
 import { MiniCallBar } from "@/components/active-call/MiniCallBar";
+import { useUI } from "@/components/providers/LocaleProvider";
 import type { User } from "@/hooks/useAuth";
 
 export interface IncomingCall {
@@ -104,6 +105,7 @@ interface CallProviderProps {
 
 export function CallProvider({ user, children }: CallProviderProps) {
   const router = useRouter();
+  const ui = useUI(user.language);
   const userId = user.userId;
   const userLanguage = user.language;
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
@@ -198,7 +200,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
       socket.on("incoming-call", (data: IncomingCall) => {
         setIncomingCall(data);
         showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
-        void unlockAudio().then(() => startRingtone());
+        void unlockAudio();
       });
 
       socket.on("call-accepted", ({ roomId }: { roomId: string }) => {
@@ -312,8 +314,11 @@ export function CallProvider({ user, children }: CallProviderProps) {
     setIncomingCall(null);
   }, [incomingCall]);
 
+  const [accepting, setAccepting] = useState(false);
+
   const acceptCall = useCallback(async () => {
-    if (!incomingCall) return;
+    if (!incomingCall || accepting) return;
+    setAccepting(true);
     await unlockAudio();
     await prefetchMicrophoneAccess();
     stopRingtone();
@@ -325,19 +330,21 @@ export function CallProvider({ user, children }: CallProviderProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Xatolik");
+      const data = await parseApiJson<{ error?: string }>(res);
+      if (!res.ok) throw new Error(data.error || ui.dialError);
 
       socketRef.current?.emit("call-accept", { roomId });
       setIncomingCall(null);
       router.push(`/call/${roomId}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Qo'ng'iroqni qabul qilib bo'lmadi";
+      const message = err instanceof Error ? err.message : ui.acceptCallFailed;
       setAcceptError(message);
       socketRef.current?.emit("call-reject", { roomId });
       setIncomingCall(null);
+    } finally {
+      setAccepting(false);
     }
-  }, [incomingCall, router]);
+  }, [incomingCall, accepting, router, ui]);
 
   const cancelOutgoing = useCallback(() => {
     stopRingback();
@@ -391,25 +398,48 @@ export function CallProvider({ user, children }: CallProviderProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tcallId }),
     });
-    const data = await res.json();
+    const data = await parseApiJson<{
+      error?: string;
+      canMessage?: boolean;
+      calleeTcallId?: string;
+      callee?: { name?: string; userId?: string; tcallId?: string; language?: string };
+      roomId?: string;
+      callId?: string;
+      delivered?: boolean;
+      calleeOnline?: boolean;
+    }>(res);
     if (!res.ok) {
       if (data.canMessage && data.calleeTcallId) {
         setQuickMessageTarget({ tcallId: data.calleeTcallId, name: data.callee?.name });
       }
-      throw new DialError(data.error || "Xatolik", {
+      throw new DialError(data.error || ui.dialError, {
         canMessage: data.canMessage,
         calleeTcallId: data.calleeTcallId,
       });
     }
 
+    if (data.roomId && data.callId && data.callee) {
+      setOutgoingCall({
+        roomId: data.roomId,
+        callId: data.callId,
+        callee: {
+          userId: data.callee.userId || "",
+          name: data.callee.name || "",
+          tcallId: data.callee.tcallId || tcallId,
+          language: data.callee.language || "uz",
+        },
+        calleeOnline: data.calleeOnline,
+      });
+    }
+
     if (!data.delivered) {
-      setDialError("Abonent hozir offline — ulanganda jiringlaydi");
+      setDialError(ui.dialCalleeOffline);
     } else if (!socketRef.current?.connected) {
-      setDialError("Signal vaqtincha uzilgan — qo'ng'iroq yuborildi");
+      setDialError(ui.dialSignalLost);
     }
 
     router.push(`/call/${data.roomId}`);
-  }, [router]);
+  }, [router, ui]);
 
   return (
     <CallContext.Provider
@@ -469,6 +499,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
           userLanguage={userLanguage}
           onAccept={acceptCall}
           onReject={rejectCall}
+          accepting={accepting}
         />
       )}
 

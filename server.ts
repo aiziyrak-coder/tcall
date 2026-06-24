@@ -209,7 +209,10 @@ app.prepare().then(async () => {
             return;
           }
 
-          const { userId, name, language, translationMode = "text" } = data;
+          const userId = session.userId;
+          const name = session.name.slice(0, 80);
+          const language = session.language || "uz";
+          const translationMode = data.translationMode === "voice" ? "voice" : "text";
           const dbIsHost = call.hostId === session.userId;
           currentRoom = roomId;
           registerUserSocket(userId, socket.id);

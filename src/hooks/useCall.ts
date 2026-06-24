@@ -816,7 +816,11 @@ export function useCall({
     async function tryAcquire(isInitial: boolean) {
       const perm = await queryMicPermission();
       if (perm === "denied") {
-        if (mounted) setMicStatus("denied");
+        if (mounted) {
+          setMicStatus("denied");
+          setCallError("media_denied");
+          setCallStatus("error");
+        }
         return;
       }
 
@@ -915,6 +919,8 @@ export function useCall({
       const perm = await queryMicPermission();
       if (perm === "denied") {
         setMicStatus("denied");
+        setCallError("media_denied");
+        setCallStatus("error");
       } else if (wasMicGrantedBefore()) {
         setMicStatus("tap");
       } else {
@@ -965,6 +971,11 @@ export function useCall({
       socketRef.current?.emit("call-ended");
     }
     socketRef.current?.emit("leave-room", { roomId });
+    void apiFetch("/api/calls/end", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId }),
+    });
     detachSocketRef.current?.();
     detachSocketRef.current = null;
     setCallStatus("ended");

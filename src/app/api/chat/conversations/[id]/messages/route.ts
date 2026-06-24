@@ -7,6 +7,7 @@ import {
   formatMessageForUser,
   type ChatMessageType,
 } from "@/lib/chat-service";
+import { isOwnChatMediaUrl } from "@/lib/chat-media-access";
 import { getUserLanguage } from "@/lib/chat-translate";
 
 const sendSchema = z.object({
@@ -40,6 +41,9 @@ export async function POST(
     }
     if (data.type !== "text" && !data.mediaUrl) {
       return NextResponse.json({ error: "Media kerak" }, { status: 400 });
+    }
+    if (data.mediaUrl && !isOwnChatMediaUrl(data.mediaUrl, session.userId)) {
+      return NextResponse.json({ error: "Noto'g'ri media manzil" }, { status: 400 });
     }
 
     const viewerLang = await getUserLanguage(session.userId, session.language || "uz");

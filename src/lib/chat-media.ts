@@ -7,7 +7,6 @@ const IMAGE_MIMES = new Set([
   "image/webp",
   "image/gif",
   "image/bmp",
-  "image/svg+xml",
   "image/heic",
   "image/heif",
   "image/heic-sequence",
@@ -26,7 +25,7 @@ const VIDEO_MIMES = new Set([
   "video/mpeg",
 ]);
 
-const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif", "bmp", "svg", "heic", "heif", "avif"]);
+const IMAGE_EXT = new Set(["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif"]);
 const VIDEO_EXT = new Set(["mp4", "webm", "mov", "m4v", "3gp", "3gpp", "avi", "mkv", "mpeg", "mpg"]);
 
 export const CHAT_MAX_IMAGE = 15 * 1024 * 1024;

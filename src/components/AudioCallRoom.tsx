@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
-import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
 import { MicPermissionGate } from "@/components/MicPermissionGate";
 import { AppSplash } from "@/components/AppSplash";
@@ -46,13 +45,7 @@ export function AudioCallRoom() {
     if (!activeCall || leaveHandledRef.current) return;
     leaveHandledRef.current = true;
     playCallEndTone();
-    void apiFetch("/api/calls/end", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId: activeCall.roomId }),
-    }).finally(() => {
-      router.replace("/dashboard");
-    });
+    router.replace("/dashboard");
   }, [activeCall, router]);
 
   const handleTap = useCallback(() => {

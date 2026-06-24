@@ -50,10 +50,11 @@ function supportsBackButton(tg: TelegramWebApp): boolean {
   if (!tg.BackButton) return false;
   try {
     if (typeof tg.isVersionAtLeast === "function") return tg.isVersionAtLeast("6.1");
+    const major = parseInt(String(tg.version || "0").split(".")[0] || "0", 10);
+    return major >= 6;
   } catch {
     return false;
   }
-  return false;
 }
 
 function applyTelegramInsets(tg: TelegramWebApp) {
@@ -100,10 +101,35 @@ export function useTelegramWebApp() {
 
     const onChange = () => applyTelegramInsets(tg);
     window.addEventListener("resize", onChange);
+    const onViewport = () => applyTelegramInsets(tg);
+    try {
+      (tg as TelegramWebApp & { onEvent?: (e: string, cb: () => void) => void }).onEvent?.(
+        "viewportChanged",
+        onViewport
+      );
+      (tg as TelegramWebApp & { onEvent?: (e: string, cb: () => void) => void }).onEvent?.(
+        "safeAreaChanged",
+        onViewport
+      );
+    } catch {
+      /* older clients */
+    }
     setReady(true);
 
     return () => {
       window.removeEventListener("resize", onChange);
+      try {
+        (tg as TelegramWebApp & { offEvent?: (e: string, cb: () => void) => void }).offEvent?.(
+          "viewportChanged",
+          onViewport
+        );
+        (tg as TelegramWebApp & { offEvent?: (e: string, cb: () => void) => void }).offEvent?.(
+          "safeAreaChanged",
+          onViewport
+        );
+      } catch {
+        /* ignore */
+      }
       document.body.classList.remove("tg-webapp");
     };
   }, []);

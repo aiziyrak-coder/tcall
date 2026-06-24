@@ -59,6 +59,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function PATCH(req: NextRequest) {
-  return NextResponse.json({ ok: true });
+export async function PATCH() {
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }

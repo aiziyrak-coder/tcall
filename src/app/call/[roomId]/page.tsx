@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseApiJson } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { getUI } from "@/lib/languages";
 import { AudioCallRoom } from "@/components/AudioCallRoom";
@@ -51,7 +51,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
       body: JSON.stringify({ roomId }),
     })
       .then(async (r) => {
-        const data = await r.json();
+        const data = await parseApiJson<{ error?: string; isHost?: boolean }>(r);
         if (!r.ok) throw new Error(data.error || "Xatolik");
         setIsHost(data.isHost ?? false);
         setJoinState("ready");

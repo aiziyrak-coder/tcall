@@ -11,9 +11,10 @@ interface IncomingCallModalProps {
   userLanguage: string;
   onAccept: () => void;
   onReject: () => void;
+  accepting?: boolean;
 }
 
-export function IncomingCallModal({ call, userLanguage, onAccept, onReject }: IncomingCallModalProps) {
+export function IncomingCallModal({ call, userLanguage, onAccept, onReject, accepting }: IncomingCallModalProps) {
   const ui = useUI(userLanguage);
   const callerLang = getLanguage(call.caller.language);
 
@@ -40,13 +41,23 @@ export function IncomingCallModal({ call, userLanguage, onAccept, onReject }: In
 
       <div className="ios-call-actions">
         <div className="ios-call-action-col">
-          <button onClick={onReject} className="ios-call-btn ios-call-btn-reject" aria-label={ui.rejectCall}>
+          <button
+            onClick={onReject}
+            disabled={accepting}
+            className="ios-call-btn ios-call-btn-reject"
+            aria-label={ui.rejectCall}
+          >
             <PhoneOff className="w-8 h-8" />
           </button>
           <span className="ios-call-btn-label">{ui.rejectCall}</span>
         </div>
         <div className="ios-call-action-col">
-          <button onClick={onAccept} className="ios-call-btn ios-call-btn-accept" aria-label={ui.acceptCall}>
+          <button
+            onClick={onAccept}
+            disabled={accepting}
+            className="ios-call-btn ios-call-btn-accept"
+            aria-label={ui.acceptCall}
+          >
             <Phone className="w-8 h-8" />
           </button>
           <span className="ios-call-btn-label">{ui.acceptCall}</span>

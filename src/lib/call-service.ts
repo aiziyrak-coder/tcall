@@ -119,6 +119,8 @@ export async function canJoinCall(
     if (!isHost && !isCallee && !isParticipant) {
       return { ok: false, reason: "Bu qo'ng'iroqqa ruxsat yo'q" };
     }
+  } else if (call.callType === "room" && !isHost && !isParticipant) {
+    return { ok: false, reason: "Bu qo'ng'iroqqa ruxsat yo'q" };
   }
 
   const count = call.participants.length;

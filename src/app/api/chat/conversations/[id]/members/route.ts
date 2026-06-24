@@ -8,7 +8,7 @@ import {
 } from "@/lib/chat-service";
 
 const addSchema = z.object({
-  memberTcallIds: z.array(z.string()).min(1).max(20),
+  memberTcallIds: z.array(z.string().regex(/^\d{9}$/)).min(1).max(20),
 });
 
 const roleSchema = z.object({

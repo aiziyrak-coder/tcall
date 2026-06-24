@@ -52,6 +52,8 @@ export function useLiveInterpreter(userLanguage: string) {
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const lastTranscriptRef = useRef("");
   const processingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const iosMaxRecordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myLangRef = useRef(myLang);
   const theirLangRef = useRef(theirLang);
   const entriesRef = useRef(entries);
@@ -120,7 +122,13 @@ export function useLiveInterpreter(userLanguage: string) {
   }, [releaseMic]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
+      if (iosMaxRecordTimerRef.current) {
+        clearTimeout(iosMaxRecordTimerRef.current);
+        iosMaxRecordTimerRef.current = null;
+      }
       stopSession();
       audioQueueRef.current = null;
     };
@@ -168,6 +176,7 @@ export function useLiveInterpreter(userLanguage: string) {
 
         const res = await apiFetch("/api/interpreter/process", { method: "POST", body: formData });
         const data = await res.json();
+        if (!mountedRef.current) return;
 
         if (res.status === 422 || data.error === "no_speech") {
           setError("no_speech");
@@ -229,7 +238,7 @@ export function useLiveInterpreter(userLanguage: string) {
         setActivity("idle");
         setActiveTargetLang(null);
       } finally {
-        processingRef.current = false;
+        if (mountedRef.current) processingRef.current = false;
       }
     },
     [ensureAudioQueue]
@@ -334,7 +343,9 @@ export function useLiveInterpreter(userLanguage: string) {
         recorderRef.current = recorder;
 
         if (isIOS()) {
-          setTimeout(() => {
+          if (iosMaxRecordTimerRef.current) clearTimeout(iosMaxRecordTimerRef.current);
+          iosMaxRecordTimerRef.current = setTimeout(() => {
+            iosMaxRecordTimerRef.current = null;
             if (recorderRef.current?.state === "recording") {
               try {
                 recorderRef.current.requestData();
