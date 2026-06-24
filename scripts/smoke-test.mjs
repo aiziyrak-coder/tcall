@@ -1,5 +1,5 @@
 /**
- * Tcall production smoke test — register, login, lookup, dial
+ * Tcall production smoke test — auth, calls, security guards
  * Usage: node scripts/smoke-test.mjs [baseUrl]
  */
 const BASE = process.argv[2] || "https://tcall.vizara.uz";
@@ -58,6 +58,10 @@ async function main() {
   if (healthRes.ok) pass("Health check", String(healthRes.status));
   else fail("Health check", String(healthRes.status));
 
+  const unauth = await req("/api/auth/session");
+  if (unauth.res.status === 401) pass("Unauthenticated session rejected");
+  else fail("Unauthenticated session rejected", String(unauth.res.status));
+
   const ts = Date.now();
   const emailA = `smoke_a_${ts}@test.local`;
   const emailB = `smoke_b_${ts}@test.local`;
@@ -102,6 +106,18 @@ async function main() {
 
   const tcallIdB = regB.body.user.tcallId;
 
+  const loginA = await req(
+    "/api/auth/login",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailA, password: pass123 }),
+    },
+    {}
+  );
+  if (loginA.res.ok && loginA.body?.user?.tcallId) pass("Login user A");
+  else fail("Login user A", JSON.stringify(loginA.body));
+
   const sessA = await req("/api/auth/session", {}, jarA);
   jarA = sessA.jar;
   if (sessA.res.ok && sessA.body?.user?.userId) pass("Session user A");
@@ -111,6 +127,21 @@ async function main() {
   jarA = lookup.jar;
   if (lookup.res.ok && lookup.body?.found) pass("Lookup user B", lookup.body.user.name);
   else fail("Lookup user B", JSON.stringify(lookup.body));
+
+  const room = await req(
+    "/api/calls",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+    jarA
+  );
+  jarA = room.jar;
+  if (room.res.ok && room.body?.roomId) {
+    pass("Create room", room.body.roomId);
+    const len = room.body.roomId.length;
+    if (len >= 6 && len <= 8) pass("Room ID format", String(len));
+    else fail("Room ID format", String(len));
+  } else {
+    fail("Create room", JSON.stringify(room.body));
+  }
 
   const dial = await req(
     "/api/calls/dial",
@@ -139,7 +170,7 @@ async function main() {
       jarB
     );
     jarB = join.jar;
-    if (join.res.ok) pass("Callee join", join.body.status);
+    if (join.res.ok && join.body.status === "active") pass("Callee join", join.body.status);
     else fail("Callee join", JSON.stringify(join.body));
 
     const end = await req(

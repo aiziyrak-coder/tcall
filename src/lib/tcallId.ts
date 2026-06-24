@@ -24,9 +24,11 @@ export function isPrettyNumber(num: string): boolean {
 }
 
 function randomNineDigit(): string {
-  const first = Math.floor(Math.random() * 9) + 1;
+  const bytes = new Uint8Array(9);
+  crypto.getRandomValues(bytes);
+  const first = (bytes[0] % 9) + 1;
   let rest = "";
-  for (let i = 0; i < 8; i++) rest += Math.floor(Math.random() * 10);
+  for (let i = 1; i < 9; i++) rest += bytes[i] % 10;
   return `${first}${rest}`;
 }
 

@@ -54,7 +54,12 @@ export async function POST(req: NextRequest) {
     const blocked = await prisma.blockedUser.findFirst({
       where: { blockerId: recipient.id, blockedTcallId: session.tcallId! },
     });
-    if (blocked) return NextResponse.json({ error: "Xabar yuborib bo'lmaydi" }, { status: 403 });
+    const blockedBySender = await prisma.blockedUser.findFirst({
+      where: { blockerId: session.userId, blockedTcallId: recipientTcallId },
+    });
+    if (blocked || blockedBySender) {
+      return NextResponse.json({ error: "Xabar yuborib bo'lmaydi" }, { status: 403 });
+    }
 
     const msg = await prisma.quickMessage.create({
       data: { senderId: session.userId, recipientTcallId, message },
@@ -77,10 +82,13 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
   const { ids } = await req.json();
-  if (!Array.isArray(ids)) return NextResponse.json({ error: "ids kerak" }, { status: 400 });
+  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 50) {
+    return NextResponse.json({ error: "ids kerak" }, { status: 400 });
+  }
+  const safeIds = ids.filter((id) => typeof id === "string" && id.length <= 64);
 
   await prisma.quickMessage.updateMany({
-    where: { id: { in: ids }, recipientTcallId: session.tcallId! },
+    where: { id: { in: safeIds }, recipientTcallId: session.tcallId! },
     data: { read: true },
   });
 

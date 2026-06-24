@@ -29,6 +29,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Audio fayl topilmadi" }, { status: 400 });
     }
 
+    if (audio.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: "Fayl juda katta" }, { status: 413 });
+    }
+
     const buffer = Buffer.from(await audio.arrayBuffer());
 
     // Juda kichik bo'laklar — ovoz yo'q

@@ -4,13 +4,18 @@ export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
 
+const ROOM_ID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ROOM_ID_LENGTH = 8;
+
+/** Cryptographically secure room ID (server-side API routes only). */
 export function generateRoomId(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  const bytes = new Uint8Array(ROOM_ID_LENGTH);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => ROOM_ID_CHARS[b % ROOM_ID_CHARS.length]).join("");
+}
+
+export function isValidRoomId(roomId: string): boolean {
+  return /^[A-Z0-9]{6,8}$/.test(roomId.toUpperCase());
 }
 
 export async function copyToClipboard(text: string): Promise<boolean> {

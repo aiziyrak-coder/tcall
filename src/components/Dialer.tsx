@@ -36,6 +36,7 @@ export function Dialer({ userLanguage }: DialerProps) {
   const [lookupLang, setLookupLang] = useState<string | null>(null);
   const [lookupStatus, setLookupStatus] = useState<string | null>(null);
   const [lookupOnline, setLookupOnline] = useState<boolean | null>(null);
+  const [blockedYou, setBlockedYou] = useState(false);
   const [calling, setCalling] = useState(false);
   const [error, setError] = useState("");
   const [addedContact, setAddedContact] = useState(false);
@@ -45,6 +46,7 @@ export function Dialer({ userLanguage }: DialerProps) {
       setLookupName(null);
       setLookupStatus(null);
       setLookupOnline(null);
+      setBlockedYou(false);
       setAddedContact(false);
       return;
     }
@@ -58,7 +60,9 @@ export function Dialer({ userLanguage }: DialerProps) {
             setLookupLang(d.user.language);
             setLookupStatus(d.user.status);
             setLookupOnline(d.user.online);
+            setBlockedYou(!!d.user.blockedYou);
             if (d.user.blockedYou) setError(ui.blocked);
+            else setError("");
           } else {
             setLookupName(null);
           }
@@ -84,7 +88,7 @@ export function Dialer({ userLanguage }: DialerProps) {
   }, [digits.length]);
 
   const handleCall = useCallback(async () => {
-    if (digits.length !== 9) return;
+    if (digits.length !== 9 || blockedYou) return;
     setCalling(true);
     setError("");
     try {
@@ -96,7 +100,7 @@ export function Dialer({ userLanguage }: DialerProps) {
     } finally {
       setCalling(false);
     }
-  }, [digits, dial]);
+  }, [digits, dial, blockedYou]);
 
   const addContact = async () => {
     if (!lookupName || digits.length !== 9) return;
@@ -167,7 +171,7 @@ export function Dialer({ userLanguage }: DialerProps) {
         <div className="w-16" />
         <button
           onClick={handleCall}
-          disabled={digits.length !== 9 || calling}
+          disabled={digits.length !== 9 || calling || blockedYou}
           className="ios-call-green-btn"
           aria-label={ui.startCall}
         >

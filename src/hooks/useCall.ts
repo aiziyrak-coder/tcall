@@ -440,6 +440,11 @@ export function useCall({
           setCallError("room_full");
           setCallStatus("error");
         });
+        socket.on("room-error", ({ message }: { message?: string }) => {
+          console.warn("Room join error:", message);
+          setCallError("room_error");
+          setCallStatus("error");
+        });
 
         socket.on("room-users", (users: RoomParticipant[]) => {
           if (streamRef.current) handleRoomUsers(users, streamRef.current, socket);

@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateRoomId } from "@/lib/utils";
 import { endStaleCallsForUser, userHasActiveCall } from "@/lib/call-service";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { generateRoomId } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  }
+
+  const limited = rateLimit(`room:${session.userId}:${clientIp(req)}`, 10, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: `Juda ko'p xona. ${limited.retryAfterSec}s kuting` },
+      { status: 429 }
+    );
   }
 
   if (await userHasActiveCall(session.userId, session.tcallId)) {

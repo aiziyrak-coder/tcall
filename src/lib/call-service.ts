@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 
 export const ACTIVE_STATUSES = ["waiting", "ringing", "active"] as const;
 export const RING_TIMEOUT_MS = 45_000;
-const MAX_TEXT_LENGTH = 2000;
+export const MAX_TEXT_LENGTH = 2000;
 
 function ringingCutoff() {
   return new Date(Date.now() - RING_TIMEOUT_MS);
@@ -53,6 +53,7 @@ export async function endStaleCallsForUser(userId: string, userTcallId?: string 
 
 export async function userHasActiveCall(userId: string, userTcallId?: string | null): Promise<boolean> {
   const cutoff = ringingCutoff();
+  const activeCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
   const call = await prisma.call.findFirst({
     where: {
@@ -66,9 +67,28 @@ export async function userHasActiveCall(userId: string, userTcallId?: string | n
   });
 
   if (!call) return false;
-  if (call.status === "ringing" && call.createdAt < cutoff) return false;
-  if (call.status === "waiting" && call.createdAt < cutoff) return false;
-  if (call.status === "active" && call.createdAt < new Date(Date.now() - 2 * 60 * 60 * 1000)) return false;
+
+  if (call.status === "ringing" && call.createdAt < cutoff) {
+    await prisma.call.update({
+      where: { id: call.id },
+      data: { status: "missed", endedAt: new Date() },
+    });
+    return false;
+  }
+  if (call.status === "waiting" && call.createdAt < cutoff) {
+    await prisma.call.update({
+      where: { id: call.id },
+      data: { status: "cancelled", endedAt: new Date() },
+    });
+    return false;
+  }
+  if (call.status === "active" && call.createdAt < activeCutoff) {
+    await prisma.call.update({
+      where: { id: call.id },
+      data: { status: "ended", endedAt: new Date() },
+    });
+    return false;
+  }
   return true;
 }
 
@@ -142,40 +162,115 @@ export async function markCallEnded(roomId: string, userId: string) {
   return { ok: true as const, callId: call.id, alreadyEnded: false as const };
 }
 
-export async function acceptCall(roomId: string, userId: string, userTcallId?: string | null) {
-  const call = await getCallByRoomId(roomId);
-  if (!call || !["ringing", "active"].includes(call.status)) {
-    return { ok: false as const, reason: "Qo'ng'iroq mavjud emas" };
-  }
+async function hasOtherActiveCall(
+  userId: string,
+  excludeRoomId: string,
+  userTcallId?: string | null
+): Promise<boolean> {
+  const cutoff = ringingCutoff();
+  const activeCutoff = new Date(Date.now() - 2 * 60 * 60 * 1000);
+  const exclude = excludeRoomId.toUpperCase();
 
-  if (call.status === "active") {
-    const already = call.participants.some((p) => p.userId === userId);
-    if (already) return { ok: true as const, hostId: call.hostId };
-  }
-
-  if (call.calleeTcallId && userTcallId !== call.calleeTcallId) {
-    return { ok: false as const, reason: "Ruxsat yo'q" };
-  }
-
-  const already = call.participants.some((p) => p.userId === userId);
-  if (!already) {
-    await prisma.callParticipant.create({ data: { callId: call.id, userId } });
-  }
-
-  const updated = await prisma.call.updateMany({
-    where: { id: call.id, status: "ringing" },
-    data: { status: "active" },
+  const call = await prisma.call.findFirst({
+    where: {
+      roomId: { not: exclude },
+      status: { in: [...ACTIVE_STATUSES] },
+      OR: [
+        { hostId: userId },
+        { participants: { some: { userId, leftAt: null } } },
+        ...(userTcallId ? [{ calleeTcallId: userTcallId, status: { in: ["ringing", "active"] } }] : []),
+      ],
+    },
   });
 
-  if (updated.count === 0) {
-    const fresh = await getCallByRoomId(roomId);
-    if (fresh?.status === "active") {
-      return { ok: true as const, hostId: call.hostId };
+  if (!call) return false;
+  if (call.status === "ringing" && call.createdAt < cutoff) return false;
+  if (call.status === "waiting" && call.createdAt < cutoff) return false;
+  if (call.status === "active" && call.createdAt < activeCutoff) return false;
+  return true;
+}
+
+async function validateCalleeAccept(
+  roomId: string,
+  userId: string,
+  userTcallId?: string | null
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const [user, call] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { status: true } }),
+    getCallByRoomId(roomId),
+  ]);
+
+  if (!user || !call) return { ok: false, reason: "Qo'ng'iroq mavjud emas" };
+  if (user.status === "dnd") return { ok: false, reason: "Bezovta qilinmasin rejimi" };
+  if (user.status === "busy") return { ok: false, reason: "Siz band" };
+
+  if (userTcallId && call.host.tcallId) {
+    const [blockedByCallee, blockedByHost] = await Promise.all([
+      prisma.blockedUser.findFirst({
+        where: { blockerId: userId, blockedTcallId: call.host.tcallId },
+      }),
+      prisma.blockedUser.findFirst({
+        where: { blockerId: call.hostId, blockedTcallId: userTcallId },
+      }),
+    ]);
+    if (blockedByCallee || blockedByHost) {
+      return { ok: false, reason: "Qo'ng'iroq qabul qilinmaydi" };
     }
-    return { ok: false as const, reason: "Qo'ng'iroq allaqachon tugagan" };
   }
 
-  return { ok: true as const, hostId: call.hostId };
+  const otherActive = await hasOtherActiveCall(userId, roomId, userTcallId);
+  if (otherActive) return { ok: false, reason: "Siz boshqa qo'ng'iroqdasiz" };
+
+  return { ok: true };
+}
+
+export async function acceptCall(roomId: string, userId: string, userTcallId?: string | null) {
+  const validation = await validateCalleeAccept(roomId, userId, userTcallId);
+  if (!validation.ok) return { ok: false as const, reason: validation.reason };
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const call = await tx.call.findUnique({
+        where: { roomId: roomId.toUpperCase() },
+        include: { participants: true },
+      });
+
+      if (!call || !["ringing", "active"].includes(call.status)) {
+        return { ok: false as const, reason: "Qo'ng'iroq mavjud emas" };
+      }
+
+      if (call.status === "active") {
+        const already = call.participants.some((p) => p.userId === userId);
+        if (already) return { ok: true as const, hostId: call.hostId };
+      }
+
+      if (call.calleeTcallId && userTcallId !== call.calleeTcallId) {
+        return { ok: false as const, reason: "Ruxsat yo'q" };
+      }
+
+      const already = call.participants.some((p) => p.userId === userId);
+      if (!already && call.participants.length >= 2) {
+        return { ok: false as const, reason: "Qo'ng'iroq band" };
+      }
+
+      if (!already) {
+        await tx.callParticipant.create({ data: { callId: call.id, userId } });
+      }
+
+      const updated = await tx.call.updateMany({
+        where: { id: call.id, status: "ringing" },
+        data: { status: "active" },
+      });
+
+      if (updated.count === 0 && call.status !== "active") {
+        return { ok: false as const, reason: "Qo'ng'iroq allaqachon tugagan" };
+      }
+
+      return { ok: true as const, hostId: call.hostId };
+    });
+  } catch {
+    return { ok: false as const, reason: "Server xatosi" };
+  }
 }
 
 export async function rejectCall(roomId: string, userId: string, userTcallId?: string | null) {

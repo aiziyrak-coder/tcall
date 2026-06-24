@@ -10,7 +10,8 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "smoke": "node scripts/smoke-test.mjs",
-    "smoke:socket": "node scripts/socket-smoke-test.mjs"
+    "smoke:socket": "node scripts/socket-smoke-test.mjs",
+    "smoke:all": "npm run smoke && npm run smoke:socket"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -35,6 +36,7 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "prisma": "^5.22.0",
+    "ssh2": "^1.16.0",
     "tailwindcss": "^3.4.15",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"

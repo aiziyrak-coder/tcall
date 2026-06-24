@@ -13,8 +13,12 @@ import {
   cancelCall,
   expireStaleRingingCalls,
   clampTranscript,
+  markCallEnded,
+  canJoinCall,
+  getCallByRoomId,
   RING_TIMEOUT_MS,
 } from "./src/lib/call-service";
+import { rateLimit } from "./src/lib/rate-limit";
 import {
   setSocketIO,
   registerUserSocket,
@@ -62,7 +66,7 @@ app.prepare().then(async () => {
     process.exit(1);
   }
 
-  await seedVanityNumbers().catch(() => {});
+  await seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
 
   setInterval(() => {
     expireStaleRingingCalls()
@@ -74,7 +78,7 @@ app.prepare().then(async () => {
           }
         }
       })
-      .catch(() => {});
+      .catch((e) => console.error("Stale call expiry error:", e));
   }, 30_000);
 
   const httpServer = createServer((req, res) => {
@@ -169,7 +173,7 @@ app.prepare().then(async () => {
 
     socket.on(
       "join-room",
-      (data: {
+      async (data: {
         roomId: string;
         userId: string;
         name: string;
@@ -177,46 +181,65 @@ app.prepare().then(async () => {
         translationMode?: string;
         isHost?: boolean;
       }) => {
-        if (!data?.roomId || data.userId !== session.userId) return;
+        try {
+          if (!data?.roomId || data.userId !== session.userId) return;
 
-        const { roomId, userId, name, language, translationMode = "text", isHost = false } = data;
-        currentRoom = roomId.toUpperCase();
-        registerUserSocket(userId, socket.id);
+          const roomId = data.roomId.toUpperCase();
+          const call = await getCallByRoomId(roomId);
+          if (!call) {
+            socket.emit("room-error", { message: "Qo'ng'iroq topilmadi" });
+            return;
+          }
 
-        if (!rooms.has(currentRoom)) rooms.set(currentRoom, new Map());
-        const room = rooms.get(currentRoom)!;
+          const access = await canJoinCall(call, session.userId, session.tcallId);
+          if (!access.ok) {
+            socket.emit("room-error", { message: access.reason });
+            return;
+          }
 
-        for (const [sid, u] of room.entries()) {
-          if (u.userId === userId && sid !== socket.id) room.delete(sid);
+          const { userId, name, language, translationMode = "text" } = data;
+          const dbIsHost = call.hostId === session.userId;
+          currentRoom = roomId;
+          registerUserSocket(userId, socket.id);
+
+          if (!rooms.has(currentRoom)) rooms.set(currentRoom, new Map());
+          const room = rooms.get(currentRoom)!;
+
+          for (const [sid, u] of room.entries()) {
+            if (u.userId === userId && sid !== socket.id) room.delete(sid);
+          }
+
+          if (room.size >= MAX_ROOM_SIZE && !Array.from(room.values()).some((u) => u.userId === userId)) {
+            socket.emit("room-full", { message: "Qo'ng'iroq band" });
+            return;
+          }
+
+          currentUser = {
+            socketId: socket.id,
+            userId,
+            name,
+            language,
+            translationMode,
+            isHost: dbIsHost,
+          };
+          room.set(socket.id, currentUser);
+          socket.join(currentRoom);
+
+          io.to(currentRoom).emit(
+            "room-users",
+            Array.from(room.values()).map((u) => ({
+              socketId: u.socketId,
+              userId: u.userId,
+              name: u.name,
+              language: u.language,
+              translationMode: u.translationMode,
+              isHost: u.isHost,
+            }))
+          );
+        } catch (e) {
+          console.error("join-room error:", e);
+          socket.emit("room-error", { message: "Server xatosi" });
         }
-
-        if (room.size >= MAX_ROOM_SIZE && !Array.from(room.values()).some((u) => u.userId === userId)) {
-          socket.emit("room-full", { message: "Qo'ng'iroq band" });
-          return;
-        }
-
-        currentUser = {
-          socketId: socket.id,
-          userId,
-          name,
-          language,
-          translationMode,
-          isHost,
-        };
-        room.set(socket.id, currentUser);
-        socket.join(currentRoom);
-
-        io.to(currentRoom).emit(
-          "room-users",
-          Array.from(room.values()).map((u) => ({
-            socketId: u.socketId,
-            userId: u.userId,
-            name: u.name,
-            language: u.language,
-            translationMode: u.translationMode,
-            isHost: u.isHost,
-          }))
-        );
       }
     );
 
@@ -237,6 +260,7 @@ app.prepare().then(async () => {
 
     socket.on("answer", (data: { answer: RTCSessionDescriptionInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
+      if (!isInRoom(currentRoom, data.targetId)) return;
       socket.to(data.targetId).emit("answer", { answer: data.answer, senderId: socket.id });
     });
 
@@ -247,9 +271,14 @@ app.prepare().then(async () => {
     });
 
     socket.on("speech-transcript", async (data: { text: string; isFinal: boolean }) => {
-      if (!currentRoom || !currentUser || !data.isFinal) return;
-      const text = clampTranscript(data.text);
-      if (!text) return;
+      try {
+        if (!currentRoom || !currentUser || !data.isFinal) return;
+
+        const limited = rateLimit(`speech:${session.userId}`, 40, 60_000);
+        if (!limited.ok) return;
+
+        const text = clampTranscript(data.text);
+        if (!text) return;
 
       const room = rooms.get(currentRoom);
       if (!room) return;
@@ -301,39 +330,62 @@ app.prepare().then(async () => {
               targetLang: savedTranslation ? recipients[0]?.language : null,
             },
           })
-          .catch(() => {});
+          .catch((e) => console.error("Transcript save error:", e));
+      }
+      } catch (e) {
+        console.error("speech-transcript error:", e);
       }
     });
 
     socket.on("call-reject", async (data: { roomId: string }) => {
-      if (!data?.roomId) return;
-      const result = await rejectCall(data.roomId, session.userId, session.tcallId);
-      if (result.ok && result.hostId) {
-        emitToUser(result.hostId, "call-rejected", { roomId: data.roomId });
+      try {
+        if (!data?.roomId) return;
+        const result = await rejectCall(data.roomId, session.userId, session.tcallId);
+        if (result.ok && result.hostId) {
+          emitToUser(result.hostId, "call-rejected", { roomId: data.roomId });
+        }
+      } catch (e) {
+        console.error("call-reject error:", e);
       }
     });
 
     socket.on("call-accept", async (data: { roomId: string }) => {
-      if (!data?.roomId) return;
-      const result = await acceptCall(data.roomId, session.userId, session.tcallId);
-      if (result.ok && result.hostId) {
-        emitToUser(result.hostId, "call-accepted", { roomId: data.roomId });
-      } else if (!result.ok) {
-        const message = "reason" in result ? result.reason : "Xatolik";
-        socket.emit("call-error", { roomId: data.roomId, message });
+      try {
+        if (!data?.roomId) return;
+        const result = await acceptCall(data.roomId, session.userId, session.tcallId);
+        if (result.ok && result.hostId) {
+          emitToUser(result.hostId, "call-accepted", { roomId: data.roomId });
+        } else if (!result.ok) {
+          const message = "reason" in result ? result.reason : "Xatolik";
+          socket.emit("call-error", { roomId: data.roomId, message });
+        }
+      } catch (e) {
+        console.error("call-accept error:", e);
+        socket.emit("call-error", { roomId: data?.roomId, message: "Server xatosi" });
       }
     });
 
     socket.on("call-cancel", async (data: { roomId: string }) => {
-      if (!data?.roomId) return;
-      const result = await cancelCall(data.roomId, session.userId);
-      if (result.ok && result.calleeId) {
-        emitToUser(result.calleeId, "call-cancelled", { roomId: data.roomId });
+      try {
+        if (!data?.roomId) return;
+        const result = await cancelCall(data.roomId, session.userId);
+        if (result.ok && result.calleeId) {
+          emitToUser(result.calleeId, "call-cancelled", { roomId: data.roomId });
+        }
+      } catch (e) {
+        console.error("call-cancel error:", e);
       }
     });
 
-    socket.on("call-ended", () => {
-      if (currentRoom) socket.to(currentRoom).emit("call-ended");
+    socket.on("call-ended", async () => {
+      if (currentRoom) {
+        socket.to(currentRoom).emit("call-ended");
+        try {
+          await markCallEnded(currentRoom, session.userId);
+        } catch (e) {
+          console.error("call-ended DB error:", e);
+        }
+      }
     });
 
     socket.on("disconnect", () => {
@@ -367,4 +419,12 @@ app.prepare().then(async () => {
   httpServer.listen(port, () => {
     console.log(`> Tcall audio server ${appUrl}`);
   });
+
+  httpServer.on("error", (err: NodeJS.ErrnoException) => {
+    console.error("HTTP server error:", err);
+    if (err.code === "EADDRINUSE") process.exit(1);
+  });
+}).catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
