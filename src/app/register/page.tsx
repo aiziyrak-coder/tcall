@@ -48,9 +48,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="page-shell app-page-enter flex items-center justify-center px-4 py-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
-      <div className="relative w-full max-w-lg">
+    <div className="page-shell app-page-enter">
+      <div className="auth-page-scroll flex items-center justify-center px-4 py-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
+        <div className="relative w-full max-w-lg">
         <div className="flex justify-center mb-8 sm:mb-10">
           <Link href="/" className="touch-manipulation">
             <TcallLogo
@@ -137,6 +138,7 @@ export default function RegisterPage() {
         </form>
 
         <AppCopyright className="mt-8" />
+        </div>
       </div>
     </div>
   );

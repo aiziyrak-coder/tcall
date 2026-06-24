@@ -260,15 +260,15 @@ function DashboardInner({
         }
       >
         {!socketConnected && (
-          <div className="ios-reconnect-banner">
+          <div className="ios-reconnect-banner shrink-0">
             <TcallLogo size="xs" animate />
             <span>{ui.reconnecting}</span>
           </div>
         )}
 
         {mountedTabs.has("keypad") && (
-          <div className={tab === "keypad" ? "app-tab-panel" : "hidden"}>
-            <button onClick={copyId} className="ios-my-number">
+          <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
+            <button onClick={copyId} className="ios-my-number shrink-0">
               <span className="text-xs text-slate-500">{ui.yourNumber}</span>
               <span className="font-mono text-lg font-semibold text-brand-600 tracking-wider flex items-center gap-2">
                 {user.tcallId ? formatTcallId(user.tcallId) : "..."}
@@ -282,7 +282,9 @@ function DashboardInner({
 
         {mountedTabs.has("recents") && (
           <div className={tab === "recents" ? "app-tab-panel" : "hidden"}>
-            <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+            <div className="app-tab-scroll">
+              <RecentsList userLanguage={user.language} userTcallId={user.tcallId} calls={calls} />
+            </div>
           </div>
         )}
 
@@ -305,19 +307,25 @@ function DashboardInner({
 
         {mountedTabs.has("contacts") && (
           <div className={tab === "contacts" ? "app-tab-panel" : "hidden"}>
-            <ContactsManager userLanguage={user.language} />
+            <div className="app-tab-scroll">
+              <ContactsManager userLanguage={user.language} />
+            </div>
           </div>
         )}
 
         {mountedTabs.has("room") && (
           <div className={tab === "room" ? "app-tab-panel" : "hidden"}>
-            <RoomPanel userLanguage={user.language} />
+            <div className="app-tab-scroll">
+              <RoomPanel userLanguage={user.language} />
+            </div>
           </div>
         )}
 
         {mountedTabs.has("numbers") && (
           <div className={tab === "numbers" ? "app-tab-panel" : "hidden"}>
-            <VanityShop userLanguage={user.language} currentId={user.tcallId} />
+            <div className="app-tab-scroll">
+              <VanityShop userLanguage={user.language} currentId={user.tcallId} />
+            </div>
           </div>
         )}
       </PhoneShell>

@@ -5,7 +5,7 @@ import { AppCopyright } from "@/components/AppCopyright";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen app-page-enter">
+    <div className="page-shell page-scroll-shell app-page-enter">
       <header className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-100/60 via-slate-50 to-white" />
         <div className="absolute top-20 left-1/4 w-96 h-96 bg-brand-600/20 rounded-full blur-3xl animate-float" />

@@ -27,6 +27,19 @@
   --app-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-bottom));
   --app-safe-left: max(env(safe-area-inset-left, 0px), var(--tg-content-safe-left));
   --app-safe-right: max(env(safe-area-inset-right, 0px), var(--tg-content-safe-right));
+  --sidebar-w: 4.5rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --sidebar-w: 5.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --sidebar-w: 13.75rem;
+  }
 }
 
 @layer base {
@@ -34,13 +47,18 @@
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
+    height: 100%;
+    overflow: hidden;
   }
   body {
     @apply antialiased;
     background: var(--bg-primary);
     color: var(--text-primary);
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
     overscroll-behavior: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   body.tg-webapp {
     padding: 0;
@@ -76,7 +94,17 @@
     @apply py-2.5 min-h-[44px] text-sm rounded-xl px-4;
   }
   .page-shell {
-    @apply min-h-[100dvh] relative;
+    @apply relative overflow-hidden;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+  .auth-page-scroll {
+    @apply h-full overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .page-scroll-shell {
+    @apply overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
   }
   .mobile-nav {
     @apply sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-black/10;
@@ -224,15 +252,186 @@
 ::-webkit-scrollbar-track { @apply bg-transparent; }
 ::-webkit-scrollbar-thumb { @apply bg-black/15 rounded-full; }
 
-/* ===== iOS Phone App — Light ===== */
+/* ===== App shell — sidebar + full-screen main (no page scroll) ===== */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: var(--bg-primary);
+  padding-left: var(--app-safe-left);
+  padding-right: var(--app-safe-right);
+}
+
+.app-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-right: 1px solid var(--separator);
+  padding-top: max(0.5rem, var(--app-safe-top));
+  padding-bottom: max(0.5rem, var(--app-safe-bottom));
+  overflow: hidden;
+  z-index: 30;
+}
+
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  min-height: 3.25rem;
+}
+
+.app-sidebar-logo-icon {
+  flex-shrink: 0;
+}
+
+.app-sidebar-logo-icon .tcall-logo-image,
+.app-sidebar-logo-icon img {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+.app-sidebar-brand-text {
+  display: none;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #007aff;
+  letter-spacing: -0.02em;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar-brand-text {
+    display: block;
+  }
+}
+
+.app-sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.375rem;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-sidebar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.625rem 0.375rem;
+  border-radius: 0.875rem;
+  color: var(--text-tertiary);
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.625rem;
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+.app-sidebar-item-active {
+  color: var(--ios-blue);
+  background: rgba(0, 122, 255, 0.08);
+}
+
+.app-sidebar-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-sidebar-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-sidebar-label {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar-label {
+    font-size: 0.8125rem;
+    text-align: left;
+    flex: 1;
+  }
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+}
+
+.app-main-header {
+  flex-shrink: 0;
+  padding-top: max(0.5rem, var(--app-safe-top));
+  padding-left: var(--app-h-pad);
+  padding-right: var(--app-h-pad);
+  padding-bottom: 0.75rem;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.app-main-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-left: var(--app-h-pad);
+  padding-right: var(--app-h-pad);
+}
+
+.app-main-content.ios-phone-content-chat {
+  padding-left: 0;
+  padding-right: 0;
+  background: #f8fafc;
+}
+
+/* Legacy aliases */
 .ios-phone-app {
   @apply flex flex-col;
   background: var(--bg-primary);
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
-  padding-left: var(--app-safe-left);
-  padding-right: var(--app-safe-right);
 }
 
 .ios-phone-header {
@@ -243,10 +442,9 @@
 }
 
 .ios-phone-content {
-  @apply flex-1 overflow-y-auto overflow-x-hidden bg-white min-h-0;
+  @apply flex-1 overflow-hidden bg-white min-h-0 flex flex-col;
   padding-left: var(--app-h-pad);
   padding-right: var(--app-h-pad);
-  -webkit-overflow-scrolling: touch;
 }
 
 .ios-phone-content-chat {
@@ -887,6 +1085,56 @@ body.tg-webapp .ios-tab-bar {
 
 .app-tab-panel {
   animation: appTabIn 0.22s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-tab-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.app-tab-keypad {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 0.25rem;
+}
+
+.app-tab-keypad .ios-my-number {
+  @apply py-2 mb-1;
+}
+
+.app-tab-keypad .ios-keypad {
+  @apply pb-2 flex-1 justify-center;
+}
+
+.app-tab-keypad .ios-keypad-grid {
+  max-width: min(280px, 88vw);
+  gap: clamp(4px, 1.2vh, 8px);
+}
+
+.app-tab-keypad .ios-key {
+  max-height: clamp(48px, 9.5vh, 68px);
+}
+
+.app-tab-keypad .ios-key-digit {
+  @apply text-2xl;
+}
+
+.app-tab-keypad .ios-call-green-btn {
+  width: clamp(52px, 11vw, 64px);
+  height: clamp(52px, 11vw, 64px);
 }
 
 .ios-reconnect-banner {
@@ -979,6 +1227,9 @@ body.tg-webapp .ios-tab-bar {
 /* ===== Chat messenger ===== */
 .chat-tab-panel {
   @apply flex flex-col flex-1 min-h-0 h-full;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
 .chat-app {

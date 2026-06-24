@@ -90,19 +90,20 @@ export default function AdminPage() {
       </div>
 
       <main className="ios-phone-content px-4 pb-8">
-        {error && (
-          <div className="ios-error-banner mb-4">{error}</div>
-        )}
+        <div className="app-tab-scroll">
+          {error && (
+            <div className="ios-error-banner mb-4">{error}</div>
+          )}
 
-        {fetching ? (
-          <div className="py-16 flex justify-center"><TcallLogo size="md" animate /></div>
-        ) : requests.length === 0 ? (
-          <div className="glass rounded-2xl p-8 text-center text-slate-500">
-            Kutilayotgan so&apos;rov yo&apos;q
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {requests.map((r) => (
+          {fetching ? (
+            <div className="py-16 flex justify-center"><TcallLogo size="md" animate /></div>
+          ) : requests.length === 0 ? (
+            <div className="glass rounded-2xl p-8 text-center text-slate-500">
+              Kutilayotgan so&apos;rov yo&apos;q
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {requests.map((r) => (
               <div key={r.id} className="glass rounded-2xl p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -138,9 +139,10 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

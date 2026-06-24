@@ -57,30 +57,43 @@ export function PhoneShell({
   const ui = getUI(userLanguage);
 
   return (
-    <div className="ios-phone-app">
-      {!hideHeader && header && <div className="ios-phone-header">{header}</div>}
-      <main className={`ios-phone-content${contentClassName ? ` ${contentClassName}` : ""}`}>{children}</main>
-      <nav className="ios-tab-bar ios-tab-bar-6">
-        {TABS.map(({ id, icon: Icon, labelKey }) => {
-          const active = activeTab === id;
-          const badge = badges?.[id];
-          return (
-            <button
-              key={id}
-              onClick={() => onTabChange(id)}
-              className={`ios-tab-item ${active ? "ios-tab-active" : ""}`}
-            >
-              <span className="relative">
-                <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
-                {badge != null && badge > 0 && (
-                  <span className="ios-tab-badge">{badge > 9 ? "9+" : badge}</span>
-                )}
-              </span>
-              <span className="text-[10px]">{ui[labelKey] as string}</span>
-            </button>
-          );
-        })}
-      </nav>
+    <div className="app-shell">
+      <aside className="app-sidebar" aria-label="Navigation">
+        <div className="app-sidebar-brand">
+          <TcallLogo size="xs" variant="icon" className="app-sidebar-logo-icon" />
+          <span className="app-sidebar-brand-text">Tcall</span>
+        </div>
+        <nav className="app-sidebar-nav">
+          {TABS.map(({ id, icon: Icon, labelKey }) => {
+            const active = activeTab === id;
+            const badge = badges?.[id];
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onTabChange(id)}
+                className={`app-sidebar-item ${active ? "app-sidebar-item-active" : ""}`}
+                title={ui[labelKey] as string}
+              >
+                <span className="app-sidebar-icon-wrap">
+                  <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
+                  {badge != null && badge > 0 && (
+                    <span className="app-sidebar-badge">{badge > 9 ? "9+" : badge}</span>
+                  )}
+                </span>
+                <span className="app-sidebar-label">{ui[labelKey] as string}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div className="app-main">
+        {!hideHeader && header && <header className="app-main-header">{header}</header>}
+        <main className={`app-main-content${contentClassName ? ` ${contentClassName}` : ""}`}>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
