@@ -57,6 +57,9 @@ export async function POST(
     if (e instanceof Error && e.message === "FORBIDDEN") {
       return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
     }
+    if (e instanceof Error && e.message === "BLOCKED") {
+      return NextResponse.json({ error: "Bloklangan foydalanuvchiga xabar yuborib bo'lmaydi" }, { status: 403 });
+    }
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });
   }
 }

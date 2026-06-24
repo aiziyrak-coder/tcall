@@ -17,7 +17,22 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ blocks });
+  const tcallIds = blocks.map((b) => b.blockedTcallId);
+  const users = tcallIds.length
+    ? await prisma.user.findMany({
+        where: { tcallId: { in: tcallIds } },
+        select: { tcallId: true, name: true },
+      })
+    : [];
+  const nameById = new Map(users.map((u) => [u.tcallId, u.name]));
+
+  return NextResponse.json({
+    blocks: blocks.map((b) => ({
+      blockedTcallId: b.blockedTcallId,
+      name: nameById.get(b.blockedTcallId) || null,
+      createdAt: b.createdAt,
+    })),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -42,6 +57,10 @@ export async function POST(req: NextRequest) {
       where: { blockerId_blockedTcallId: { blockerId: session.userId, blockedTcallId: tcallId } },
       create: { blockerId: session.userId, blockedTcallId: tcallId },
       update: {},
+    });
+
+    await prisma.contact.deleteMany({
+      where: { ownerId: session.userId, tcallId },
     });
 
     return NextResponse.json({ block });

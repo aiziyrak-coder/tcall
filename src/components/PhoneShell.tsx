@@ -4,7 +4,7 @@ import { type ReactNode } from "react";
 import {
   Phone,
   Clock,
-  Users,
+  UserRoundSearch,
   Link2,
   Sparkles,
   MessageSquare,
@@ -13,7 +13,7 @@ import {
 import { getUI } from "@/lib/languages";
 import { TcallLogo } from "@/components/TcallLogo";
 
-export type PhoneTab = "keypad" | "recents" | "contacts" | "room" | "numbers" | "messages";
+export type PhoneTab = "keypad" | "recents" | "friends" | "room" | "numbers" | "messages";
 
 interface PhoneShellProps {
   userLanguage: string;
@@ -30,7 +30,7 @@ const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeo
   { id: "recents", icon: Clock, labelKey: "recents" },
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
-  { id: "contacts", icon: Users, labelKey: "contacts" },
+  { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
   { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
 ];
@@ -38,7 +38,7 @@ const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeo
 const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
   keypad: Phone,
   recents: Clock,
-  contacts: Users,
+  friends: UserRoundSearch,
   room: Link2,
   numbers: Sparkles,
   messages: MessageSquare,

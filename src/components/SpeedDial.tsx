@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, Star } from "lucide-react";
+import { Phone } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { getUI } from "@/lib/languages";
 import { useCallContext } from "@/components/providers/CallProvider";
@@ -20,7 +20,7 @@ export function SpeedDial({ userLanguage, favorites }: SpeedDialProps) {
   return (
     <div className="mb-4">
       <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-        <Star className="w-3 h-3 text-yellow-400" /> {ui.speedDial}
+        {ui.friends}
       </p>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {favorites.slice(0, 6).map((f) => (

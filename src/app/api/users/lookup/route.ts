@@ -36,16 +36,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Bu sizning raqamingiz" }, { status: 400 });
   }
 
-  const blocked = await prisma.blockedUser.findFirst({
+  const blockedYou = await prisma.blockedUser.findFirst({
     where: { blockerId: user.id, blockedTcallId: session.tcallId! },
   });
+
+  const blockedByYou = await prisma.blockedUser.findFirst({
+    where: { blockerId: session.userId, blockedTcallId: tcallId },
+  });
+
+  const isFriend = !!(await prisma.contact.findFirst({
+    where: { ownerId: session.userId, tcallId },
+  }));
 
   return NextResponse.json({
     found: true,
     user: {
       ...user,
       online: isUserOnline(user.id),
-      blockedYou: !!blocked,
+      blockedYou: !!blockedYou,
+      blockedByYou: !!blockedByYou,
+      isFriend,
     },
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, Shield, ShieldOff } from "lucide-react";
+import { X, Save } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES, getUI } from "@/lib/languages";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
@@ -22,10 +22,8 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [translationMode, setTranslationMode] = useState(user.translationMode);
   const [status, setStatus] = useState<UserStatus>("available");
   const [bio, setBio] = useState("");
-  const [blocks, setBlocks] = useState<{ blockedTcallId: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [blockInput, setBlockInput] = useState("");
 
   useEffect(() => {
     apiFetch("/api/user/settings")
@@ -34,9 +32,6 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         if (d.user?.status) setStatus(d.user.status as UserStatus);
         if (d.user?.bio) setBio(d.user.bio);
       });
-    apiFetch("/api/blocks")
-      .then((r) => r.json())
-      .then((d) => setBlocks(d.blocks || []));
   }, []);
 
   const save = async () => {
@@ -55,25 +50,6 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     } finally {
       setSaving(false);
     }
-  };
-
-  const addBlock = async () => {
-    const tcallId = blockInput.replace(/\D/g, "");
-    if (tcallId.length !== 9) return;
-    const res = await apiFetch("/api/blocks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tcallId }),
-    });
-    if (res.ok) {
-      setBlocks((b) => [...b, { blockedTcallId: tcallId }]);
-      setBlockInput("");
-    }
-  };
-
-  const removeBlock = async (tcallId: string) => {
-    await apiFetch(`/api/blocks?tcallId=${tcallId}`, { method: "DELETE" });
-    setBlocks((b) => b.filter((x) => x.blockedTcallId !== tcallId));
   };
 
   return (
@@ -142,42 +118,8 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
               />
             </label>
 
-            <div className="settings-block-section">
-              <p className="settings-label flex items-center gap-1.5 mb-2">
-                <Shield className="w-3.5 h-3.5" /> {ui.blocked}
-              </p>
-              <div className="settings-block-row">
-                <input
-                  className="input-field-compact flex-1 min-w-0 font-mono"
-                  placeholder="123456789"
-                  value={blockInput}
-                  onChange={(e) => setBlockInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
-                  inputMode="numeric"
-                />
-                <button type="button" onClick={addBlock} className="btn-secondary btn-compact shrink-0 px-3">
-                  {ui.block}
-                </button>
-              </div>
-              {blocks.length > 0 && (
-                <ul className="settings-block-list">
-                  {blocks.map((b) => (
-                    <li key={b.blockedTcallId} className="settings-block-item">
-                      <span className="font-mono text-slate-600">{b.blockedTcallId}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeBlock(b.blockedTcallId)}
-                        className="text-red-500 text-xs flex items-center gap-1 touch-manipulation"
-                      >
-                        <ShieldOff className="w-3 h-3" /> {ui.unblock}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            <AppCopyright userLanguage={userLanguage} compact className="mt-4 pt-3 border-t border-black/5" />
           </div>
-
-          <AppCopyright userLanguage={userLanguage} compact className="mt-4 pt-3 border-t border-black/5" />
         </div>
 
         <div className="ios-settings-footer">

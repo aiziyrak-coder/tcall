@@ -1706,3 +1706,84 @@ body.has-mini-call .chat-app-thread .chat-composer {
 .chat-member-action-danger {
   @apply text-red-600 border-red-200 bg-red-50;
 }
+
+.friends-panel {
+  @apply space-y-5 pb-4;
+}
+
+.friends-section {
+  @apply space-y-3;
+}
+
+.friends-section-title {
+  @apply text-sm font-semibold text-slate-700 flex items-center gap-2;
+}
+
+.friends-search-row {
+  @apply flex gap-2 items-stretch;
+}
+
+.friends-search-error {
+  @apply text-sm text-red-500 mt-1;
+}
+
+.friends-search-result {
+  @apply flex flex-wrap items-start gap-3 p-4 rounded-2xl bg-slate-50 border border-black/[0.06];
+}
+
+.friends-search-avatar {
+  @apply w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 font-bold flex items-center justify-center shrink-0;
+}
+
+.friends-action-row {
+  @apply flex flex-wrap gap-2 w-full mt-2;
+}
+
+.friends-row-actions {
+  @apply flex items-center gap-1 shrink-0;
+}
+
+.friends-action-btn {
+  @apply inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-white border border-black/[0.08] touch-manipulation active:bg-slate-50 disabled:opacity-40;
+  min-height: 40px;
+}
+
+.friends-action-primary {
+  @apply bg-brand-50 border-brand-200 text-brand-700;
+}
+
+.friends-action-call {
+  @apply bg-green-50 border-green-200 text-green-700;
+}
+
+.friends-action-danger {
+  @apply bg-red-50 border-red-200 text-red-600;
+}
+
+.friends-badge {
+  @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600;
+}
+
+.friends-empty {
+  @apply text-sm text-slate-400 py-2;
+}
+
+.friends-blacklist-toggle {
+  @apply w-full flex items-center gap-2 px-3 py-3 rounded-xl bg-red-50/80 border border-red-100 text-sm font-medium text-slate-800 touch-manipulation;
+}
+
+.friends-blacklist-count {
+  @apply ml-2 px-1.5 py-0.5 rounded-full bg-red-200 text-red-800 text-[10px] font-bold;
+}
+
+.friends-blacklist-body {
+  @apply mt-2 p-3 rounded-xl bg-white border border-black/[0.06];
+}
+
+.friends-blacklist-desc {
+  @apply text-xs text-slate-500 mb-3;
+}
+
+.friends-block-item {
+  @apply gap-2;
+}

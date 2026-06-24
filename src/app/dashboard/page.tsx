@@ -11,7 +11,7 @@ import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
 import { RecentsList } from "@/components/RecentsList";
-import { ContactsManager } from "@/components/ContactsManager";
+import { FriendsPanel } from "@/components/FriendsPanel";
 import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
 import { SpeedDial } from "@/components/SpeedDial";
@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<PhoneTab>("keypad");
   const [loadError, setLoadError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [favorites, setFavorites] = useState<{ name: string; tcallId: string }[]>([]);
+  const [friends, setFriends] = useState<{ name: string; tcallId: string }[]>([]);
   const [missedCount, setMissedCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
 
@@ -66,8 +66,8 @@ export default function DashboardPage() {
       setLoadError={setLoadError}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
-      favorites={favorites}
-      setFavorites={setFavorites}
+      friends={friends}
+      setFriends={setFriends}
       missedCount={missedCount}
       setMissedCount={setMissedCount}
       messageCount={messageCount}
@@ -90,8 +90,8 @@ function DashboardInner({
   setLoadError,
   showSettings,
   setShowSettings,
-  favorites,
-  setFavorites,
+  friends,
+  setFriends,
   missedCount,
   setMissedCount,
   messageCount,
@@ -110,8 +110,8 @@ function DashboardInner({
   setLoadError: (v: string) => void;
   showSettings: boolean;
   setShowSettings: (v: boolean) => void;
-  favorites: { name: string; tcallId: string }[];
-  setFavorites: (f: { name: string; tcallId: string }[]) => void;
+  friends: { name: string; tcallId: string }[];
+  setFriends: (f: { name: string; tcallId: string }[]) => void;
   missedCount: number;
   setMissedCount: (n: number) => void;
   messageCount: number;
@@ -147,14 +147,17 @@ function DashboardInner({
     apiFetch("/api/contacts")
       .then((r) => r.json())
       .then((d) => {
-        const favs = (d.contacts || []).filter((c: { favorite: boolean }) => c.favorite);
-        setFavorites(favs.map((c: { name: string; tcallId: string }) => ({ name: c.name, tcallId: c.tcallId })));
+        const list = (d.contacts || []).map((c: { name: string; tcallId: string }) => ({
+          name: c.name,
+          tcallId: c.tcallId,
+        }));
+        setFriends(list);
       });
 
     apiFetch("/api/chat/conversations")
       .then((r) => r.json())
       .then((d) => setMessageCount(d.unreadCount || 0));
-  }, [setCalls, setLoadError, setFavorites, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
+  }, [setCalls, setLoadError, setFriends, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
 
   useEffect(() => {
     refresh();
@@ -206,7 +209,7 @@ function DashboardInner({
   const tabTitles: Record<PhoneTab, string> = {
     keypad: ui.keypad,
     recents: ui.recents,
-    contacts: ui.contacts,
+    friends: ui.friendsTab,
     room: ui.roomTab,
     numbers: ui.vanityNumbers,
     messages: ui.messages,
@@ -275,7 +278,7 @@ function DashboardInner({
                 {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
               </span>
             </button>
-            <SpeedDial userLanguage={user.language} favorites={favorites} />
+            <SpeedDial userLanguage={user.language} favorites={friends} />
             <Dialer userLanguage={user.language} />
           </div>
         )}
@@ -305,10 +308,16 @@ function DashboardInner({
           </div>
         )}
 
-        {mountedTabs.has("contacts") && (
-          <div className={tab === "contacts" ? "app-tab-panel" : "hidden"}>
+        {mountedTabs.has("friends") && (
+          <div className={tab === "friends" ? "app-tab-panel" : "hidden"}>
             <div className="app-tab-scroll">
-              <ContactsManager userLanguage={user.language} />
+              <FriendsPanel
+                userLanguage={user.language}
+                onOpenChat={(tcallId) => {
+                  setTab("messages");
+                  setChatOpenTcallId(tcallId);
+                }}
+              />
             </div>
           </div>
         )}

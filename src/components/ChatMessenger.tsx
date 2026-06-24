@@ -240,6 +240,9 @@ export function ChatMessenger({
         setText("");
         setShowEmoji(false);
         await openConversation(activeId);
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setActionError((d as { error?: string }).error || ui.chatActionFailed);
       }
     } finally {
       setSending(false);

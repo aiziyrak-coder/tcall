@@ -221,6 +221,11 @@ export async function removeMemberFromGroup(
 export async function sendChatMessage(input: SendMessageInput) {
   await assertMember(input.conversationId, input.senderId);
 
+  const conv = await prisma.conversation.findUnique({
+    where: { id: input.conversationId },
+    select: { type: true },
+  });
+
   const members = await prisma.conversationMember.findMany({
     where: { conversationId: input.conversationId },
     include: { user: { select: { id: true, language: true, name: true, tcallId: true } } },
@@ -228,6 +233,19 @@ export async function sendChatMessage(input: SendMessageInput) {
 
   const sender = members.find((m) => m.userId === input.senderId)?.user;
   if (!sender) throw new Error("FORBIDDEN");
+
+  if (conv?.type === "direct" && sender.tcallId) {
+    for (const m of members) {
+      if (m.userId === input.senderId || !m.user.tcallId) continue;
+      const blocked = await isBlockedBetween(
+        input.senderId,
+        sender.tcallId,
+        m.user.id,
+        m.user.tcallId
+      );
+      if (blocked) throw new Error("BLOCKED");
+    }
+  }
 
   const originalText = input.text?.trim() || null;
   const msg = await prisma.chatMessage.create({
