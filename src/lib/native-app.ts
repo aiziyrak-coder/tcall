@@ -108,6 +108,46 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
   } catch {
     /* ignore */
   }
+
+  setupNativeTouchPolish();
+}
+
+/** Sariq hoshiya va qattiq fokus — yumshoq native touch */
+function setupNativeTouchPolish() {
+  if (typeof document === "undefined") return;
+
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const t = e.target as HTMLElement | null;
+      if (!t?.closest("button, a, [role='button'], input, textarea, select, .touch-manipulation")) return;
+      requestAnimationFrame(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.blur && active !== document.body) active.blur();
+      });
+    },
+    { passive: true }
+  );
+
+  let lastHaptic = 0;
+  document.addEventListener(
+    "click",
+    (e) => {
+      const el = (e.target as HTMLElement).closest(
+        "button:not(:disabled), .app-sidebar-item, .ios-key, .btn-primary, .btn-secondary, .room-btn, .ios-call-green-btn, .phone-control-btn, .ios-room-action-btn"
+      );
+      if (!el) return;
+
+      const now = Date.now();
+      if (now - lastHaptic < 70) return;
+      lastHaptic = now;
+
+      void import("@capacitor/haptics")
+        .then(({ Haptics, ImpactStyle }) => Haptics.impact({ style: ImpactStyle.Light }))
+        .catch(() => {});
+    },
+    true
+  );
 }
 
 function urlToPath(url: string): string | null {
