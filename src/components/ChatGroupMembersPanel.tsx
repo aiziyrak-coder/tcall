@@ -118,7 +118,8 @@ export function ChatGroupMembersPanel({
                         if (window.confirm(ui.chatConfirmRemoveMember)) onRemove(m.userId);
                       }}
                     >
-                      <UserMinus className="w-3.5 h-3.5" />
+                      <UserMinus className="w-3.5 h-3.5 shrink-0" />
+                      <span>{isMe ? ui.chatLeaveGroup : ui.chatRemoveMember}</span>
                     </button>
                   )}
                 </div>

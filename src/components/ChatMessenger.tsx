@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ImagePlus,
-  LogOut,
   MessageSquare,
   MoreVertical,
   Paperclip,
@@ -12,8 +11,6 @@ import {
   Plus,
   Send,
   Smile,
-  Trash2,
-  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -24,6 +21,7 @@ import { resolveChatMediaUrl } from "@/lib/chat-media-url";
 import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { ChatGroupMembersPanel } from "@/components/ChatGroupMembersPanel";
+import { ChatThreadMenuSheet } from "@/components/ChatThreadMenuSheet";
 import { TcallLogo } from "@/components/TcallLogo";
 
 const EMOJIS = [
@@ -138,13 +136,6 @@ export function ChatMessenger({
     return bindTelegramBackButton(closeThread, !!activeId);
   }, [activeId, closeThread]);
 
-  useEffect(() => {
-    if (!showManage) return;
-    const close = () => setShowManage(false);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [showManage]);
-
   const loadConversations = useCallback(async () => {
     const r = await apiFetch("/api/chat/conversations");
     const d = await r.json();
@@ -152,6 +143,12 @@ export function ChatMessenger({
     onUnreadChange?.();
     setLoading(false);
   }, [onUnreadChange]);
+
+  const refreshAndOpenMembers = useCallback(async () => {
+    setShowManage(false);
+    await loadConversations();
+    setShowMembers(true);
+  }, [loadConversations]);
 
   const openConversation = useCallback(
     async (id: string) => {
@@ -339,7 +336,6 @@ export function ChatMessenger({
       return;
     }
     await loadConversations();
-    setShowMembers(false);
   };
 
   const changeMemberRole = async (targetUserId: string, role: "admin" | "member" | "owner") => {
@@ -456,8 +452,8 @@ export function ChatMessenger({
             {isGroup && (
               <button
                 type="button"
-                className="text-xs text-slate-500 mt-0.5 hover:text-brand-600"
-                onClick={() => setShowMembers(true)}
+                className="text-xs text-slate-500 mt-0.5 hover:text-brand-600 touch-manipulation"
+                onClick={() => void refreshAndOpenMembers()}
               >
                 {activeConv.members.length} {ui.chatMembers} · {ui.chatViewMembers}
               </button>
@@ -469,68 +465,14 @@ export function ChatMessenger({
                 <Phone className="w-5 h-5 text-green-600" />
               </button>
             )}
-            <div className="chat-manage-wrap" onClick={(e) => e.stopPropagation()}>
-              <button type="button" className="chat-manage-btn" onClick={() => setShowManage((v) => !v)}>
-                <MoreVertical className="w-5 h-5" />
-              </button>
-              {showManage && (
-                <div className="chat-manage-sheet">
-                  {isGroup && canManageGroup && (
-                    <button
-                      type="button"
-                      className="chat-manage-item flex items-center gap-2"
-                      onClick={() => { setShowManage(false); setShowAddMembers(true); }}
-                    >
-                      <UserPlus className="w-4 h-4" /> {ui.chatAddMembers}
-                    </button>
-                  )}
-                  {isGroup && canManageGroup && (
-                    <button
-                      type="button"
-                      className="chat-manage-item flex items-center gap-2"
-                      onClick={() => {
-                        setShowManage(false);
-                        setEditGroupName(activeConv.title);
-                        setShowRenameGroup(true);
-                      }}
-                    >
-                      <MessageSquare className="w-4 h-4" /> {ui.chatRenameGroup}
-                    </button>
-                  )}
-                  {isGroup && (
-                    <button
-                      type="button"
-                      className="chat-manage-item flex items-center gap-2"
-                      onClick={() => { setShowManage(false); setShowMembers(true); }}
-                    >
-                      <Users className="w-4 h-4" /> {ui.chatViewMembers}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="chat-manage-item flex items-center gap-2"
-                    onClick={() => {
-                      if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
-                        void leaveChat(false);
-                      }
-                    }}
-                  >
-                    <LogOut className="w-4 h-4" /> {isGroup ? ui.chatLeaveGroup : ui.chatDeleteChat}
-                  </button>
-                  {isGroup && myRole === "owner" && (
-                    <button
-                      type="button"
-                      className="chat-manage-item chat-manage-item-danger flex items-center gap-2"
-                      onClick={() => {
-                        if (window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" /> {ui.chatDeleteGroup}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              className="chat-manage-btn"
+              aria-label={isGroup ? ui.chatGroupSettings : ui.chatSettings}
+              onClick={() => setShowManage(true)}
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -618,6 +560,30 @@ export function ChatMessenger({
           </div>
         </div>
         </div>
+
+        {showManage && (
+          <ChatThreadMenuSheet
+            ui={ui}
+            isGroup={isGroup}
+            canManageGroup={canManageGroup}
+            isOwner={myRole === "owner"}
+            onClose={() => setShowManage(false)}
+            onViewMembers={() => void refreshAndOpenMembers()}
+            onAddMembers={() => setShowAddMembers(true)}
+            onRenameGroup={() => {
+              setEditGroupName(activeConv.title);
+              setShowRenameGroup(true);
+            }}
+            onLeave={() => {
+              if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
+                void leaveChat(false);
+              }
+            }}
+            onDeleteGroup={() => {
+              if (window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
+            }}
+          />
+        )}
 
         {showAddMembers && (
           <div className="ios-modal-overlay" onClick={() => setShowAddMembers(false)}>

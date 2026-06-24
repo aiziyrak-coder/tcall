@@ -1611,7 +1611,42 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .chat-manage-btn {
-  @apply w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 touch-manipulation active:scale-95 bg-slate-100 text-slate-600;
+  @apply w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 touch-manipulation active:scale-95 bg-slate-100 text-slate-600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chat-menu-overlay {
+  z-index: 60;
+}
+
+.chat-menu-sheet {
+  @apply pb-6;
+}
+
+.chat-menu-sheet-handle {
+  @apply w-10 h-1 rounded-full bg-slate-300 mx-auto mb-4;
+}
+
+.chat-menu-sheet-list {
+  @apply flex flex-col gap-1;
+}
+
+.chat-menu-sheet-item {
+  @apply w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left text-[15px] font-medium text-slate-800 touch-manipulation active:bg-slate-100;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chat-menu-sheet-item-danger {
+  @apply text-red-600 active:bg-red-50;
+}
+
+.chat-menu-sheet-icon {
+  @apply w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0 text-slate-600;
+}
+
+.chat-menu-sheet-item-danger .chat-menu-sheet-icon {
+  @apply bg-red-50 text-red-600;
 }
 
 .chat-manage-wrap {
@@ -1664,7 +1699,8 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .chat-member-action-btn {
-  @apply text-[11px] font-medium px-2.5 py-1.5 rounded-lg bg-white border border-black/[0.08] text-slate-700 touch-manipulation;
+  @apply inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg bg-white border border-black/[0.08] text-slate-700 touch-manipulation;
+  min-height: 36px;
 }
 
 .chat-member-action-danger {
