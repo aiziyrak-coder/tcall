@@ -8,6 +8,7 @@ import {
   getConversationsForUser,
   isBlockedBetween,
 } from "@/lib/chat-service";
+import { getUserLanguage } from "@/lib/chat-translate";
 
 const createDirectSchema = z.object({
   tcallId: z.string().regex(/^\d{9}$/),
@@ -24,9 +25,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
   }
 
+  const userLang = await getUserLanguage(session.userId, session.language || "uz");
+
   const { conversations, unreadTotal } = await getConversationsForUser(
     session.userId,
-    session.language || "uz"
+    userLang
   );
 
   return NextResponse.json({ conversations, unreadCount: unreadTotal });

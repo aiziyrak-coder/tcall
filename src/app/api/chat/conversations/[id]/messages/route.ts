@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendChatMessage, type ChatMessageType } from "@/lib/chat-service";
+import {
+  sendChatMessage,
+  formatMessageForUser,
+  type ChatMessageType,
+} from "@/lib/chat-service";
+import { getUserLanguage } from "@/lib/chat-translate";
 
 const sendSchema = z.object({
   text: z.string().max(2000).optional(),
@@ -37,19 +42,28 @@ export async function POST(
       return NextResponse.json({ error: "Media kerak" }, { status: 400 });
     }
 
+    const viewerLang = await getUserLanguage(session.userId, session.language || "uz");
+
     const result = await sendChatMessage({
       conversationId: params.id,
       senderId: session.userId,
       type: data.type as ChatMessageType,
       text: data.text,
-      sourceLang: session.language || "uz",
+      sourceLang: viewerLang,
       mediaUrl: data.mediaUrl,
       mediaMime: data.mediaMime,
       mediaName: data.mediaName,
       mediaSize: data.mediaSize,
     });
 
-    return NextResponse.json({ ok: true, messageId: result.msg.id });
+    const message = formatMessageForUser(result.msg, result.translations, viewerLang);
+
+    return NextResponse.json({
+      ok: true,
+      messageId: result.msg.id,
+      conversationId: params.id,
+      message,
+    });
   } catch (e) {
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });
@@ -60,6 +74,7 @@ export async function POST(
     if (e instanceof Error && e.message === "BLOCKED") {
       return NextResponse.json({ error: "Bloklangan foydalanuvchiga xabar yuborib bo'lmaydi" }, { status: 403 });
     }
+    console.error("Chat send error:", e);
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });
   }
 }

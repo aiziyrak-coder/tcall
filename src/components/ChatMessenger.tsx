@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { getUI, getLanguage } from "@/lib/languages";
 import { resolveChatMediaUrl } from "@/lib/chat-media-url";
 import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
@@ -55,7 +55,7 @@ interface ConversationItem {
   unreadCount: number;
   updatedAt: string;
   lastMessage: ChatMessageItem | null;
-  members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; role?: string }[];
+  members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; language?: string; role?: string }[];
 }
 
 interface ChatMessengerProps {
@@ -242,12 +242,19 @@ export function ChatMessenger({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: text.trim(), type: "text" }),
       });
+      const d = await res.json();
       if (res.ok) {
         setText("");
         setShowEmoji(false);
-        await openConversation(activeId);
+        if (d.message) {
+          setMessages((prev) =>
+            prev.some((m) => m.id === d.message.id) ? prev : [...prev, d.message]
+          );
+        } else {
+          await openConversation(activeId);
+        }
+        void loadConversations();
       } else {
-        const d = await res.json().catch(() => ({}));
         setActionError((d as { error?: string }).error || ui.chatActionFailed);
       }
     } finally {
@@ -295,8 +302,16 @@ export function ChatMessenger({
         setUploadError((err as { error?: string }).error || ui.chatUploadFailed);
         return;
       }
+      const sent = await msgRes.json();
       setText("");
-      await openConversation(activeId);
+      if (sent.message) {
+        setMessages((prev) =>
+          prev.some((m) => m.id === sent.message.id) ? prev : [...prev, sent.message]
+        );
+      } else {
+        await openConversation(activeId);
+      }
+      void loadConversations();
     } catch {
       setUploadError(ui.chatUploadFailed);
     } finally {
@@ -507,7 +522,14 @@ export function ChatMessenger({
               >
                 <p className="chat-thread-title">{activeConv.title}</p>
                 {partner?.tcallId && (
-                  <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
+                  <>
+                    <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
+                    {partner.language && partner.language !== userLanguage && (
+                      <p className="text-[10px] text-brand-600 mt-0.5">
+                        {getLanguage(partner.language).flag} {ui.chatTranslationAuto}
+                      </p>
+                    )}
+                  </>
                 )}
               </button>
             )}
@@ -865,6 +887,7 @@ function MessageBubble({
   const mediaSrc = resolveChatMediaUrl(msg.mediaUrl);
   const isImage = msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/"));
   const isVideo = msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/"));
+  const sourceLang = msg.sourceLang ? getLanguage(msg.sourceLang) : null;
 
   return (
     <div className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"}`}>
@@ -872,6 +895,11 @@ function MessageBubble({
         <p className="chat-bubble-sender">{msg.sender.name}</p>
       )}
       <div className={`chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`}>
+        {msg.hasTranslation && sourceLang && !showOriginal && (
+          <p className="chat-translation-badge">
+            {sourceLang.flag} {ui.chatTranslatedFrom}
+          </p>
+        )}
         {isImage && mediaSrc && !mediaBroken && (
           <a href={mediaSrc} target="_blank" rel="noopener noreferrer">
             <img

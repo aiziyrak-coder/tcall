@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       translationMode: user.translationMode,
     };
 
-    if (session.tcallId !== user.tcallId || session.translationMode !== user.translationMode) {
+    if (session.tcallId !== user.tcallId || session.translationMode !== user.translationMode || session.language !== user.language) {
       const token = await createToken(freshUser);
       return jsonWithSession({ user: freshUser }, token);
     }

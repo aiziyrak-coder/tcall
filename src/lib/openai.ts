@@ -1,8 +1,12 @@
 import { getLanguageName } from "./languages";
 import { getWhisperLanguage, getWhisperPrompt } from "./call-translation";
 
-function getApiKey(): string {
-  const key = process.env.OPENAI_API_KEY;
+function getApiKey(): string | null {
+  return process.env.OPENAI_API_KEY || null;
+}
+
+function requireApiKey(): string {
+  const key = getApiKey();
   if (!key) throw new Error("OPENAI_API_KEY is not configured");
   return key;
 }
@@ -30,7 +34,7 @@ export async function transcribeAudio(
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${getApiKey()}` },
+    headers: { Authorization: `Bearer ${requireApiKey()}` },
     body: formData,
   });
 
@@ -52,13 +56,19 @@ export async function translateForChat(
 ): Promise<string> {
   if (!text.trim() || sourceLang === targetLang) return text;
 
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    console.error("OPENAI_API_KEY missing — chat translation skipped");
+    return text;
+  }
+
   const sourceName = getLanguageName(sourceLang);
   const targetName = getLanguageName(targetLang);
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -110,7 +120,7 @@ export async function translateForCall(
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${requireApiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -157,7 +167,7 @@ export async function translateWithGPT(
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${requireApiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -193,7 +203,7 @@ export async function textToSpeech(text: string, langHint?: string): Promise<Buf
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${requireApiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -221,7 +231,7 @@ export async function chatCompletion(
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${getApiKey()}`,
+      Authorization: `Bearer ${requireApiKey()}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

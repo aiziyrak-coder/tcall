@@ -8,6 +8,7 @@ import {
   markConversationRead,
   updateGroupName,
 } from "@/lib/chat-service";
+import { getUserLanguage } from "@/lib/chat-translate";
 
 export async function GET(
   req: NextRequest,
@@ -19,10 +20,11 @@ export async function GET(
   try {
     await assertMember(params.id, session.userId);
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
+    const userLang = await getUserLanguage(session.userId, session.language || "uz");
     const messages = await getMessagesForConversation(
       params.id,
       session.userId,
-      session.language || "uz",
+      userLang,
       cursor
     );
     return NextResponse.json({ messages });

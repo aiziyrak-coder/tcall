@@ -1,5 +1,8 @@
 import { prisma } from "./prisma";
-import { translateForChat } from "./openai";
+import {
+  backfillTranslationForUser,
+  ensureMessageTranslations,
+} from "./chat-translate";
 import { emitToUser } from "./socket-io";
 
 export type ChatMessageType = "text" | "image" | "video" | "file";
@@ -248,13 +251,15 @@ export async function sendChatMessage(input: SendMessageInput) {
   }
 
   const originalText = input.text?.trim() || null;
+  const sourceLang = sender.language || input.sourceLang || "uz";
+
   const msg = await prisma.chatMessage.create({
     data: {
       conversationId: input.conversationId,
       senderId: input.senderId,
       type: input.type || "text",
       originalText,
-      sourceLang: input.sourceLang,
+      sourceLang,
       mediaUrl: input.mediaUrl,
       mediaMime: input.mediaMime,
       mediaName: input.mediaName,
@@ -265,24 +270,20 @@ export async function sendChatMessage(input: SendMessageInput) {
     },
   });
 
-  const translations: { targetLang: string; text: string }[] = [];
+  let translations: { targetLang: string; text: string }[] = [];
 
   if (originalText) {
     const targetLangs = new Set(
-      members.filter((m) => m.userId !== input.senderId).map((m) => m.user.language)
+      members.map((m) => m.user.language).filter(Boolean) as string[]
     );
-    targetLangs.add(input.sourceLang);
+    targetLangs.add(sourceLang);
 
-    for (const targetLang of targetLangs) {
-      const text =
-        targetLang === input.sourceLang
-          ? originalText
-          : await translateForChat(originalText, input.sourceLang, targetLang);
-      await prisma.messageTranslation.create({
-        data: { messageId: msg.id, targetLang, text },
-      });
-      translations.push({ targetLang, text });
-    }
+    translations = await ensureMessageTranslations(
+      msg.id,
+      originalText,
+      sourceLang,
+      targetLangs
+    );
   }
 
   await prisma.conversation.update({
@@ -292,7 +293,7 @@ export async function sendChatMessage(input: SendMessageInput) {
 
   const payload = {
     conversationId: input.conversationId,
-    message: formatMessage(msg, translations, input.sourceLang),
+    message: formatMessage(msg, translations, sourceLang),
   };
 
   for (const member of members) {
@@ -305,7 +306,7 @@ export async function sendChatMessage(input: SendMessageInput) {
 
   emitToUser(input.senderId, "chat-message", {
     ...payload,
-    message: formatMessageForUser(msg, translations, input.sourceLang),
+    message: formatMessageForUser(msg, translations, sourceLang),
   });
 
   return { msg, translations };
@@ -345,7 +346,13 @@ export function formatMessageForUser(
       tcallId: msg.sender.tcallId,
       language: msg.sender.language,
     },
-    hasTranslation: !!(translation && msg.originalText && translation.text !== msg.originalText),
+    hasTranslation: !!(
+      translation &&
+      msg.originalText &&
+      msg.sourceLang &&
+      msg.sourceLang !== userLang &&
+      translation.text.trim() !== (msg.originalText || "").trim()
+    ),
   };
 }
 
@@ -448,6 +455,16 @@ export async function getMessagesForConversation(
   userLang: string,
   cursor?: string
 ) {
+  return getMessagesForConversationWithBackfill(conversationId, userId, userLang, cursor);
+}
+
+/** Xabarlar ro'yxati — yetishmayotgan tarjimalarni backfill qiladi */
+export async function getMessagesForConversationWithBackfill(
+  conversationId: string,
+  userId: string,
+  userLang: string,
+  cursor?: string
+) {
   await assertMember(conversationId, userId);
 
   const messages = await prisma.chatMessage.findMany({
@@ -463,13 +480,29 @@ export async function getMessagesForConversation(
     },
   });
 
-  return messages.reverse().map((m) =>
-    formatMessageForUser(
-      m,
-      m.translations.map((t) => ({ targetLang: t.targetLang, text: t.text })),
-      userLang
-    )
-  );
+  const ordered = messages.reverse();
+  const formatted = [];
+
+  for (const m of ordered) {
+    let translations = m.translations.map((t) => ({
+      targetLang: t.targetLang,
+      text: t.text,
+    }));
+
+    if (m.originalText && m.sourceLang) {
+      translations = await backfillTranslationForUser(
+        m.id,
+        m.originalText,
+        m.sourceLang,
+        userLang,
+        translations
+      );
+    }
+
+    formatted.push(formatMessageForUser(m, translations, userLang));
+  }
+
+  return formatted;
 }
 
 export async function markConversationRead(conversationId: string, userId: string) {
