@@ -1,5 +1,8 @@
 import { transcribeAudio } from "./openai";
-import { getTranscriptionAttempts, isValidTranscript } from "./call-translation";
+import {
+  getInterpreterTranscriptionAttempts,
+  isValidInterpreterTranscript,
+} from "./call-translation";
 
 function pickFilename(name: string, buffer: Buffer): string {
   if (name && name.includes(".")) return name;
@@ -12,7 +15,6 @@ function pickFilename(name: string, buffer: Buffer): string {
   return name || "speech.webm";
 }
 
-/** Faqat buffer formatiga mos fayl nomlarini sinash — noto'g'ri format xatolarini kamaytiradi */
 function filenamesForBuffer(buffer: Buffer, originalName: string): string[] {
   const primary = pickFilename(originalName, buffer);
   const names: string[] = [primary];
@@ -43,26 +45,23 @@ function filenamesForBuffer(buffer: Buffer, originalName: string): string[] {
   return names;
 }
 
-/** Whisper — ko'p tilli, ko'p formatli transkripsiya */
+/** Whisper — promptsiz, birinchi ishonchli natija (eng uzun emas) */
 export async function transcribeForInterpreter(
   buffer: Buffer,
   originalName: string,
   language?: string
 ): Promise<string> {
   const names = filenamesForBuffer(buffer, originalName);
-  const langAttempts = getTranscriptionAttempts(language);
-  let best = "";
+  const langAttempts = getInterpreterTranscriptionAttempts(language);
 
   for (const { hintLang, whisperLang } of langAttempts) {
     for (const name of names) {
-      const text = await transcribeAudio(buffer, name, hintLang, whisperLang);
-      if (!isValidTranscript(text)) continue;
-      if (text.length > best.length) best = text;
-      if (text.length >= 12) return text;
+      const text = await transcribeAudio(buffer, name, hintLang, whisperLang, { interpreterMode: true });
+      if (isValidInterpreterTranscript(text, buffer.length)) return text;
     }
   }
 
-  return best;
+  return "";
 }
 
 export { pickFilename };

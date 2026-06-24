@@ -12,8 +12,9 @@ export type InterpreterSpeaker = "me" | "them";
 export type InterpreterActivity = "idle" | "listening" | "processing" | "speaking";
 
 const PARTNER_LANG_KEY = "tcall:interpreter-partner-lang";
-const MIN_RECORD_MS = 900;
-const MIN_BLOB_BYTES = 320;
+/** Kamida shuncha ms ushlab turish kerak — aks holda tarjima qilinmaydi */
+const MIN_RECORD_MS = 1600;
+const MIN_BLOB_BYTES = 1800;
 
 function loadPartnerLang(defaultLang: string): string {
   if (typeof window === "undefined") return defaultLang === "uz" ? "en" : "uz";
@@ -44,6 +45,7 @@ export function useLiveInterpreter(userLanguage: string) {
   const pointerHeldRef = useRef(false);
   const pressLockRef = useRef(false);
   const recordStartedAtRef = useRef(0);
+  const recordDurationMsRef = useRef(0);
   const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mimeTypeRef = useRef("audio/webm");
   const audioQueueRef = useRef<TranslationAudioQueue | null>(null);
@@ -155,11 +157,6 @@ export function useLiveInterpreter(userLanguage: string) {
       setError("");
 
       try {
-        const recentContext = entriesRef.current
-          .slice(-6)
-          .flatMap((e) => [e.original, e.translated])
-          .filter(Boolean);
-
         const formData = new FormData();
         const mime = blob.type || mimeTypeRef.current;
         const isMp4 = mime.includes("mp4") || mime.includes("aac") || mime.includes("m4a");
@@ -167,7 +164,7 @@ export function useLiveInterpreter(userLanguage: string) {
         formData.append("sourceLang", sourceLang);
         formData.append("targetLang", targetLang);
         formData.append("withSpeech", "true");
-        if (recentContext.length) formData.append("context", JSON.stringify(recentContext));
+        formData.append("recordMs", String(recordDurationMsRef.current));
 
         const res = await apiFetch("/api/interpreter/process", { method: "POST", body: formData });
         const data = await res.json();
@@ -293,6 +290,7 @@ export function useLiveInterpreter(userLanguage: string) {
 
         recorder.onstop = () => {
           const sp = recordingSpeakerRef.current;
+          const durationMs = Date.now() - recordStartedAtRef.current;
           recordingSpeakerRef.current = null;
           setRecording(null);
           recorderRef.current = null;
@@ -305,14 +303,22 @@ export function useLiveInterpreter(userLanguage: string) {
           const parts = chunksRef.current.filter((c) => c.size > 0);
           chunksRef.current = [];
 
-          if (parts.length === 0) {
+          if (parts.length === 0 || durationMs < MIN_RECORD_MS) {
             setActivity("idle");
-            setError("no_speech");
+            if (durationMs < MIN_RECORD_MS) setError("no_speech");
             return;
           }
 
           const blobType = parts[0]?.type || mimeTypeRef.current;
           const blob = new Blob(parts, { type: blobType });
+
+          if (blob.size < MIN_BLOB_BYTES) {
+            setActivity("idle");
+            setError("no_speech");
+            return;
+          }
+
+          recordDurationMsRef.current = durationMs;
           void processRecording(blob, sp);
         };
 
@@ -356,24 +362,30 @@ export function useLiveInterpreter(userLanguage: string) {
     clearStopTimer();
 
     const elapsed = Date.now() - recordStartedAtRef.current;
-    const wait = MIN_RECORD_MS - elapsed;
 
-    const doStop = () => {
+    if (elapsed < MIN_RECORD_MS) {
+      recordingSpeakerRef.current = null;
+      chunksRef.current = [];
       try {
-        const r = recorderRef.current;
-        if (r?.state === "recording") {
-          r.requestData();
-          r.stop();
-        }
+        recorder.stop();
       } catch {
-        recordingSpeakerRef.current = null;
-        setRecording(null);
-        setActivity("idle");
+        /* ignore */
       }
-    };
+      setRecording(null);
+      recorderRef.current = null;
+      setActivity("idle");
+      setError("no_speech");
+      return;
+    }
 
-    if (wait > 0) stopTimerRef.current = setTimeout(doStop, wait);
-    else doStop();
+    try {
+      recorder.requestData();
+      recorder.stop();
+    } catch {
+      recordingSpeakerRef.current = null;
+      setRecording(null);
+      setActivity("idle");
+    }
   }, [clearStopTimer]);
 
   const beginRecording = useCallback(

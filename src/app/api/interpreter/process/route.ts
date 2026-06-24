@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { translateForInterpreter, textToSpeech } from "@/lib/openai";
 import { clampTranscript } from "@/lib/call-service";
-import { isValidTranscript } from "@/lib/call-translation";
+import { isValidInterpreterTranscript } from "@/lib/call-translation";
 import { pickFilename, transcribeForInterpreter } from "@/lib/interpreter-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
+
+const MIN_RECORD_MS = 1600;
+const MIN_AUDIO_BYTES = 1800;
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
     const sourceLang = (formData.get("sourceLang") as string) || session.language;
     const targetLang = (formData.get("targetLang") as string) || "en";
     const withSpeech = formData.get("withSpeech") !== "false";
-    const contextRaw = formData.get("context") as string | null;
+    const recordMs = parseInt(String(formData.get("recordMs") || "0"), 10);
 
     if (!audio) {
       return NextResponse.json({ error: "Audio fayl topilmadi" }, { status: 400 });
@@ -40,25 +43,18 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await audio.arrayBuffer());
-    if (buffer.length < 280) {
+    if (buffer.length < MIN_AUDIO_BYTES) {
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
-
-    let recentLines: string[] = [];
-    if (contextRaw) {
-      try {
-        const parsed = JSON.parse(contextRaw);
-        if (Array.isArray(parsed)) recentLines = parsed.filter((x) => typeof x === "string").slice(-8);
-      } catch {
-        /* ignore */
-      }
+    if (recordMs > 0 && recordMs < MIN_RECORD_MS) {
+      return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
 
     const filename = pickFilename(audio.name || "speech.webm", buffer);
     const whisperHint = sourceLang === "auto" ? undefined : sourceLang;
     const rawText = await transcribeForInterpreter(buffer, filename, whisperHint);
 
-    if (!isValidTranscript(rawText)) {
+    if (!isValidInterpreterTranscript(rawText, buffer.length)) {
       console.warn("Interpreter no speech:", { bytes: buffer.length, type: audio.type, sourceLang, targetLang });
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
@@ -78,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const effectiveSource = sourceLang === "auto" ? session.language : sourceLang;
-    const translated = await translateForInterpreter(original, effectiveSource, targetLang, recentLines);
+    const translated = await translateForInterpreter(original, effectiveSource, targetLang);
 
     let audioBase64: string | undefined;
     if (withSpeech && translated.trim()) {

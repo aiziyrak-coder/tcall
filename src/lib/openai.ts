@@ -21,7 +21,8 @@ export async function transcribeAudio(
   audioBuffer: Buffer,
   filename: string,
   hintLang?: string,
-  whisperLangOverride?: string
+  whisperLangOverride?: string,
+  options?: { interpreterMode?: boolean }
 ): Promise<string> {
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)]);
@@ -33,7 +34,10 @@ export async function transcribeAudio(
   const whisperLang =
     whisperLangOverride ?? (hintLang ? getWhisperLanguage(hintLang) : undefined);
   if (whisperLang) formData.append("language", whisperLang);
-  if (hintLang) formData.append("prompt", getWhisperPrompt(hintLang));
+  // Tarjimon: promptsiz — prompt Whisper halosinatsiyasini kuchaytiradi
+  if (hintLang && !options?.interpreterMode) {
+    formData.append("prompt", getWhisperPrompt(hintLang));
+  }
 
   const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
@@ -196,22 +200,16 @@ export async function translateWithGPT(
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
-/** GPT — yuzma-yuz tarjimon (ovozli chiqish uchun optimallashtirilgan) */
+/** GPT — yuzma-yuz tarjimon: faqat eshitilgan matn, hech narsa qo'shmasdan */
 export async function translateForInterpreter(
   text: string,
   sourceLang: string,
-  targetLang: string,
-  recentLines: string[] = []
+  targetLang: string
 ): Promise<string> {
   if (!text.trim() || sourceLang === targetLang) return text;
 
   const sourceName = getLanguageName(sourceLang);
   const targetName = getLanguageName(targetLang);
-
-  const contextBlock =
-    recentLines.length > 0
-      ? `\n\nRecent dialogue (context only):\n${recentLines.slice(-6).join("\n")}`
-      : "";
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
@@ -221,20 +219,21 @@ export async function translateForInterpreter(
     },
     body: JSON.stringify({
       model: getModel(),
-      temperature: 0.1,
+      temperature: 0,
       max_tokens: 500,
       messages: [
         {
           role: "system",
-          content: `You are a world-class simultaneous interpreter for face-to-face conversations. Translate from ${sourceName} to ${targetName} for immediate text-to-speech playback.
+          content: `You are a literal word-for-word interpreter. Translate ONLY the exact words given from ${sourceName} to ${targetName}.
 
-Rules:
-- Output ONLY natural spoken ${targetName} — as if a native speaker is talking aloud.
-- Use short, clear sentences that sound perfect when read by TTS.
-- Preserve exact meaning, tone, names, numbers, and intent.
-- Do NOT add explanations, notes, brackets, or punctuation meant for reading.
-- Do NOT transliterate — write fully in ${targetName} script/alphabet.
-- Match formality level of the original speaker.${contextBlock}`,
+STRICT RULES:
+- Translate ONLY what is in the input — nothing more, nothing less.
+- Do NOT add greetings, filler words, explanations, or complete partial sentences.
+- Do NOT guess, infer, or expand abbreviated speech.
+- Do NOT use conversation context — only the single input line.
+- Preserve names, numbers, and proper nouns exactly.
+- If the input is one word, output one word (translated).
+- Return ONLY the translation text.`,
         },
         { role: "user", content: text },
       ],

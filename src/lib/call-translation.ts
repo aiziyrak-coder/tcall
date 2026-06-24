@@ -70,12 +70,39 @@ const WHISPER_HALLUCINATIONS = [
   "subtitles by",
   "subscribe",
   "please subscribe",
+  "don't forget to subscribe",
+  "leave a comment",
+  "like and subscribe",
   "amara.org",
   "mbc",
   "copyright",
   "silence",
   "music",
+  "www.",
+  "http",
+  "audience applauds",
+  "applause",
 ];
+
+/** Tarjimon uchun — faqat haqiqiy nutq, hech narsa qo'shmasin */
+export function isValidInterpreterTranscript(text: string, audioBytes = 0): boolean {
+  if (!isValidTranscript(text)) return false;
+
+  const t = text.trim();
+  const words = t.split(/\s+/).filter(Boolean);
+
+  if (words.length < 1) return false;
+  if (t.length < 3) return false;
+
+  // Juda qisqa yozuvda uzoq matn — Whisper halosinatsiyasi
+  if (audioBytes > 0 && audioBytes < 4000 && t.length > 40) return false;
+  if (audioBytes > 0 && audioBytes < 2500 && words.length > 4) return false;
+
+  const lower = t.toLowerCase();
+  if (WHISPER_HALLUCINATIONS.some((h) => lower.includes(h))) return false;
+
+  return true;
+}
 
 /** Bo'sh yoki shovqin transkriptlarni filtrlash */
 export function isValidTranscript(text: string): boolean {
@@ -107,9 +134,36 @@ function normalizeForDedup(text: string): string {
     .trim();
 }
 
+/** Tarjimon transkripsiyasi — promptsiz, faqat eshitilgan ovoz */
+export function getInterpreterTranscriptionAttempts(hintLang?: string): TranscriptionAttempt[] {
+  const attempts: TranscriptionAttempt[] = [];
+  const seen = new Set<string>();
+
+  const add = (hint?: string, whisper?: string) => {
+    const key = `${hint || "_"}:${whisper || "auto"}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    attempts.push({ hintLang: hint, whisperLang: whisper });
+  };
+
+  add(undefined, undefined);
+
+  if (!hintLang) return attempts;
+
+  const base = hintLang.split("-")[0].toLowerCase();
+  const nativeWhisper = getWhisperLanguage(base);
+  if (nativeWhisper) add(undefined, nativeWhisper);
+
+  for (const fb of WHISPER_FALLBACK_LANG[base] || []) {
+    if (getWhisperLanguage(fb)) add(undefined, fb);
+  }
+
+  return attempts;
+}
+
 export function getWhisperPrompt(language: string): string {
   const prompts: Record<string, string> = {
-    uz: "Assalomu alaykum. Qandaysiz? Men o'zbek tilida gapiryapman. Rahmat. Ha, yo'q. Iltimos, yaxshi, tushundim, qayerda, qachon, nima, kim, qanday.",
+    uz: "Yuzma-yuz suhbat, o'zbek tilida.",
     ru: "Разговор лицом к лицу на русском языке.",
     en: "Face-to-face conversation in English.",
     tr: "Yüz yüze Türkçe konuşma.",
