@@ -53,6 +53,7 @@ interface ChatMessengerProps {
   userLanguage: string;
   userId: string;
   onUnreadChange?: () => void;
+  onThreadChange?: (inThread: boolean) => void;
   openTcallId?: string | null;
   openName?: string;
   onOpenHandled?: () => void;
@@ -62,6 +63,7 @@ export function ChatMessenger({
   userLanguage,
   userId,
   onUnreadChange,
+  onThreadChange,
   openTcallId,
   openName,
   onOpenHandled,
@@ -87,6 +89,14 @@ export function ChatMessenger({
   const mediaRef = useRef<HTMLInputElement>(null);
 
   const activeConv = conversations.find((c) => c.id === activeId);
+
+  useEffect(() => {
+    onThreadChange?.(!!activeId);
+  }, [activeId, onThreadChange]);
+
+  useEffect(() => {
+    return () => onThreadChange?.(false);
+  }, [onThreadChange]);
 
   const loadConversations = useCallback(async () => {
     const r = await apiFetch("/api/chat/conversations");
@@ -240,8 +250,10 @@ export function ChatMessenger({
 
   if (loading) {
     return (
-      <div className="chat-loading">
-        <TcallLogo size="sm" animate />
+      <div className="chat-app">
+        <div className="chat-loading">
+          <TcallLogo size="sm" animate />
+        </div>
       </div>
     );
   }
@@ -249,22 +261,30 @@ export function ChatMessenger({
   if (activeId && activeConv) {
     const partner = activeConv.members.find((m) => m.userId !== userId);
     return (
-      <div className="chat-thread">
+      <div className="chat-app chat-app-thread">
+        <div className="chat-thread">
         <div className="chat-thread-header">
-          <button type="button" onClick={() => setActiveId(null)} className="ios-icon-btn">
+          <button type="button" onClick={() => setActiveId(null)} className="ios-icon-btn shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
+          <div className={`chat-thread-avatar ${activeConv.type === "group" ? "chat-conv-avatar-group" : ""}`}>
+            {activeConv.type === "group" ? (
+              <Users className="w-5 h-5" />
+            ) : (
+              activeConv.title.slice(0, 2).toUpperCase()
+            )}
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{activeConv.title}</p>
+            <p className="chat-thread-title">{activeConv.title}</p>
             {activeConv.type === "direct" && partner?.tcallId && (
-              <p className="text-xs text-slate-500 font-mono">{formatTcallId(partner.tcallId)}</p>
+              <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
             )}
             {activeConv.type === "group" && (
-              <p className="text-xs text-slate-500">{activeConv.members.length} {ui.chatMembers}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{activeConv.members.length} {ui.chatMembers}</p>
             )}
           </div>
           {partner?.tcallId && (
-            <button type="button" onClick={() => void dial(partner.tcallId!)} className="ios-icon-btn">
+            <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
               <Phone className="w-5 h-5 text-green-600" />
             </button>
           )}
@@ -349,12 +369,14 @@ export function ChatMessenger({
             </button>
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="chat-list-view">
+    <div className="chat-app chat-app-list">
+      <div className="chat-list-view">
       <div className="chat-list-actions">
         <button type="button" className="chat-action-btn" onClick={() => setShowNewChat(true)}>
           <Plus className="w-4 h-4" /> {ui.newChat}
@@ -375,7 +397,7 @@ export function ChatMessenger({
           {conversations.map((c) => (
             <li key={c.id}>
               <button type="button" className="chat-conv-item" onClick={() => void openConversation(c.id)}>
-                <div className="chat-conv-avatar">
+                <div className={`chat-conv-avatar ${c.type === "group" ? "chat-conv-avatar-group" : ""}`}>
                   {c.type === "group" ? <Users className="w-5 h-5" /> : c.title.slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
@@ -449,6 +471,7 @@ export function ChatMessenger({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

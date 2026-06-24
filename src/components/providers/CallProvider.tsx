@@ -184,7 +184,12 @@ export function CallProvider({
       clearRingTimeout();
       stopRingback();
       setOutgoingCall(null);
-      router.push(`/call/${roomId}`);
+      const rid = roomId.toUpperCase();
+      const current =
+        typeof window !== "undefined" ? window.location.pathname.toUpperCase() : "";
+      if (!current.endsWith(`/CALL/${rid}`)) {
+        router.push(`/call/${rid}`);
+      }
     });
 
     socket.on("call-rejected", () => {

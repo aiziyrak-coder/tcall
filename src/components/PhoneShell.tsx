@@ -1,7 +1,15 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Phone, Clock, Users, Link2, Sparkles, MessageSquare } from "lucide-react";
+import {
+  Phone,
+  Clock,
+  Users,
+  Link2,
+  Sparkles,
+  MessageSquare,
+  type LucideIcon,
+} from "lucide-react";
 import { getUI } from "@/lib/languages";
 import { TcallLogo } from "@/components/TcallLogo";
 
@@ -14,6 +22,8 @@ interface PhoneShellProps {
   header?: ReactNode;
   children: ReactNode;
   badges?: Partial<Record<PhoneTab, number>>;
+  hideHeader?: boolean;
+  contentClassName?: string;
 }
 
 const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeof getUI> }[] = [
@@ -25,13 +35,31 @@ const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeo
   { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
 ];
 
-export function PhoneShell({ userLanguage, activeTab, onTabChange, header, children, badges }: PhoneShellProps) {
+const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
+  keypad: Phone,
+  recents: Clock,
+  contacts: Users,
+  room: Link2,
+  numbers: Sparkles,
+  messages: MessageSquare,
+};
+
+export function PhoneShell({
+  userLanguage,
+  activeTab,
+  onTabChange,
+  header,
+  children,
+  badges,
+  hideHeader,
+  contentClassName,
+}: PhoneShellProps) {
   const ui = getUI(userLanguage);
 
   return (
     <div className="ios-phone-app">
-      <div className="ios-phone-header">{header}</div>
-      <main className="ios-phone-content">{children}</main>
+      {!hideHeader && header && <div className="ios-phone-header">{header}</div>}
+      <main className={`ios-phone-content${contentClassName ? ` ${contentClassName}` : ""}`}>{children}</main>
       <nav className="ios-tab-bar ios-tab-bar-6">
         {TABS.map(({ id, icon: Icon, labelKey }) => {
           const active = activeTab === id;
@@ -57,39 +85,91 @@ export function PhoneShell({ userLanguage, activeTab, onTabChange, header, child
   );
 }
 
+export interface PhoneHeaderContext {
+  tab: PhoneTab;
+  tabLabel: string;
+  userFlag?: string;
+  userName?: string;
+}
+
 export function PhoneHeader({
   title,
   subtitle,
   right,
   showLogo,
+  context,
 }: {
   title: string;
   subtitle?: string;
   right?: ReactNode;
   showLogo?: boolean;
+  context?: PhoneHeaderContext;
 }) {
+  const TabIcon = context ? TAB_ICONS[context.tab] : Phone;
+  const initial = context?.userName?.trim().charAt(0).toUpperCase() || "?";
+  const contextOnly = !!context && !showLogo;
+
   return (
-    <div className="flex items-center justify-between gap-3 px-1 min-h-[52px]">
-      {showLogo ? (
-        <TcallLogo
-          size="sm"
-          layout="horizontal"
-          variant="full"
-          title={title}
-          subtitle={subtitle}
-          className="min-w-0 flex-1"
-        />
-      ) : (
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-slate-500 text-sm sm:text-base mt-0.5 leading-snug">{subtitle}</p>
+    <div className={`phone-header-shell${contextOnly ? " phone-header-shell-compact" : ""}`}>
+      <div className="phone-header-row">
+        {showLogo ? (
+          <TcallLogo size="sm" layout="horizontal" variant="full" className="phone-header-logo" />
+        ) : contextOnly ? (
+          <div className="phone-header-context phone-header-context-inline">
+            <div className="phone-header-tab-pill">
+              <span className="phone-header-tab-icon">
+                <TabIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
+              </span>
+              <span className="phone-header-tab-label">{context.tabLabel}</span>
+            </div>
+            {context.userName && (
+              <div className="phone-header-user-chip">
+                <span className="phone-header-avatar">{initial}</span>
+                <span className="phone-header-user-text">
+                  {context.userFlag && (
+                    <span className="phone-header-flag" aria-hidden>
+                      {context.userFlag}
+                    </span>
+                  )}
+                  <span className="phone-header-user-name">{context.userName}</span>
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="phone-header-title-only">
+            <h1 className="phone-header-page-title">{title}</h1>
+            {subtitle && !context && (
+              <p className="phone-header-page-sub">{subtitle}</p>
+            )}
+          </div>
+        )}
+        {right && <div className="phone-header-actions">{right}</div>}
+      </div>
+
+      {context && showLogo && (
+        <div className="phone-header-context">
+          <div className="phone-header-tab-pill">
+            <span className="phone-header-tab-icon">
+              <TabIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
+            </span>
+            <span className="phone-header-tab-label">{context.tabLabel}</span>
+          </div>
+          {context.userName && (
+            <div className="phone-header-user-chip">
+              <span className="phone-header-avatar">{initial}</span>
+              <span className="phone-header-user-text">
+                {context.userFlag && (
+                  <span className="phone-header-flag" aria-hidden>
+                    {context.userFlag}
+                  </span>
+                )}
+                <span className="phone-header-user-name">{context.userName}</span>
+              </span>
+            </div>
           )}
         </div>
       )}
-      {right && <div className="shrink-0 flex items-center gap-2">{right}</div>}
     </div>
   );
 }

@@ -94,6 +94,7 @@ export function useCall({
   const userLeftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const otherParticipantRef = useRef<RoomParticipant | null>(null);
   const partnerLanguageRef = useRef<string | null>(null);
+  const callStatusRef = useRef<CallStatus>("connecting");
   const sessionActiveRef = useRef(false);
   const startSessionRef = useRef<(stream: MediaStream) => Promise<void>>(async () => {});
   const sessionStartedRef = useRef(false);
@@ -101,6 +102,11 @@ export function useCall({
   const playRemoteAudioRef = useRef<() => void>(() => {});
   const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
   optsRef.current = { roomId, userId, userName, userLanguage, isHost };
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
   const detachSocketRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -772,7 +778,7 @@ export function useCall({
       const rid = optsRef.current.roomId;
 
       if (!intentionalEndRef.current) {
-        if (host && !hadRemote && socket?.connected) {
+        if (host && !hadRemote && callStatusRef.current === "ringing" && socket?.connected) {
           socket.emit("call-cancel", { roomId: rid });
         } else if (socket?.connected) {
           socket.emit("call-ended");

@@ -121,6 +121,7 @@ function DashboardInner({
   const ui = getUI(user.language);
   const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
   const [chatOpenTcallId, setChatOpenTcallId] = useState<string | null>(null);
+  const [chatInThread, setChatInThread] = useState(false);
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -198,6 +199,10 @@ function DashboardInner({
     }
   };
 
+  useEffect(() => {
+    if (tab !== "messages") setChatInThread(false);
+  }, [tab]);
+
   const tabTitles: Record<PhoneTab, string> = {
     keypad: ui.keypad,
     recents: ui.recents,
@@ -207,6 +212,7 @@ function DashboardInner({
     messages: ui.messages,
   };
   const showLogo = tab === "keypad" || tab === "room";
+  const useContextHeader = showLogo || tab === "messages";
 
   const userLang = getLanguage(user.language);
 
@@ -217,11 +223,22 @@ function DashboardInner({
         activeTab={tab}
         onTabChange={setTab}
         badges={{ recents: missedCount, messages: messageCount }}
+        hideHeader={tab === "messages" && chatInThread}
+        contentClassName={tab === "messages" ? "ios-phone-content-chat" : undefined}
         header={
           <PhoneHeader
             title={tabTitles[tab]}
             showLogo={showLogo}
-            subtitle={tab === "keypad" ? `${userLang.flag} ${user.name}` : undefined}
+            context={
+              useContextHeader
+                ? {
+                    tab,
+                    tabLabel: tabTitles[tab],
+                    userFlag: tab === "keypad" ? userLang.flag : undefined,
+                    userName: tab === "keypad" ? user.name : undefined,
+                  }
+                : undefined
+            }
             right={
               <div className="flex items-center gap-2">
                 <button onClick={() => setShowSettings(true)} className="ios-icon-btn" title={ui.settings}>
@@ -274,6 +291,7 @@ function DashboardInner({
             <ChatMessenger
               userLanguage={user.language}
               userId={user.userId}
+              onThreadChange={setChatInThread}
               openTcallId={chatOpenTcallId}
               onOpenHandled={() => setChatOpenTcallId(null)}
               onUnreadChange={() => {
