@@ -181,7 +181,7 @@ function DashboardInner({
     keypad: "Tcall",
     recents: ui.recents,
     contacts: ui.contacts,
-    room: ui.roomTab,
+    room: "Tcall",
     numbers: ui.vanityNumbers,
     messages: ui.messages,
   };

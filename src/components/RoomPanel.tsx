@@ -1,7 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Plus, Copy, Check, Share2, LogIn } from "lucide-react";
+import {
+  Plus,
+  Copy,
+  Check,
+  Share2,
+  LogIn,
+  Sparkles,
+  ArrowRight,
+  Link2,
+  Users,
+} from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { getUI } from "@/lib/languages";
 import { copyToClipboard } from "@/lib/utils";
@@ -73,81 +83,118 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
       try {
         await navigator.share({ title: "Tcall", text: ui.shareLink, url });
         return;
-      } catch { /* fallback */ }
+      } catch {
+        /* fallback */
+      }
     }
     copyLink();
   };
 
-  return (
-    <div className="ios-room-panel">
-      {error && (
-        <div className="ios-error-banner">{error}</div>
-      )}
+  const enterRoom = () => {
+    window.location.href = `/call/${roomId}`;
+  };
 
-      <div className="ios-room-card">
-        <div className="ios-room-icon bg-brand-600/20">
-          <Plus className="w-6 h-6 text-brand-400" />
+  return (
+    <div className="room-panel">
+      {error && <div className="ios-error-banner">{error}</div>}
+
+      <div className="room-hero">
+        <div className="room-hero-badge">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>AI tarjima</span>
         </div>
-        <div className="flex-1">
-          <h3 className="font-semibold">{ui.createRoom}</h3>
-          <p className="text-slate-500 text-xs mt-0.5">{ui.createRoomDesc}</p>
-        </div>
-        <button onClick={createRoom} disabled={creating} className="ios-room-action-btn">
-          {creating ? "..." : ui.startCall}
-        </button>
+        <h2 className="room-hero-title">{ui.roomHeroTitle}</h2>
+        <p className="room-hero-desc">{ui.roomHeroDesc}</p>
       </div>
 
-      {roomId && (
-        <div className="ios-room-created animate-fade-in">
-          <p className="text-xs text-slate-500 mb-1">{ui.roomLinkReady}</p>
-          <p className="font-mono text-xl font-bold text-brand-600 tracking-widest">{roomId}</p>
-          <p className="text-xs text-slate-400 mt-2 break-all">{roomLink}</p>
-          <div className="flex gap-2 mt-4">
-            <button onClick={copyLink} className="btn-secondary flex-1 text-sm py-2.5 flex items-center justify-center gap-2 min-h-0">
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? ui.copied : ui.copyLink}
+      {!roomId ? (
+        <section className="room-card room-card-create">
+          <div className="room-card-head">
+            <div className="room-icon room-icon-brand">
+              <Plus className="w-5 h-5" />
+            </div>
+            <div className="room-card-text">
+              <h3>{ui.createRoom}</h3>
+              <p>{ui.createRoomDesc}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={createRoom}
+            disabled={creating}
+            className="room-btn room-btn-primary room-btn-block"
+          >
+            {creating ? ui.loading : ui.startCall}
+            {!creating && <ArrowRight className="w-4 h-4" />}
+          </button>
+        </section>
+      ) : (
+        <section className="room-card room-card-active animate-fade-in">
+          <div className="room-active-label">
+            <Users className="w-4 h-4 text-brand-600" />
+            <span>{ui.roomLinkReady}</span>
+          </div>
+          <p className="room-code">{roomId}</p>
+          <div className="room-link-box">
+            <Link2 className="w-4 h-4 shrink-0 text-slate-400" />
+            <span className="room-link-text">{roomLink}</span>
+          </div>
+          <div className="room-action-stack">
+            <button type="button" onClick={copyLink} className="room-btn room-btn-secondary room-btn-block">
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? ui.copied : ui.copyLinkShort}
             </button>
-            <button onClick={shareLink} className="btn-primary flex-1 text-sm py-2.5 flex items-center justify-center gap-2 min-h-0">
-              <Share2 className="w-4 h-4" /> {ui.shareLink}
+            <button type="button" onClick={shareLink} className="room-btn room-btn-outline room-btn-block">
+              <Share2 className="w-4 h-4" />
+              {ui.shareLinkShort}
             </button>
-            <button
-              onClick={() => { window.location.href = `/call/${roomId}`; }}
-              className="btn-primary text-sm py-2.5 px-4 min-h-0"
-            >
-              {ui.joinCall}
+            <button type="button" onClick={enterRoom} className="room-btn room-btn-primary room-btn-block">
+              {ui.enterRoom}
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
+          <button type="button" onClick={createRoom} disabled={creating} className="room-new-link">
+            {ui.createNewRoom}
+          </button>
+        </section>
       )}
 
-      <div className="ios-room-card mt-3">
-        <div className="ios-room-icon bg-purple-600/20">
-          <LogIn className="w-6 h-6 text-purple-400" />
+      <section className="room-card">
+        <div className="room-card-head">
+          <div className="room-icon room-icon-purple">
+            <LogIn className="w-5 h-5" />
+          </div>
+          <div className="room-card-text">
+            <h3>{ui.joinCall}</h3>
+            <p>{ui.joinRoomDesc}</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold">{ui.joinCall}</h3>
-          <p className="text-slate-500 text-xs mt-0.5">{ui.joinRoomDesc}</p>
+        <div className="room-join-form">
+          <input
+            className="room-code-input"
+            value={joinCode}
+            onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && joinRoom()}
+            placeholder={ui.roomCodePlaceholder}
+            maxLength={8}
+            inputMode="text"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            onClick={joinRoom}
+            disabled={joining || joinCode.length < 6}
+            className="room-btn room-btn-primary room-btn-block"
+          >
+            {joining ? ui.loading : ui.joinCall}
+          </button>
         </div>
-      </div>
+      </section>
 
-      <div className="flex gap-2 mt-3">
-        <input
-          className="input-field flex-1 uppercase tracking-widest text-center font-mono"
-          value={joinCode}
-          onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-          onKeyDown={(e) => e.key === "Enter" && joinRoom()}
-          placeholder="ABC123"
-          maxLength={6}
-          inputMode="text"
-        />
-        <button onClick={joinRoom} disabled={joining} className="btn-primary px-5 min-h-0">
-          {joining ? "..." : ui.joinCall}
-        </button>
-      </div>
-
-      <div className="ios-room-info mt-6">
-        <Link2 className="w-4 h-4 text-brand-400 shrink-0" />
-        <p className="text-xs text-slate-500 leading-relaxed">{ui.roomInfo}</p>
+      <div className="room-tip">
+        <Sparkles className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
+        <p>{ui.roomInfo}</p>
       </div>
     </div>
   );
