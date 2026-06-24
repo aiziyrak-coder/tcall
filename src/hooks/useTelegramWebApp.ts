@@ -1,0 +1,108 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+interface SafeInset {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+interface TelegramWebApp {
+  ready: () => void;
+  expand: () => void;
+  close: () => void;
+  platform?: string;
+  colorScheme?: "light" | "dark";
+  safeAreaInset?: SafeInset;
+  contentSafeAreaInset?: SafeInset;
+  viewportStableHeight?: number;
+  isExpanded?: boolean;
+  BackButton?: {
+    show: () => void;
+    hide: () => void;
+    onClick: (cb: () => void) => void;
+    offClick: (cb: () => void) => void;
+  };
+  setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
+}
+
+declare global {
+  interface Window {
+    Telegram?: { WebApp?: TelegramWebApp };
+  }
+}
+
+function readInset(v?: SafeInset): SafeInset {
+  return {
+    top: v?.top ?? 0,
+    bottom: v?.bottom ?? 0,
+    left: v?.left ?? 0,
+    right: v?.right ?? 0,
+  };
+}
+
+function applyTelegramInsets(tg: TelegramWebApp) {
+  const safe = readInset(tg.safeAreaInset);
+  const content = readInset(tg.contentSafeAreaInset);
+  const root = document.documentElement;
+
+  root.style.setProperty("--tg-safe-top", `${safe.top}px`);
+  root.style.setProperty("--tg-safe-bottom", `${safe.bottom}px`);
+  root.style.setProperty("--tg-safe-left", `${safe.left}px`);
+  root.style.setProperty("--tg-safe-right", `${safe.right}px`);
+  root.style.setProperty("--tg-content-safe-top", `${content.top}px`);
+  root.style.setProperty("--tg-content-safe-bottom", `${content.bottom}px`);
+  root.style.setProperty("--tg-content-safe-left", `${content.left}px`);
+  root.style.setProperty("--tg-content-safe-right", `${content.right}px`);
+}
+
+export function useTelegramWebApp() {
+  const [isTelegram, setIsTelegram] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const tg = window.Telegram?.WebApp;
+    if (!tg) return;
+
+    setIsTelegram(true);
+    document.body.classList.add("tg-webapp");
+
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor?.("#ffffff");
+    tg.setBackgroundColor?.("#f2f2f7");
+    applyTelegramInsets(tg);
+
+    const onChange = () => applyTelegramInsets(tg);
+    window.addEventListener("resize", onChange);
+    setReady(true);
+
+    return () => {
+      window.removeEventListener("resize", onChange);
+      document.body.classList.remove("tg-webapp");
+    };
+  }, []);
+
+  return { isTelegram, ready, webApp: typeof window !== "undefined" ? window.Telegram?.WebApp : undefined };
+}
+
+export function bindTelegramBackButton(onBack: () => void, enabled: boolean) {
+  const tg = window.Telegram?.WebApp;
+  if (!tg?.BackButton) return () => {};
+
+  const handler = () => onBack();
+  if (enabled) {
+    tg.BackButton.show();
+    tg.BackButton.onClick(handler);
+  } else {
+    tg.BackButton.hide();
+  }
+
+  return () => {
+    tg.BackButton?.offClick(handler);
+    tg.BackButton?.hide();
+  };
+}

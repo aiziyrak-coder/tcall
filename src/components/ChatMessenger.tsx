@@ -4,18 +4,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ImagePlus,
+  LogOut,
   MessageSquare,
+  MoreVertical,
   Paperclip,
   Phone,
   Plus,
   Send,
   Smile,
+  Trash2,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { getUI } from "@/lib/languages";
+import { resolveChatMediaUrl } from "@/lib/chat-media-url";
+import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { TcallLogo } from "@/components/TcallLogo";
 
@@ -43,6 +49,7 @@ interface ConversationItem {
   id: string;
   type: string;
   title: string;
+  createdById?: string;
   unreadCount: number;
   updatedAt: string;
   lastMessage: ChatMessageItem | null;
@@ -85,6 +92,10 @@ export function ChatMessenger({
   const [groupMembers, setGroupMembers] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [showManage, setShowManage] = useState(false);
+  const [showAddMembers, setShowAddMembers] = useState(false);
+  const [addMemberIds, setAddMemberIds] = useState("");
+  const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<HTMLInputElement>(null);
@@ -104,6 +115,29 @@ export function ChatMessenger({
     const t = setTimeout(() => setUploadError(""), 6000);
     return () => clearTimeout(t);
   }, [uploadError]);
+
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => setActionError(""), 6000);
+    return () => clearTimeout(t);
+  }, [actionError]);
+
+  const closeThread = useCallback(() => {
+    setActiveId(null);
+    setShowManage(false);
+    setShowAddMembers(false);
+  }, []);
+
+  useEffect(() => {
+    return bindTelegramBackButton(closeThread, !!activeId);
+  }, [activeId, closeThread]);
+
+  useEffect(() => {
+    if (!showManage) return;
+    const close = () => setShowManage(false);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [showManage]);
 
   const loadConversations = useCallback(async () => {
     const r = await apiFetch("/api/chat/conversations");
@@ -276,6 +310,45 @@ export function ChatMessenger({
     }
   };
 
+  const leaveChat = async (purgeGroup = false) => {
+    if (!activeId) return;
+    setActionError("");
+    const r = await apiFetch(`/api/chat/conversations/${activeId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ purgeGroup }),
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+    closeThread();
+    await loadConversations();
+  };
+
+  const addMembersToGroup = async () => {
+    if (!activeId) return;
+    const ids = addMemberIds
+      .split(/[\s,;]+/)
+      .map((s) => s.replace(/\D/g, ""))
+      .filter((s) => s.length === 9);
+    if (ids.length === 0) return;
+    setActionError("");
+    const r = await apiFetch(`/api/chat/conversations/${activeId}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberTcallIds: ids }),
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+    setShowAddMembers(false);
+    setAddMemberIds("");
+    setShowManage(false);
+    await loadConversations();
+  };
+
   if (loading) {
     return (
       <div className="chat-app">
@@ -288,15 +361,17 @@ export function ChatMessenger({
 
   if (activeId && activeConv) {
     const partner = activeConv.members.find((m) => m.userId !== userId);
+    const isGroup = activeConv.type === "group";
+    const isGroupCreator = activeConv.createdById === userId;
     return (
       <div className="chat-app chat-app-thread">
         <div className="chat-thread">
         <div className="chat-thread-header">
-          <button type="button" onClick={() => setActiveId(null)} className="ios-icon-btn shrink-0">
+          <button type="button" onClick={closeThread} className="ios-icon-btn shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className={`chat-thread-avatar ${activeConv.type === "group" ? "chat-conv-avatar-group" : ""}`}>
-            {activeConv.type === "group" ? (
+          <div className={`chat-thread-avatar ${isGroup ? "chat-conv-avatar-group" : ""}`}>
+            {isGroup ? (
               <Users className="w-5 h-5" />
             ) : (
               activeConv.title.slice(0, 2).toUpperCase()
@@ -304,19 +379,63 @@ export function ChatMessenger({
           </div>
           <div className="flex-1 min-w-0">
             <p className="chat-thread-title">{activeConv.title}</p>
-            {activeConv.type === "direct" && partner?.tcallId && (
+            {!isGroup && partner?.tcallId && (
               <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
             )}
-            {activeConv.type === "group" && (
+            {isGroup && (
               <p className="text-xs text-slate-500 mt-0.5">{activeConv.members.length} {ui.chatMembers}</p>
             )}
           </div>
-          {partner?.tcallId && (
-            <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
-              <Phone className="w-5 h-5 text-green-600" />
-            </button>
-          )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!isGroup && partner?.tcallId && (
+              <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
+                <Phone className="w-5 h-5 text-green-600" />
+              </button>
+            )}
+            <div className="chat-manage-wrap" onClick={(e) => e.stopPropagation()}>
+              <button type="button" className="chat-manage-btn" onClick={() => setShowManage((v) => !v)}>
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {showManage && (
+                <div className="chat-manage-sheet">
+                  {isGroup && (
+                    <button
+                      type="button"
+                      className="chat-manage-item flex items-center gap-2"
+                      onClick={() => { setShowManage(false); setShowAddMembers(true); }}
+                    >
+                      <UserPlus className="w-4 h-4" /> {ui.chatAddMembers}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="chat-manage-item flex items-center gap-2"
+                    onClick={() => {
+                      if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmLeave)) {
+                        void leaveChat(false);
+                      }
+                    }}
+                  >
+                    <LogOut className="w-4 h-4" /> {isGroup ? ui.chatLeaveGroup : ui.chatDeleteChat}
+                  </button>
+                  {isGroup && isGroupCreator && (
+                    <button
+                      type="button"
+                      className="chat-manage-item chat-manage-item-danger flex items-center gap-2"
+                      onClick={() => {
+                        if (window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" /> {ui.chatDeleteGroup}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+
+        {actionError && <div className="chat-upload-error mx-5 mt-2">{actionError}</div>}
 
         <div className="chat-messages">
           {loadingMsgs ? (
@@ -400,6 +519,26 @@ export function ChatMessenger({
           </div>
         </div>
         </div>
+
+        {showAddMembers && (
+          <div className="ios-modal-overlay" onClick={() => setShowAddMembers(false)}>
+            <div className="ios-modal-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold">{ui.chatAddMembers}</h3>
+                <button type="button" onClick={() => setShowAddMembers(false)} className="ios-icon-btn"><X className="w-5 h-5" /></button>
+              </div>
+              <textarea
+                className="input-field-compact min-h-[72px] mb-3 font-mono text-sm"
+                placeholder={ui.groupMembersHint}
+                value={addMemberIds}
+                onChange={(e) => setAddMemberIds(e.target.value)}
+              />
+              <button type="button" className="btn-primary btn-compact w-full" onClick={() => void addMembersToGroup()}>
+                {ui.chatAddMembers}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -518,7 +657,7 @@ function MessageBubble({
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
   const body = showOriginal ? msg.originalText : msg.displayText;
-  const mediaSrc = msg.mediaUrl || "";
+  const mediaSrc = resolveChatMediaUrl(msg.mediaUrl);
   const isImage = msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/"));
   const isVideo = msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/"));
 

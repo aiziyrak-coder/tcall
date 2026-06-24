@@ -14,6 +14,19 @@
   --key-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
   --ios-blue: #007aff;
   --call-bg: linear-gradient(180deg, #e8eef5 0%, #f2f2f7 50%, #ffffff 100%);
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
+  --tg-safe-left: 0px;
+  --tg-safe-right: 0px;
+  --tg-content-safe-top: 0px;
+  --tg-content-safe-bottom: 0px;
+  --tg-content-safe-left: 0px;
+  --tg-content-safe-right: 0px;
+  --app-h-pad: 1.25rem;
+  --app-safe-top: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-top));
+  --app-safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-bottom));
+  --app-safe-left: max(env(safe-area-inset-left, 0px), var(--tg-content-safe-left));
+  --app-safe-right: max(env(safe-area-inset-right, 0px), var(--tg-content-safe-right));
 }
 
 @layer base {
@@ -28,6 +41,9 @@
     color: var(--text-primary);
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     overscroll-behavior: none;
+  }
+  body.tg-webapp {
+    padding: 0;
   }
   input, select, textarea {
     font-size: 16px;
@@ -215,26 +231,40 @@
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
+  padding-left: var(--app-safe-left);
+  padding-right: var(--app-safe-right);
 }
 
 .ios-phone-header {
-  @apply shrink-0 px-6 pt-2 pb-3 bg-white border-b border-black/5;
-  padding-top: max(0.5rem, env(safe-area-inset-top));
+  @apply shrink-0 pt-2 pb-3 bg-white border-b border-black/5;
+  padding-top: max(0.5rem, var(--app-safe-top));
+  padding-left: var(--app-h-pad);
+  padding-right: var(--app-h-pad);
 }
 
 .ios-phone-content {
-  @apply flex-1 overflow-y-auto overflow-x-hidden px-5 bg-white min-h-0;
+  @apply flex-1 overflow-y-auto overflow-x-hidden bg-white min-h-0;
+  padding-left: var(--app-h-pad);
+  padding-right: var(--app-h-pad);
   -webkit-overflow-scrolling: touch;
 }
 
 .ios-phone-content-chat {
   @apply flex-1 overflow-hidden p-0 min-h-0 bg-slate-50;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .ios-tab-bar {
   @apply shrink-0 flex items-stretch border-t bg-white/95 backdrop-blur-xl;
   border-color: var(--separator);
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+  padding-left: var(--app-safe-left);
+  padding-right: var(--app-safe-right);
+  padding-bottom: max(0.75rem, var(--app-safe-bottom));
+}
+
+body.tg-webapp .ios-tab-bar {
+  padding-bottom: max(1rem, calc(var(--app-safe-bottom) + 10px));
 }
 
 .ios-tab-item {
@@ -956,7 +986,9 @@
 }
 
 .chat-app-list {
-  @apply px-5 pt-4 pb-2;
+  padding: 1rem var(--app-h-pad) 0.5rem;
+  padding-left: max(var(--app-h-pad), var(--app-safe-left));
+  padding-right: max(var(--app-h-pad), var(--app-safe-right));
 }
 
 .chat-app-thread {
@@ -1025,10 +1057,12 @@
 }
 
 .chat-thread-header {
-  @apply shrink-0 flex items-center gap-3 px-5 py-3.5 border-b border-black/[0.06];
+  @apply shrink-0 flex items-center gap-3 py-3 border-b border-black/[0.06];
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(16px);
-  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-top: max(0.75rem, var(--app-safe-top));
+  padding-left: max(var(--app-h-pad), var(--app-safe-left));
+  padding-right: max(var(--app-h-pad), var(--app-safe-right));
 }
 
 .chat-thread-avatar {
@@ -1053,7 +1087,9 @@
 }
 
 .chat-messages {
-  @apply flex-1 overflow-y-auto overscroll-contain px-5 py-4 min-h-0 flex flex-col gap-3.5;
+  @apply flex-1 overflow-y-auto overscroll-contain py-4 min-h-0 flex flex-col gap-3;
+  padding-left: max(var(--app-h-pad), var(--app-safe-left));
+  padding-right: max(var(--app-h-pad), var(--app-safe-right));
   -webkit-overflow-scrolling: touch;
   background:
     radial-gradient(ellipse at 50% 0%, rgba(0, 122, 255, 0.04) 0%, transparent 55%),
@@ -1065,15 +1101,17 @@
 }
 
 .chat-bubble-wrap {
-  @apply flex flex-col max-w-[78%];
+  @apply flex flex-col max-w-[min(82%,20rem)];
 }
 
 .chat-bubble-mine {
-  @apply self-end items-end pl-8;
+  @apply self-end items-end;
+  margin-right: 0.25rem;
 }
 
 .chat-bubble-theirs {
-  @apply self-start items-start pr-8;
+  @apply self-start items-start;
+  margin-left: 0.25rem;
 }
 
 .chat-bubble-sender {
@@ -1124,8 +1162,10 @@
 }
 
 .chat-composer {
-  @apply shrink-0 border-t border-black/[0.06] bg-white/95 backdrop-blur-md px-5 py-3;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  @apply shrink-0 border-t border-black/[0.06] bg-white/95 backdrop-blur-md py-3;
+  padding-left: max(var(--app-h-pad), var(--app-safe-left));
+  padding-right: max(var(--app-h-pad), var(--app-safe-right));
+  padding-bottom: max(0.75rem, var(--app-safe-bottom));
   box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.04);
 }
 
@@ -1161,4 +1201,24 @@
   @apply w-11 h-11 shrink-0 rounded-2xl text-white flex items-center justify-center touch-manipulation active:scale-95 disabled:opacity-35;
   background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
   box-shadow: 0 3px 12px rgba(0, 122, 255, 0.28);
+}
+
+.chat-manage-btn {
+  @apply w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 touch-manipulation active:scale-95 bg-slate-100 text-slate-600;
+}
+
+.chat-manage-wrap {
+  @apply relative shrink-0;
+}
+
+.chat-manage-sheet {
+  @apply absolute right-0 top-full mt-2 z-30 min-w-[11rem] py-1.5 rounded-2xl bg-white border border-black/[0.08] shadow-xl;
+}
+
+.chat-manage-item {
+  @apply w-full text-left px-4 py-3 text-sm font-medium text-slate-800 touch-manipulation active:bg-slate-50;
+}
+
+.chat-manage-item-danger {
+  @apply text-red-600;
 }

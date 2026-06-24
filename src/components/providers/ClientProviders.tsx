@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/components/providers/AuthProvider";
 import { CallProvider } from "@/components/providers/CallProvider";
+import { TelegramInit } from "@/components/TelegramInit";
 import { AppSplash } from "@/components/AppSplash";
 
 function CallBridge({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ function CallBridge({ children }: { children: React.ReactNode }) {
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <TelegramInit />
       <CallBridge>{children}</CallBridge>
     </AuthProvider>
   );

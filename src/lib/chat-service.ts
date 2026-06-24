@@ -261,6 +261,7 @@ export async function getConversationsForUser(userId: string, userLang: string) 
         id: conv.id,
         type: conv.type,
         title,
+        createdById: conv.createdById,
         members: conv.members.map((cm) => ({
           userId: cm.user.id,
           name: cm.user.name,
@@ -318,6 +319,76 @@ export async function markConversationRead(conversationId: string, userId: strin
     where: { conversationId_userId: { conversationId, userId } },
     data: { lastReadAt: new Date() },
   });
+}
+
+export async function leaveConversation(
+  conversationId: string,
+  userId: string,
+  opts?: { purgeGroup?: boolean }
+) {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    include: { members: { select: { userId: true } } },
+  });
+  if (!conv) throw new Error("NOT_FOUND");
+  await assertMember(conversationId, userId);
+
+  if (opts?.purgeGroup && conv.type === "group" && conv.createdById === userId) {
+    await prisma.conversation.delete({ where: { id: conversationId } });
+    return { purged: true as const };
+  }
+
+  await prisma.conversationMember.delete({
+    where: { conversationId_userId: { conversationId, userId } },
+  });
+
+  const remaining = await prisma.conversationMember.count({ where: { conversationId } });
+  if (remaining === 0) {
+    await prisma.conversation.delete({ where: { id: conversationId } });
+  }
+
+  return { left: true as const };
+}
+
+export async function addMembersToGroup(
+  conversationId: string,
+  actorId: string,
+  memberTcallIds: string[]
+) {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true, createdById: true },
+  });
+  if (!conv || conv.type !== "group") throw new Error("NOT_GROUP");
+  await assertMember(conversationId, actorId);
+
+  const uniqueIds = [...new Set(memberTcallIds.map((s) => s.replace(/\D/g, "")).filter((s) => s.length === 9))];
+  if (uniqueIds.length === 0) throw new Error("NO_MEMBERS");
+
+  const users = await prisma.user.findMany({
+    where: { tcallId: { in: uniqueIds } },
+    select: { id: true, tcallId: true },
+  });
+
+  const existing = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    select: { userId: true },
+  });
+  const existingIds = new Set(existing.map((m) => m.userId));
+
+  const toAdd = users.filter((u) => !existingIds.has(u.id));
+  if (toAdd.length === 0) return { added: 0 };
+
+  await prisma.conversationMember.createMany({
+    data: toAdd.map((u) => ({ conversationId, userId: u.id })),
+  });
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { updatedAt: new Date() },
+  });
+
+  return { added: toAdd.length };
 }
 
 export async function sendDirectMessage(
