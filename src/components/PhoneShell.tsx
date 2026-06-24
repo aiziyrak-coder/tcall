@@ -8,12 +8,13 @@ import {
   Link2,
   Sparkles,
   MessageSquare,
+  Languages,
   type LucideIcon,
 } from "lucide-react";
 import { getUI } from "@/lib/languages";
 import { TcallLogo } from "@/components/TcallLogo";
 
-export type PhoneTab = "keypad" | "recents" | "friends" | "room" | "numbers" | "messages";
+export type PhoneTab = "keypad" | "recents" | "friends" | "room" | "numbers" | "messages" | "interpreter";
 
 interface PhoneShellProps {
   userLanguage: string;
@@ -30,6 +31,7 @@ const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeo
   { id: "recents", icon: Clock, labelKey: "recents" },
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
+  { id: "interpreter", icon: Languages, labelKey: "interpreterTab" },
   { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
   { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
@@ -42,6 +44,7 @@ const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
   room: Link2,
   numbers: Sparkles,
   messages: MessageSquare,
+  interpreter: Languages,
 };
 
 export function PhoneShell({

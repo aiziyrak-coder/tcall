@@ -18,6 +18,7 @@ import { SpeedDial } from "@/components/SpeedDial";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { ChatMessenger } from "@/components/ChatMessenger";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
+import { LiveInterpreter } from "@/components/LiveInterpreter";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 import { TcallLogo } from "@/components/TcallLogo";
 
@@ -213,6 +214,7 @@ function DashboardInner({
     room: ui.roomTab,
     numbers: ui.vanityNumbers,
     messages: ui.messages,
+    interpreter: ui.interpreterTab,
   };
   const showLogo = tab === "keypad" || tab === "room";
   const useContextHeader = showLogo || tab === "messages";
@@ -334,6 +336,14 @@ function DashboardInner({
           <div className={tab === "room" ? "app-tab-panel" : "hidden"}>
             <div className="app-tab-scroll">
               <RoomPanel userLanguage={user.language} />
+            </div>
+          </div>
+        )}
+
+        {mountedTabs.has("interpreter") && (
+          <div className={tab === "interpreter" ? "app-tab-panel" : "hidden"}>
+            <div className="app-tab-scroll">
+              <LiveInterpreter userLanguage={user.language} />
             </div>
           </div>
         )}
