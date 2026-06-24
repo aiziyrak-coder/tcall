@@ -28,6 +28,10 @@ import {
 import { formatTcallId } from "@/lib/tcallId";
 import { RING_TIMEOUT_MS } from "@/lib/call-service";
 import { prefetchMicrophoneAccess } from "@/lib/mic-permission";
+import {
+  notifySocketConnect,
+  setSharedCallSocket,
+} from "@/lib/call-socket";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 
@@ -71,6 +75,7 @@ interface CallContextValue {
   quickMessageTarget: { tcallId: string; name?: string } | null;
   clearQuickMessageTarget: () => void;
   socketConnected: boolean;
+  getSocket: () => Socket | null;
 }
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -144,22 +149,31 @@ export function CallProvider({
       path: "/socket.io",
       transports: ["websocket", "polling"],
       reconnection: true,
-      reconnectionAttempts: 20,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 800,
+      reconnectionDelayMax: 5000,
+      timeout: 30000,
       withCredentials: true,
     });
     socketRef.current = socket;
+    setSharedCallSocket(socket);
 
     socket.on("connect", () => {
       setSocketConnected(true);
+      notifySocketConnect(true);
       socket.emit("register-user", {});
     });
 
     socket.io.on("reconnect", () => {
       setSocketConnected(true);
+      notifySocketConnect(true);
       socket.emit("register-user", {});
     });
 
-    socket.on("disconnect", () => setSocketConnected(false));
+    socket.on("disconnect", () => {
+      setSocketConnected(false);
+      notifySocketConnect(false);
+    });
 
     socket.on("incoming-call", (data: IncomingCall) => {
       setIncomingCall(data);
@@ -222,6 +236,8 @@ export function CallProvider({
       stopRingback();
       socket.disconnect();
       socketRef.current = null;
+      setSharedCallSocket(null);
+      notifySocketConnect(false);
     };
   }, [userId, router, clearRingTimeout]);
 
@@ -341,6 +357,7 @@ export function CallProvider({
         quickMessageTarget,
         clearQuickMessageTarget: () => setQuickMessageTarget(null),
         socketConnected,
+        getSocket: () => socketRef.current,
       }}
     >
       {children}

@@ -254,26 +254,58 @@ app.prepare().then(async () => {
 
     socket.on("offer", (data: { offer: RTCSessionDescriptionInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
-      if (!isInRoom(currentRoom, data.targetId)) return;
+      const room = rooms.get(currentRoom);
+      if (!room?.has(data.targetId)) return;
       io.to(data.targetId).emit("offer", { offer: data.offer, senderId: socket.id });
     });
 
     socket.on("answer", (data: { answer: RTCSessionDescriptionInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
-      if (!isInRoom(currentRoom, data.targetId)) return;
+      const room = rooms.get(currentRoom);
+      if (!room?.has(data.targetId)) return;
       io.to(data.targetId).emit("answer", { answer: data.answer, senderId: socket.id });
     });
 
     socket.on("ice-candidate", (data: { candidate: RTCIceCandidateInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
-      if (!isInRoom(currentRoom, data.targetId)) return;
+      const room = rooms.get(currentRoom);
+      if (!room?.has(data.targetId)) return;
       io.to(data.targetId).emit("ice-candidate", { candidate: data.candidate, senderId: socket.id });
     });
 
     socket.on("request-reoffer", (data: { targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
-      if (!isInRoom(currentRoom, data.targetId)) return;
+      const room = rooms.get(currentRoom);
+      if (!room?.has(data.targetId)) return;
       io.to(data.targetId).emit("request-reoffer", { fromId: socket.id });
+    });
+
+    socket.on("leave-room", (data: { roomId?: string }) => {
+      const roomId = data?.roomId?.toUpperCase() || currentRoom;
+      if (!roomId) return;
+      const room = rooms.get(roomId);
+      if (room) {
+        room.delete(socket.id);
+        if (room.size === 0) rooms.delete(roomId);
+        else {
+          io.to(roomId).emit(
+            "room-users",
+            Array.from(room.values()).map((u) => ({
+              socketId: u.socketId,
+              userId: u.userId,
+              name: u.name,
+              language: u.language,
+              translationMode: u.translationMode,
+              isHost: u.isHost,
+            }))
+          );
+        }
+      }
+      if (currentRoom === roomId) {
+        socket.leave(roomId);
+        currentRoom = null;
+        currentUser = null;
+      }
     });
 
     socket.on("speech-transcript", async (data: { text: string; isFinal: boolean }) => {

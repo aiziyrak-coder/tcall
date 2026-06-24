@@ -41,8 +41,8 @@ export function getIceServers(): RTCIceServer[] {
 export function getPeerConnectionConfig(): RTCConfiguration {
   return {
     iceServers: getIceServers(),
-    iceCandidatePoolSize: 4,
-    bundlePolicy: "balanced",
+    iceCandidatePoolSize: 8,
+    bundlePolicy: "max-compat",
     rtcpMuxPolicy: "require",
   };
 }

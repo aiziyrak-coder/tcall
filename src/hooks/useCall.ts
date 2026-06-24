@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { io, Socket } from "socket.io-client";
-import { apiFetch, getSocketUrl } from "@/lib/api";
+import type { Socket } from "socket.io-client";
+import { apiFetch } from "@/lib/api";
+import { waitForSharedSocket } from "@/lib/call-socket";
 import { TranslationAudioQueue } from "@/lib/audioQueue";
 import {
   getAudioConstraints,
@@ -98,6 +99,7 @@ export function useCall({
   const playRemoteAudioRef = useRef<() => void>(() => {});
   const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
   optsRef.current = { roomId, userId, userName, userLanguage, isHost };
+  const detachSocketRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
@@ -288,9 +290,8 @@ export function useCall({
       };
 
       const audioTrack = stream.getAudioTracks()[0];
-      const transceiver = pc.addTransceiver("audio", { direction: "sendrecv" });
       if (audioTrack) {
-        void transceiver.sender.replaceTrack(audioTrack);
+        pc.addTrack(audioTrack, stream);
       }
       return pc;
     },
@@ -302,12 +303,16 @@ export function useCall({
   const sendOffer = useCallback(
     async (stream: MediaStream, socket: Socket, other: RoomParticipant, forceNew = false) => {
       if (remoteStreamRef.current) return;
-      if (pcRef.current && !forceNew) {
+      if (pcRef.current && (forceNew || !remoteStreamRef.current)) {
         const state = pcRef.current.connectionState;
-        if (state === "connected") return;
-        if (makingOfferRef.current) return;
+        if (forceNew || state === "failed" || state === "closed" || state === "connecting") {
+          resetPeerConnection();
+        } else if (state === "connected") {
+          return;
+        } else if (makingOfferRef.current) {
+          return;
+        }
       }
-      if (forceNew) resetPeerConnection();
       remoteIdRef.current = other.socketId;
 
       try {
@@ -315,7 +320,7 @@ export function useCall({
         const pc = createPeerConnection(stream, socket);
         pcRef.current = pc;
 
-        const offer = await pc.createOffer();
+        const offer = await pc.createOffer({ offerToReceiveAudio: true });
         await pc.setLocalDescription(offer);
         socket.emit("offer", { offer, targetId: other.socketId });
         setCallStatus("connecting");
@@ -398,8 +403,8 @@ export function useCall({
         return;
       }
 
-      await new Promise((r) => setTimeout(r, 350));
-      await sendOffer(stream, socket, other, pcBroken);
+      await new Promise((r) => setTimeout(r, 400));
+      await sendOffer(stream, socket, other, true);
     },
     [resetPeerConnection, sendOffer]
   );
@@ -501,18 +506,11 @@ export function useCall({
         setMicStatus("granted");
         setCallStatus("connecting");
 
-        const socket = io(getSocketUrl(), {
-          path: "/socket.io",
-          transports: ["websocket", "polling"],
-          reconnection: true,
-          reconnectionAttempts: 15,
-          timeout: 20000,
-          withCredentials: true,
-        });
+        const socket = await waitForSharedSocket();
+        if (!mounted) return;
         socketRef.current = socket;
 
-        socket.on("connect", () => {
-          setSocketConnected(true);
+        const joinRoom = () => {
           const o = optsRef.current;
           socket.emit("join-room", {
             roomId: o.roomId,
@@ -522,53 +520,35 @@ export function useCall({
             translationMode: translationModeRef.current,
             isHost: o.isHost,
           });
-        });
+        };
 
-        socket.on("disconnect", () => setSocketConnected(false));
-        socket.on("connect_error", () => setSocketConnected(false));
-        socket.on("room-full", () => {
-          setCallError("room_full");
-          setCallStatus("error");
-        });
-        socket.on("room-error", ({ message }: { message?: string }) => {
-          console.warn("Room join error:", message);
+        const onConnect = () => {
+          setSocketConnected(true);
+          joinRoom();
+        };
+
+        const onDisconnect = () => setSocketConnected(false);
+        const onConnectError = () => {
+          setSocketConnected(false);
           setCallError("room_error");
-          setCallStatus("error");
-        });
+        };
 
-        socket.on("room-users", (users: RoomParticipant[]) => {
+        const onRoomUsers = (users: RoomParticipant[]) => {
           if (streamRef.current) {
             void handlersRef.current.handleRoomUsers(users, streamRef.current, socket);
           }
-        });
+        };
 
-        socket.on("offer", async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
+        const onOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
           if (!streamRef.current) return;
           const polite = !optsRef.current.isHost;
           if (makingOfferRef.current && !polite) return;
           remoteIdRef.current = senderId;
 
           try {
-            let pc = pcRef.current;
-            if (pc?.signalingState === "closed" || pc?.connectionState === "failed") {
-              pc = null;
-              pcRef.current = null;
-            }
-            if (!pc) {
-              pc = handlersRef.current.createPeerConnection(streamRef.current, socket);
-              pcRef.current = pc;
-            }
-
-            if (pc.signalingState === "have-local-offer") {
-              if (!polite) return;
-              try {
-                await pc.setLocalDescription({ type: "rollback" } as RTCSessionDescriptionInit);
-              } catch {
-                handlersRef.current.resetPeerConnection();
-                pc = handlersRef.current.createPeerConnection(streamRef.current, socket);
-                pcRef.current = pc;
-              }
-            }
+            handlersRef.current.resetPeerConnection();
+            const pc = handlersRef.current.createPeerConnection(streamRef.current, socket);
+            pcRef.current = pc;
 
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
             await handlersRef.current.flushIceQueue(pc);
@@ -582,9 +562,9 @@ export function useCall({
             console.error("Answer failed:", e);
             handlersRef.current.resetPeerConnection();
           }
-        });
+        };
 
-        socket.on("answer", async ({ answer }: { answer: RTCSessionDescriptionInit }) => {
+        const onAnswer = async ({ answer }: { answer: RTCSessionDescriptionInit }) => {
           if (!pcRef.current) return;
           try {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
@@ -593,9 +573,9 @@ export function useCall({
           } catch (e) {
             console.error("Answer apply failed:", e);
           }
-        });
+        };
 
-        socket.on("ice-candidate", async ({ candidate }: { candidate: RTCIceCandidateInit }) => {
+        const onIce = async ({ candidate }: { candidate: RTCIceCandidateInit }) => {
           if (!pcRef.current?.remoteDescription) {
             iceQueueRef.current.push(candidate);
             return;
@@ -605,9 +585,9 @@ export function useCall({
           } catch (e) {
             console.warn("ICE add failed:", e);
           }
-        });
+        };
 
-        socket.on("request-reoffer", () => {
+        const onReoffer = () => {
           if (!optsRef.current.isHost || !streamRef.current || !otherParticipantRef.current) return;
           void handlersRef.current.sendOffer(
             streamRef.current,
@@ -615,9 +595,9 @@ export function useCall({
             otherParticipantRef.current,
             true
           );
-        });
+        };
 
-        socket.on("translation", (msg: TranslationPayload) => {
+        const onTranslation = (msg: TranslationPayload) => {
           msgCounterRef.current += 1;
           const entry: TranslationMessage = {
             ...msg,
@@ -625,33 +605,47 @@ export function useCall({
             timestamp: Date.now(),
           };
           setTranslations((prev) => [...prev.slice(-29), entry]);
-
           if (msg.audioBase64 && msg.speaker !== optsRef.current.userName) {
             handlersRef.current.playTranslationAudio(msg.audioBase64);
           }
-        });
+        };
 
-        socket.on("call-ended", () => {
+        const onRoomFull = () => {
+          setCallError("room_full");
+          setCallStatus("error");
+        };
+
+        const onRoomError = ({ message }: { message?: string }) => {
+          console.warn("Room join error:", message);
+          setCallError("room_error");
+          setCallStatus("error");
+        };
+
+        const onCallEnded = () => {
           handlersRef.current.stopTimer();
           setCallStatus("ended");
-        });
-        socket.on("call-rejected", () => {
+        };
+
+        const onCallRejected = () => {
           handlersRef.current.stopTimer();
           setCallStatus("ended");
-        });
-        socket.on("call-timeout", () => {
+        };
+
+        const onCallTimeout = () => {
           handlersRef.current.stopTimer();
           handlersRef.current.stopRecording();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
-        });
-        socket.on("call-cancelled", () => {
+        };
+
+        const onCallCancelled = () => {
           handlersRef.current.stopTimer();
           handlersRef.current.stopRecording();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
-        });
-        socket.on("user-left", () => {
+        };
+
+        const onUserLeft = () => {
           if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
           userLeftTimerRef.current = setTimeout(() => {
             if (mounted) {
@@ -660,7 +654,46 @@ export function useCall({
               setCallStatus("ended");
             }
           }, 8000);
-        });
+        };
+
+        socket.on("connect", onConnect);
+        socket.on("disconnect", onDisconnect);
+        socket.on("connect_error", onConnectError);
+        socket.on("room-full", onRoomFull);
+        socket.on("room-error", onRoomError);
+        socket.on("room-users", onRoomUsers);
+        socket.on("offer", onOffer);
+        socket.on("answer", onAnswer);
+        socket.on("ice-candidate", onIce);
+        socket.on("request-reoffer", onReoffer);
+        socket.on("translation", onTranslation);
+        socket.on("call-ended", onCallEnded);
+        socket.on("call-rejected", onCallRejected);
+        socket.on("call-timeout", onCallTimeout);
+        socket.on("call-cancelled", onCallCancelled);
+        socket.on("user-left", onUserLeft);
+
+        setSocketConnected(socket.connected);
+        joinRoom();
+
+        detachSocketRef.current = () => {
+          socket.off("connect", onConnect);
+          socket.off("disconnect", onDisconnect);
+          socket.off("connect_error", onConnectError);
+          socket.off("room-full", onRoomFull);
+          socket.off("room-error", onRoomError);
+          socket.off("room-users", onRoomUsers);
+          socket.off("offer", onOffer);
+          socket.off("answer", onAnswer);
+          socket.off("ice-candidate", onIce);
+          socket.off("request-reoffer", onReoffer);
+          socket.off("translation", onTranslation);
+          socket.off("call-ended", onCallEnded);
+          socket.off("call-rejected", onCallRejected);
+          socket.off("call-timeout", onCallTimeout);
+          socket.off("call-cancelled", onCallCancelled);
+          socket.off("user-left", onUserLeft);
+        };
       } catch (err) {
         console.error("Call session error:", err);
         sessionStartedRef.current = false;
@@ -710,6 +743,9 @@ export function useCall({
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
 
+      detachSocketRef.current?.();
+      detachSocketRef.current = null;
+
       const hadRemote = !!remoteStreamRef.current;
       const socket = socketRef.current;
       const host = optsRef.current.isHost;
@@ -728,7 +764,9 @@ export function useCall({
         });
       }
 
-      socket?.disconnect();
+      if (socket?.connected) {
+        socket.emit("leave-room", { roomId: rid });
+      }
       socketRef.current = null;
     };
   }, [enabled, roomId, userId]);
@@ -788,7 +826,9 @@ export function useCall({
     } else {
       socketRef.current?.emit("call-ended");
     }
-    socketRef.current?.disconnect();
+    socketRef.current?.emit("leave-room", { roomId });
+    detachSocketRef.current?.();
+    detachSocketRef.current = null;
     setCallStatus("ended");
   }, [stopRecording, resetPeerConnection, stopTimer, isHost, roomId]);
 
