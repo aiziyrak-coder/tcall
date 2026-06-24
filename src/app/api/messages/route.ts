@@ -1,43 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { emitToUser } from "@/lib/socket-io";
 import { rateLimit } from "@/lib/rate-limit";
+import { getConversationsForUser, sendDirectMessage } from "@/lib/chat-service";
 
 const sendSchema = z.object({
   recipientTcallId: z.string().regex(/^\d{9}$/),
-  message: z.string().min(1).max(300),
+  message: z.string().min(1).max(2000),
 });
 
 export async function GET(req: NextRequest) {
   const session = await getSession(req);
-  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  if (!session?.tcallId) {
+    return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  }
 
-  const [inbox, sent] = await Promise.all([
-    prisma.quickMessage.findMany({
-      where: { recipientTcallId: session.tcallId! },
-      include: { sender: { select: { name: true, tcallId: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 30,
-    }),
-    prisma.quickMessage.findMany({
-      where: { senderId: session.userId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
-  ]);
+  const { conversations, unreadTotal } = await getConversationsForUser(
+    session.userId,
+    session.language || "uz"
+  );
 
-  const unreadCount = inbox.filter((m) => !m.read).length;
-
-  return NextResponse.json({ inbox, sent, unreadCount });
+  return NextResponse.json({ conversations, unreadCount: unreadTotal, inbox: [], sent: [] });
 }
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
-  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  if (!session?.tcallId) {
+    return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  }
 
-  const limited = rateLimit(`msg:${session.userId}`, 15, 60_000);
+  const limited = rateLimit(`msg:${session.userId}`, 30, 60_000);
   if (!limited.ok) {
     return NextResponse.json(
       { error: `Juda ko'p xabar. ${limited.retryAfterSec}s kuting` },
@@ -47,50 +39,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const { recipientTcallId, message } = sendSchema.parse(await req.json());
-
-    const recipient = await prisma.user.findUnique({ where: { tcallId: recipientTcallId } });
-    if (!recipient) return NextResponse.json({ error: "Raqam topilmadi" }, { status: 404 });
-
-    const blocked = await prisma.blockedUser.findFirst({
-      where: { blockerId: recipient.id, blockedTcallId: session.tcallId! },
-    });
-    const blockedBySender = await prisma.blockedUser.findFirst({
-      where: { blockerId: session.userId, blockedTcallId: recipientTcallId },
-    });
-    if (blocked || blockedBySender) {
-      return NextResponse.json({ error: "Xabar yuborib bo'lmaydi" }, { status: 403 });
+    const result = await sendDirectMessage(
+      session.userId,
+      session.tcallId,
+      session.language || "uz",
+      recipientTcallId,
+      message
+    );
+    return NextResponse.json({ message: { id: result.msg.id }, conversationId: result.msg.conversationId });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });
     }
-
-    const msg = await prisma.quickMessage.create({
-      data: { senderId: session.userId, recipientTcallId, message },
-    });
-
-    emitToUser(recipient.id, "quick-message", {
-      id: msg.id,
-      message,
-      sender: { name: session.name, tcallId: session.tcallId },
-    });
-
-    return NextResponse.json({ message: msg });
-  } catch {
+    if (e instanceof Error) {
+      if (e.message === "NOT_FOUND") return NextResponse.json({ error: "Raqam topilmadi" }, { status: 404 });
+      if (e.message === "BLOCKED") return NextResponse.json({ error: "Xabar yuborib bo'lmaydi" }, { status: 403 });
+    }
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
-
-  const { ids } = await req.json();
-  if (!Array.isArray(ids) || ids.length === 0 || ids.length > 50) {
-    return NextResponse.json({ error: "ids kerak" }, { status: 400 });
-  }
-  const safeIds = ids.filter((id) => typeof id === "string" && id.length <= 64);
-
-  await prisma.quickMessage.updateMany({
-    where: { id: { in: safeIds }, recipientTcallId: session.tcallId! },
-    data: { read: true },
-  });
-
   return NextResponse.json({ ok: true });
 }

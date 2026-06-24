@@ -16,7 +16,7 @@ import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
 import { SpeedDial } from "@/components/SpeedDial";
 import { SettingsPanel } from "@/components/SettingsPanel";
-import { MessagesInbox } from "@/components/MessagesInbox";
+import { ChatMessenger } from "@/components/ChatMessenger";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 import { TcallLogo } from "@/components/TcallLogo";
@@ -120,6 +120,7 @@ function DashboardInner({
   const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget, socketConnected } = useCallContext();
   const ui = getUI(user.language);
   const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
+  const [chatOpenTcallId, setChatOpenTcallId] = useState<string | null>(null);
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -149,7 +150,7 @@ function DashboardInner({
         setFavorites(favs.map((c: { name: string; tcallId: string }) => ({ name: c.name, tcallId: c.tcallId })));
       });
 
-    apiFetch("/api/messages")
+    apiFetch("/api/chat/conversations")
       .then((r) => r.json())
       .then((d) => setMessageCount(d.unreadCount || 0));
   }, [setCalls, setLoadError, setFavorites, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
@@ -175,6 +176,18 @@ function DashboardInner({
     window.addEventListener("tcall:quick-message", onQuickMessage);
     return () => window.removeEventListener("tcall:quick-message", onQuickMessage);
   }, [refresh]);
+
+  useEffect(() => {
+    const onOpenChat = (e: Event) => {
+      const tcallId = (e as CustomEvent).detail?.tcallId as string | undefined;
+      if (tcallId) {
+        setTab("messages");
+        setChatOpenTcallId(tcallId);
+      }
+    };
+    window.addEventListener("tcall:open-chat", onOpenChat);
+    return () => window.removeEventListener("tcall:open-chat", onOpenChat);
+  }, [setTab]);
 
   const copyId = async () => {
     if (!user.tcallId) return;
@@ -257,8 +270,18 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("messages") && (
-          <div className={tab === "messages" ? "app-tab-panel" : "hidden"}>
-            <MessagesInbox userLanguage={user.language} onRead={() => setMessageCount(0)} />
+          <div className={tab === "messages" ? "app-tab-panel chat-tab-panel" : "hidden"}>
+            <ChatMessenger
+              userLanguage={user.language}
+              userId={user.userId}
+              openTcallId={chatOpenTcallId}
+              onOpenHandled={() => setChatOpenTcallId(null)}
+              onUnreadChange={() => {
+                apiFetch("/api/chat/conversations")
+                  .then((r) => r.json())
+                  .then((d) => setMessageCount(d.unreadCount || 0));
+              }}
+            />
           </div>
         )}
 
@@ -296,7 +319,12 @@ function DashboardInner({
           recipientName={quickMessageTarget.name}
           userLanguage={user.language}
           onClose={clearQuickMessageTarget}
-          onSent={refresh}
+          onSent={() => {
+            refresh();
+            setTab("messages");
+            setChatOpenTcallId(quickMessageTarget.tcallId);
+            clearQuickMessageTarget();
+          }}
         />
       )}
     </>

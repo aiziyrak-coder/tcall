@@ -6,3 +6,4 @@ deploy/.env.production.server
 *.db
 *.db-journal
 dist
+public/uploads/

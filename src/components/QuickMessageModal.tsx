@@ -83,7 +83,7 @@ export function QuickMessageModal({
               placeholder={ui.typeMessage}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              maxLength={300}
+              maxLength={2000}
             />
             <button
               type="button"

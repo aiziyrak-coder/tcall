@@ -152,6 +152,17 @@ export function ContactsManager({ userLanguage }: ContactsManagerProps) {
                       <button onClick={() => deleteContact(contact.id)} className="ios-icon-btn w-8 h-8 text-red-400">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.dispatchEvent(
+                            new CustomEvent("tcall:open-chat", { detail: { tcallId: contact.tcallId } })
+                          );
+                        }}
+                        className="ios-icon-btn w-8 h-8 text-brand-600"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </button>
                       <button onClick={() => void handleDial(contact.tcallId)} className="ios-mini-call-btn">
                         <Phone className="w-4 h-4" />
                       </button>

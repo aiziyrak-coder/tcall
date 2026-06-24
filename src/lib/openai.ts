@@ -38,6 +38,52 @@ export async function transcribeAudio(
   return (data.text as string)?.trim() || "";
 }
 
+/** GPT — chat xabarlari uchun aniq, grammatik to'g'ri tarjima */
+export async function translateForChat(
+  text: string,
+  sourceLang: string,
+  targetLang: string
+): Promise<string> {
+  if (!text.trim() || sourceLang === targetLang) return text;
+
+  const sourceName = getLanguageName(sourceLang);
+  const targetName = getLanguageName(targetLang);
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getModel(),
+      temperature: 0.15,
+      max_tokens: 800,
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional chat message translator. Translate from ${sourceName} to ${targetName}.
+Rules:
+- Preserve the exact meaning, tone, and intent of the original message.
+- Use natural, grammatically correct ${targetName} that reads like a native speaker wrote it.
+- Do NOT add, omit, or summarize information.
+- Keep emojis and proper nouns unchanged when appropriate.
+- Return ONLY the translated message text, nothing else.`,
+        },
+        { role: "user", content: text },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    console.error("GPT chat translate error:", await res.text());
+    return text;
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || text;
+}
+
 /** GPT — real-time tarjima */
 export async function translateWithGPT(
   text: string,

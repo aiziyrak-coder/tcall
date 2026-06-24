@@ -218,6 +218,13 @@ export function CallProvider({
       }
     });
 
+    socket.on("chat-message", (data: unknown) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tcall:chat-message", { detail: data }));
+        window.dispatchEvent(new CustomEvent("tcall:quick-message"));
+      }
+    });
+
     socket.on("connect_error", () => {
       setSocketConnected(false);
     });

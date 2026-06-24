@@ -863,3 +863,149 @@
 .vanity-contact-pending {
   @apply mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200;
 }
+
+/* ===== Chat messenger ===== */
+.chat-tab-panel {
+  @apply -mx-4 flex flex-col;
+  height: calc(100dvh - 8.5rem);
+  max-height: calc(100dvh - 8.5rem);
+}
+
+.chat-loading {
+  @apply flex items-center justify-center py-16;
+}
+
+.chat-loading-inline {
+  @apply flex justify-center py-8;
+}
+
+.chat-list-view {
+  @apply flex flex-col h-full min-h-0;
+}
+
+.chat-list-actions {
+  @apply flex gap-2 mb-3 px-1;
+}
+
+.chat-action-btn {
+  @apply flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold rounded-xl bg-brand-50 text-brand-700 border border-brand-200 touch-manipulation active:scale-[0.98];
+}
+
+.chat-conv-list {
+  @apply divide-y divide-black/5 overflow-y-auto flex-1 min-h-0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-conv-item {
+  @apply w-full flex items-center gap-3 py-3.5 px-1 touch-manipulation active:bg-slate-50 text-left;
+}
+
+.chat-conv-avatar {
+  @apply w-11 h-11 rounded-full bg-gradient-to-br from-brand-100 to-purple-100 text-brand-700 flex items-center justify-center font-semibold text-sm shrink-0;
+}
+
+.chat-unread-badge {
+  @apply min-w-[20px] h-5 px-1.5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0;
+}
+
+.chat-thread {
+  @apply flex flex-col h-full min-h-0 -mx-4;
+}
+
+.chat-thread-header {
+  @apply shrink-0 flex items-center gap-2 px-3 py-2.5 border-b border-black/5 bg-white/95 backdrop-blur-sm;
+}
+
+.chat-messages {
+  @apply flex-1 overflow-y-auto overscroll-contain px-3 py-3 min-h-0 flex flex-col gap-2;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-empty-hint {
+  @apply text-center text-sm text-slate-400 py-12 px-4;
+}
+
+.chat-bubble-wrap {
+  @apply flex flex-col max-w-[85%];
+}
+
+.chat-bubble-mine {
+  @apply self-end items-end;
+}
+
+.chat-bubble-theirs {
+  @apply self-start items-start;
+}
+
+.chat-bubble-sender {
+  @apply text-[11px] text-slate-500 mb-0.5 px-1 font-medium;
+}
+
+.chat-bubble {
+  @apply rounded-2xl px-3.5 py-2.5 shadow-sm;
+}
+
+.chat-bubble-bg-mine {
+  @apply bg-brand-600 text-white rounded-br-md;
+}
+
+.chat-bubble-bg-theirs {
+  @apply bg-white border border-black/[0.08] text-slate-900 rounded-bl-md;
+}
+
+.chat-bubble-text {
+  @apply text-[15px] leading-relaxed break-words;
+}
+
+.chat-bubble-bg-mine .chat-bubble-text {
+  @apply text-white;
+}
+
+.chat-view-original {
+  @apply text-[11px] mt-1.5 underline opacity-80 touch-manipulation;
+}
+
+.chat-bubble-time {
+  @apply text-[10px] text-slate-400 mt-0.5 px-1;
+}
+
+.chat-media-image {
+  @apply rounded-xl max-w-full max-h-56 object-cover mb-1;
+}
+
+.chat-media-video {
+  @apply rounded-xl max-w-full max-h-56 mb-1;
+}
+
+.chat-file-link {
+  @apply text-sm underline block mb-1;
+}
+
+.chat-composer {
+  @apply shrink-0 border-t border-black/5 bg-white px-2 py-2;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+.chat-emoji-panel {
+  @apply flex flex-wrap gap-1 p-2 mb-2 bg-slate-50 rounded-xl max-h-28 overflow-y-auto;
+}
+
+.chat-emoji-btn {
+  @apply w-9 h-9 text-lg rounded-lg touch-manipulation active:bg-slate-200;
+}
+
+.chat-composer-row {
+  @apply flex items-end gap-1;
+}
+
+.chat-tool-btn {
+  @apply w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-slate-500 touch-manipulation active:bg-slate-100;
+}
+
+.chat-input {
+  @apply flex-1 min-h-[40px] max-h-28 resize-none bg-slate-100 rounded-2xl px-3 py-2.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+}
+
+.chat-send-btn {
+  @apply w-10 h-10 shrink-0 rounded-full bg-brand-600 text-white flex items-center justify-center touch-manipulation active:scale-95 disabled:opacity-35;
+}
