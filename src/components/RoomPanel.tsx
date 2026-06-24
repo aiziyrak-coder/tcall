@@ -15,6 +15,8 @@ import {
 import { apiFetch } from "@/lib/api";
 import { getUI } from "@/lib/languages";
 import { copyToClipboard } from "@/lib/utils";
+import { unlockAudio } from "@/lib/ringtone";
+import { prefetchMicrophoneAccess } from "@/lib/mic-permission";
 
 interface RoomPanelProps {
   userLanguage: string;
@@ -34,6 +36,8 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
     setError("");
     setCreating(true);
     try {
+      await unlockAudio();
+      await prefetchMicrophoneAccess();
       const res = await apiFetch("/api/calls", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
@@ -53,6 +57,8 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
     setError("");
     setJoining(true);
     try {
+      await unlockAudio();
+      await prefetchMicrophoneAccess();
       const res = await apiFetch("/api/calls/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -90,7 +96,9 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
     copyLink();
   };
 
-  const enterRoom = () => {
+  const enterRoom = async () => {
+    await unlockAudio();
+    await prefetchMicrophoneAccess();
     window.location.href = `/call/${roomId}`;
   };
 
@@ -148,7 +156,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
               <Share2 className="w-4 h-4" />
               {ui.shareLinkShort}
             </button>
-            <button type="button" onClick={enterRoom} className="room-btn room-btn-primary room-btn-block">
+            <button type="button" onClick={() => void enterRoom()} className="room-btn room-btn-primary room-btn-block">
               {ui.enterRoom}
               <ArrowRight className="w-4 h-4" />
             </button>

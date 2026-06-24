@@ -27,6 +27,7 @@ import {
 } from "@/lib/notifications";
 import { formatTcallId } from "@/lib/tcallId";
 import { RING_TIMEOUT_MS } from "@/lib/call-service";
+import { prefetchMicrophoneAccess } from "@/lib/mic-permission";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 
@@ -249,6 +250,7 @@ export function CallProvider({
   const acceptCall = useCallback(async () => {
     if (!incomingCall) return;
     await unlockAudio();
+    await prefetchMicrophoneAccess();
     stopRingtone();
     const roomId = incomingCall.roomId;
 
@@ -287,6 +289,7 @@ export function CallProvider({
   const dial = useCallback(async (tcallId: string) => {
     setDialError(null);
     await unlockAudio();
+    await prefetchMicrophoneAccess();
 
     const res = await apiFetch("/api/calls/dial", {
       method: "POST",

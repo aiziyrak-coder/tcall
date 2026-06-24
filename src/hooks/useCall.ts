@@ -9,6 +9,12 @@ import {
   getPreferredAudioMimeType,
   requestWakeLock,
 } from "@/lib/mobile";
+import {
+  markMicGranted,
+  queryMicPermission,
+  requestMicrophoneStream,
+  wasMicGrantedBefore,
+} from "@/lib/mic-permission";
 import { getPeerConnectionConfig } from "@/lib/webrtc";
 import type { RoomParticipant, TranslationPayload } from "@/types/signaling";
 
@@ -19,6 +25,7 @@ export interface TranslationMessage extends TranslationPayload {
 
 export type CallStatus = "connecting" | "waiting" | "ringing" | "active" | "ended" | "error";
 export type CallError = "media_denied" | "room_full" | "room_error" | "ai_error" | null;
+export type MicStatus = "pending" | "requesting" | "granted" | "denied";
 export type TranslationMode = "text" | "voice";
 
 interface UseCallOptions {
@@ -54,6 +61,7 @@ export function useCall({
   const [socketConnected, setSocketConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [micStatus, setMicStatus] = useState<MicStatus>("pending");
 
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -80,6 +88,8 @@ export function useCall({
   const otherParticipantRef = useRef<RoomParticipant | null>(null);
   const partnerLanguageRef = useRef<string | null>(null);
   const sessionActiveRef = useRef(false);
+  const startSessionRef = useRef<(stream: MediaStream) => Promise<void>>(async () => {});
+  const sessionStartedRef = useRef(false);
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
@@ -401,9 +411,14 @@ export function useCall({
     audioQueue.setSpeakingCallback(setIsSpeaking);
     audioQueueRef.current = audioQueue;
 
-    async function init() {
+    async function startWithStream(stream: MediaStream) {
+      if (!mounted || sessionStartedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      sessionStartedRef.current = true;
+
       try {
-        const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
         wakeLockRef.current = await requestWakeLock();
         if (!mounted) {
           stream.getTracks().forEach((t) => t.stop());
@@ -411,6 +426,8 @@ export function useCall({
         }
 
         streamRef.current = stream;
+        setMicStatus("granted");
+        setCallStatus("connecting");
 
         const socket = io(getSocketUrl(), {
           path: "/socket.io",
@@ -559,26 +576,41 @@ export function useCall({
           }, 8000);
         });
       } catch (err) {
-        console.error("Media error:", err);
+        console.error("Call session error:", err);
+        sessionStartedRef.current = false;
         if (mounted) {
-          setCallError("media_denied");
+          setCallError("room_error");
           setCallStatus("error");
-          if (isHost && socketRef.current?.connected) {
-            socketRef.current.emit("call-cancel", { roomId });
-          }
-          void apiFetch("/api/calls/end", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ roomId }),
-          });
         }
       }
     }
 
-    init();
+    startSessionRef.current = startWithStream;
+
+    async function bootstrap() {
+      const perm = await queryMicPermission();
+      if (perm === "denied") {
+        if (mounted) setMicStatus("denied");
+        return;
+      }
+      if (perm === "granted" || wasMicGrantedBefore()) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+          markMicGranted();
+          await startWithStream(stream);
+          return;
+        } catch {
+          /* iOS: birinchi marta user gesture kerak */
+        }
+      }
+      if (mounted) setMicStatus("pending");
+    }
+
+    void bootstrap();
 
     return () => {
       mounted = false;
+      sessionStartedRef.current = false;
       sessionActiveRef.current = false;
       stopTimer();
       clearOfferRetry();
@@ -627,6 +659,20 @@ export function useCall({
     startTimer,
     stopTimer,
   ]);
+
+  const requestMicrophone = useCallback(async () => {
+    setMicStatus("requesting");
+    try {
+      const stream = await requestMicrophoneStream();
+      await startSessionRef.current(stream);
+      return true;
+    } catch (err) {
+      console.error("Mic permission error:", err);
+      const perm = await queryMicPermission();
+      setMicStatus(perm === "denied" ? "denied" : "pending");
+      return false;
+    }
+  }, []);
 
   const toggleMute = useCallback(() => {
     const stream = streamRef.current;
@@ -688,10 +734,12 @@ export function useCall({
     socketConnected,
     isSpeaking,
     callDuration,
+    micStatus,
     unlockAudio,
     playRemoteAudio,
     toggleMute,
     setTranslationMode,
     endCall,
+    requestMicrophone,
   };
 }

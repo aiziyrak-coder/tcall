@@ -466,6 +466,40 @@
   @apply text-xs text-slate-500 leading-relaxed;
 }
 
+/* ===== Mic permission gate ===== */
+.mic-gate-card {
+  @apply w-full max-w-sm rounded-3xl bg-white border border-black/[0.08] p-8 text-center shadow-lg;
+  background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+}
+
+.mic-gate-icon {
+  @apply w-16 h-16 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-5;
+}
+
+.mic-gate-icon-denied {
+  @apply bg-red-50 text-red-500;
+}
+
+.mic-gate-title {
+  @apply text-xl font-bold text-slate-900 mb-2;
+}
+
+.mic-gate-desc {
+  @apply text-sm text-slate-500 leading-relaxed mb-6;
+}
+
+.mic-gate-btn {
+  @apply w-full inline-flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold rounded-xl py-3.5 px-6 shadow-md shadow-brand-600/25 active:scale-[0.98] transition-transform touch-manipulation min-h-[52px];
+}
+
+.mic-gate-loading {
+  @apply flex items-center justify-center gap-2 text-sm text-slate-500 py-3;
+}
+
+.mic-gate-settings {
+  @apply text-xs text-slate-400 mt-5 leading-relaxed;
+}
+
 .ios-error-banner {
   @apply bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm mb-4;
 }

@@ -16,6 +16,7 @@ import { useCall, type TranslationMode } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
 import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
+import { MicPermissionGate } from "@/components/MicPermissionGate";
 import type { User } from "@/hooks/useAuth";
 
 interface AudioCallRoomProps {
@@ -81,14 +82,28 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
   }, [call.callStatus, leaveToDashboard]);
 
   useEffect(() => {
-    if (call.callStatus === "error") {
+    if (call.callStatus === "error" && call.micStatus === "granted") {
       const timer = setTimeout(() => {
         call.endCall();
         leaveToDashboard();
       }, ERROR_LEAVE_DELAY_MS);
       return () => clearTimeout(timer);
     }
-  }, [call.callStatus, call, leaveToDashboard]);
+  }, [call.callStatus, call.micStatus, call, leaveToDashboard]);
+
+  if (call.micStatus !== "granted" && call.callStatus !== "ended") {
+    const gateStatus =
+      call.micStatus === "requesting" ? "requesting"
+      : call.micStatus === "denied" ? "denied"
+      : "pending";
+    return (
+      <MicPermissionGate
+        ui={ui}
+        status={gateStatus}
+        onAllow={() => void call.requestMicrophone()}
+      />
+    );
+  }
 
   const latestTranslation = call.translations.filter((t) => t.speaker !== user.name).slice(-1)[0];
   const latestOwn = call.translations.filter((t) => t.speaker === user.name).slice(-1)[0];
