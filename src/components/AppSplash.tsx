@@ -18,13 +18,7 @@ export function AppSplash({ fullscreen = true, message }: AppSplashProps) {
       role="status"
       aria-live="polite"
     >
-      <TcallLogo
-        size="splash"
-        animate
-        layout="horizontal"
-        showTagline
-        subtitle={message}
-      />
+      <TcallLogo size="splash" animate layout="horizontal" subtitle={message} />
     </div>
   );
 }

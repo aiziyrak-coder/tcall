@@ -98,7 +98,6 @@ export default function LoginPage() {
             <TcallLogo
               size="xl"
               layout="horizontal"
-              showTagline
               title="Kirish"
               subtitle="Hisobingizga kiring"
             />

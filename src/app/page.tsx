@@ -31,7 +31,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-28 sm:pt-16 sm:pb-32">
           <div className="flex flex-col md:flex-row md:items-center md:gap-12 lg:gap-16">
             <div className="shrink-0 flex justify-center md:justify-start mb-10 md:mb-0 md:pt-2">
-              <TcallLogo size="splash" layout="horizontal" showTagline />
+              <TcallLogo size="splash" layout="horizontal" />
             </div>
 
             <div className="flex-1 text-center md:text-left">

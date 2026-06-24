@@ -714,12 +714,11 @@
 }
 
 .tcall-logo-icon-crop {
-  @apply overflow-hidden;
+  /* legacy — icon uses logo-icon.png */
 }
 
 .tcall-logo-icon-crop .tcall-logo-image {
-  object-fit: cover;
-  object-position: top center;
+  object-fit: contain;
 }
 
 .tcall-logo-image {

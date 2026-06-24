@@ -56,7 +56,6 @@ export default function RegisterPage() {
             <TcallLogo
               size="xl"
               layout="horizontal"
-              showTagline
               title="Ro'yxatdan o'tish"
               subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
             />
