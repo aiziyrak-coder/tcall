@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const protectedPaths = ["/dashboard", "/call"];
+const protectedPaths = ["/dashboard", "/call", "/admin"];
 const ALLOWED_ORIGINS = [
   "https://tcall.vizara.uz",
   "https://tcallapi.vizara.uz",
@@ -75,5 +75,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/dashboard/:path*", "/call/:path*"],
+  matcher: ["/api/:path*", "/dashboard/:path*", "/call/:path*", "/admin/:path*"],
 };

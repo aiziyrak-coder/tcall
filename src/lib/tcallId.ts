@@ -58,6 +58,12 @@ export const VANITY_SEED: { number: string; price: number; tier: string }[] = [
   { number: "911111111", price: 999000, tier: "platinum" },
   { number: "922222222", price: 750000, tier: "platinum" },
   { number: "933333333", price: 750000, tier: "platinum" },
+  { number: "944444444", price: 720000, tier: "platinum" },
+  { number: "955555555", price: 700000, tier: "platinum" },
+  { number: "966666666", price: 680000, tier: "platinum" },
+  { number: "977777777", price: 660000, tier: "platinum" },
+  { number: "988888888", price: 850000, tier: "platinum" },
+  { number: "999999999", price: 999000, tier: "platinum" },
   { number: "900123456", price: 350000, tier: "gold" },
   { number: "901234567", price: 450000, tier: "gold" },
   { number: "987654321", price: 450000, tier: "gold" },
@@ -76,8 +82,80 @@ export const VANITY_SEED: { number: string; price: number; tier: string }[] = [
   { number: "900343434", price: 120000, tier: "silver" },
 ];
 
+export function generateVanityCatalog(): { number: string; price: number; tier: string }[] {
+  const map = new Map<string, { price: number; tier: string }>();
+
+  const add = (number: string, price: number, tier: string) => {
+    if (!/^[1-9]\d{8}$/.test(number)) return;
+    if (!map.has(number)) map.set(number, { price, tier });
+  };
+
+  for (const v of VANITY_SEED) add(v.number, v.price, v.tier);
+
+  for (let i = 1; i <= 99; i++) {
+    add(`9000000${String(i).padStart(2, "0")}`, 140000 + i * 1200, i <= 5 ? "gold" : "silver");
+  }
+
+  for (let i = 1; i <= 9; i++) {
+    add(`90${i}0000000`, 190000 + i * 25000, "gold");
+    add(`90${i}1111111`, 210000 + i * 30000, "gold");
+    add(`90${i}9999999`, 230000 + i * 28000, "gold");
+  }
+
+  for (let prefix = 900; prefix <= 919; prefix++) {
+    for (let d = 0; d <= 9; d++) {
+      const tail = String(d).repeat(9 - String(prefix).length);
+      add(`${prefix}${tail}`, 160000 + d * 18000, d >= 7 ? "platinum" : "gold");
+    }
+  }
+
+  for (let a = 0; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      if (a === b) continue;
+      const chunk = `${a}${b}`.repeat(3);
+      add(`900${chunk}`, 115000, "silver");
+      add(`901${chunk}`, 118000, "silver");
+      add(`902${chunk}`, 121000, "silver");
+      add(`910${chunk}`, 125000, "silver");
+    }
+  }
+
+  for (let start = 0; start <= 9; start++) {
+    const digits: number[] = [];
+    for (let i = 0; i < 9; i++) digits.push((start + i) % 10);
+    if (digits[0] === 0) continue;
+    add(digits.join(""), 280000 + start * 15000, "gold");
+  }
+
+  for (let xx = 0; xx <= 99; xx++) {
+    add(`900${String(xx).padStart(2, "0")}0000`, 95000 + xx * 600, "silver");
+    add(`901${String(xx).padStart(2, "0")}0000`, 98000 + xx * 600, "silver");
+  }
+
+  for (let x = 1; x <= 9; x++) {
+    for (let y = 0; y <= 9; y++) {
+      add(`90${x}00000${y}`, 105000 + x * 2000, "silver");
+      add(`90${x}99999${y}`, 135000 + x * 2500, "silver");
+    }
+  }
+
+  for (let i = 0; i <= 999; i++) {
+    const mid = String(i).padStart(3, "0");
+    const pal = `900${mid[0]}${mid[1]}${mid[2]}${mid[1]}${mid[0]}`;
+    if (pal.length === 9 && isPrettyNumber(pal)) add(pal, 240000 + (i % 50) * 800, "gold");
+  }
+
+  for (let block = 0; block <= 9; block++) {
+    add(`90000${block}${block}${block}${block}${block}`, 150000 + block * 8000, "silver");
+    add(`9000${block}${block}${block}${block}${block}${block}`, 165000 + block * 9000, "silver");
+  }
+
+  return Array.from(map.entries()).map(([number, meta]) => ({ number, ...meta }));
+}
+
 export async function seedVanityNumbers() {
-  for (const v of VANITY_SEED) {
+  const catalog = generateVanityCatalog();
+  for (const v of catalog) {
     await prisma.vanityNumber.upsert({
       where: { number: v.number },
       create: { number: v.number, price: v.price, tier: v.tier, available: true },

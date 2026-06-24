@@ -24,6 +24,7 @@ model User {
   hostedCalls       Call[]            @relation("HostCalls")
   callLogs          CallParticipant[]
   vanityNumber      VanityNumber?
+  vanityRequests    VanityNumberRequest[]
   contacts          Contact[]         @relation("OwnerContacts")
   blocks            BlockedUser[]     @relation("Blocker")
   quickMessagesSent QuickMessage[]    @relation("MessageSender")
@@ -64,6 +65,28 @@ model VanityNumber {
   user        User?     @relation(fields: [userId], references: [id])
   purchasedAt DateTime?
   createdAt   DateTime  @default(now())
+
+  requests VanityNumberRequest[]
+}
+
+model VanityNumberRequest {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  number         String
+  price          Int
+  tier           String
+  status         String        @default("pending")
+  vanityNumberId String?
+  vanityNumber   VanityNumber? @relation(fields: [vanityNumberId], references: [id], onDelete: SetNull)
+  note           String?
+  createdAt      DateTime      @default(now())
+  reviewedAt     DateTime?
+  reviewedBy     String?
+
+  @@index([userId])
+  @@index([status])
+  @@index([number])
 }
 
 model Call {

@@ -689,3 +689,68 @@
   from { opacity: 0.6; }
   to { opacity: 1; }
 }
+
+/* Vanity shop */
+.vanity-shop {
+  @apply glass rounded-2xl p-4;
+}
+
+.vanity-mode-tabs {
+  @apply flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl;
+}
+
+.vanity-mode-tabs button {
+  @apply flex-1 py-2.5 text-sm font-medium rounded-lg text-slate-600 transition-all;
+}
+
+.vanity-mode-active {
+  @apply bg-white text-brand-600 shadow-sm;
+}
+
+.vanity-tier-chip {
+  @apply px-3 py-1.5 text-xs rounded-full border border-black/10 text-slate-600 capitalize;
+}
+
+.vanity-tier-chip-active {
+  @apply bg-brand-600 text-white border-brand-600;
+}
+
+.vanity-custom-dial {
+  @apply mt-2;
+}
+
+.vanity-custom-display {
+  @apply bg-white border border-black/10 rounded-2xl tracking-widest text-brand-700;
+}
+
+.vanity-custom-result {
+  @apply rounded-xl px-4 py-3 text-center text-sm mt-2;
+}
+
+.vanity-custom-free {
+  @apply bg-green-50 border border-green-200 text-green-800;
+}
+
+.vanity-custom-taken {
+  @apply bg-red-50 border border-red-200 text-red-700;
+}
+
+.vanity-dial-key {
+  @apply h-12 rounded-xl bg-white border border-black/10 text-lg font-semibold shadow-sm active:scale-95 transition-transform;
+}
+
+.vanity-contact-modal {
+  @apply max-w-md mx-auto relative;
+}
+
+.ios-modal-close {
+  @apply absolute top-4 right-4 p-2 rounded-full text-slate-500 hover:bg-slate-100;
+}
+
+.vanity-contact-card {
+  @apply bg-brand-50 border border-brand-200 rounded-2xl p-4 text-center;
+}
+
+.vanity-contact-pending {
+  @apply mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200;
+}

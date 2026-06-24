@@ -276,11 +276,7 @@ function DashboardInner({
 
         {mountedTabs.has("numbers") && (
           <div className={tab === "numbers" ? "app-tab-panel" : "hidden"}>
-            <VanityShop
-              userLanguage={user.language}
-              currentId={user.tcallId}
-              onPurchased={(newId) => setUser({ ...user, tcallId: newId })}
-            />
+            <VanityShop userLanguage={user.language} currentId={user.tcallId} />
           </div>
         )}
       </PhoneShell>
