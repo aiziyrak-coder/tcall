@@ -1,7 +1,7 @@
 package uz.vizara.tcall;
 
-import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
@@ -31,7 +31,6 @@ public class MainActivity extends BridgeActivity {
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
-        webView.setHighlightColor(Color.TRANSPARENT);
-        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
     }
 }
