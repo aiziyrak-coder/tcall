@@ -325,6 +325,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.app-sidebar-spacer {
+  flex: 1;
+  min-height: 0.5rem;
+}
+
+.app-sidebar-item-bottom {
+  margin-top: auto;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 0.625rem;
+}
+
 .app-sidebar-item {
   display: flex;
   flex-direction: column;
@@ -920,6 +931,22 @@ body.tg-webapp .ios-tab-bar {
 
 .interpreter-session-stop {
   @apply bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95;
+}
+
+.interpreter-lang-details {
+  @apply rounded-xl border border-black/5 bg-white overflow-hidden;
+}
+
+.interpreter-lang-summary {
+  @apply cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-700;
+}
+
+.interpreter-lang-summary::-webkit-details-marker {
+  display: none;
+}
+
+.interpreter-lang-details[open] .interpreter-lang-bar {
+  @apply px-3 pb-3 pt-0;
 }
 
 .room-hero {

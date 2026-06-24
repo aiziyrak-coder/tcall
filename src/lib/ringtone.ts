@@ -12,6 +12,11 @@ let pendingRingtone = false;
 let pendingRingback = false;
 let gestureListenerAttached = false;
 let masterGain: GainNode | null = null;
+let userHasGestured = false;
+
+export function markUserGesture() {
+  userHasGestured = true;
+}
 
 /** Tcall Connect — kiruvchi qo'ng'iroq melodiyasi (E-dur, ~4.2s tsikl) */
 const TCALL_RING_NOTES: { freq: number; at: number; dur: number; vol?: number }[] = [
@@ -69,6 +74,7 @@ export async function unlockAudio(): Promise<boolean> {
     src.connect(audioCtx.destination);
     src.start(0);
     audioUnlocked = true;
+    markUserGesture();
     flushPending();
     return true;
   } catch {
@@ -81,6 +87,7 @@ export function setupAudioUnlockOnGesture() {
   gestureListenerAttached = true;
 
   const unlock = () => {
+    markUserGesture();
     void unlockAudio();
   };
 
@@ -95,6 +102,7 @@ function getCtx(): AudioContext | null {
 }
 
 function safeVibrate(pattern: number | number[]) {
+  if (!userHasGestured) return;
   try {
     if ("vibrate" in navigator) navigator.vibrate(pattern);
   } catch {

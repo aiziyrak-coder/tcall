@@ -16,7 +16,7 @@ import {
 import { useUI } from "@/components/providers/LocaleProvider";
 import { LANGUAGES, getLanguage } from "@/lib/languages";
 import { useLiveInterpreter, type InterpreterSpeaker } from "@/hooks/useLiveInterpreter";
-import { unlockAudio } from "@/lib/ringtone";
+import { unlockAudio, markUserGesture } from "@/lib/ringtone";
 
 interface LiveInterpreterProps {
   userLanguage: string;
@@ -117,14 +117,16 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
 
   const handlePointerDown = (speaker: InterpreterSpeaker) => (e: React.PointerEvent) => {
     e.preventDefault();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    markUserGesture();
+    void unlockAudio();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     void beginRecording(speaker);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     e.preventDefault();
     try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       /* ignore */
     }
@@ -176,69 +178,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
         )}
       </div>
 
-      <div className="interpreter-lang-bar interpreter-lang-bar-stacked">
-        <LangSelect
-          label={ui.interpreterMyLang}
-          value={myLang}
-          onChange={setMyLang}
-          search={mySearch}
-          onSearchChange={setMySearch}
-          searchPlaceholder={ui.search}
-        />
-        <button
-          type="button"
-          onClick={swapLanguages}
-          className="interpreter-swap-btn interpreter-swap-btn-center"
-          title={ui.interpreterSwapLang}
-          aria-label={ui.interpreterSwapLang}
-        >
-          <ArrowLeftRight className="w-4 h-4" />
-        </button>
-        <LangSelect
-          label={ui.interpreterTheirLang}
-          value={theirLang}
-          onChange={setTheirLang}
-          search={theirSearch}
-          onSearchChange={setTheirSearch}
-          searchPlaceholder={ui.search}
-        />
-      </div>
-
       {sameLang && <div className="interpreter-warn">{ui.interpreterSameLang}</div>}
-
-      <div className="interpreter-voice-arena">
-        <VoiceWave active={waveActive} color={waveColor} />
-        <div className="interpreter-voice-center">
-          {activity === "processing" && <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />}
-          {activity === "speaking" && speakLangInfo && (
-            <span className="interpreter-speaking-flag">{speakLangInfo.flag}</span>
-          )}
-          {activity === "listening" && (
-            <span className="interpreter-listening-icon">
-              <Mic className="w-8 h-8" />
-            </span>
-          )}
-          {activity === "idle" && sessionActive && (
-            <Volume2 className="w-8 h-8 text-emerald-500" />
-          )}
-          {!sessionActive && activity === "idle" && (
-            <Languages className="w-8 h-8 text-slate-300" />
-          )}
-        </div>
-        <p className="interpreter-voice-status">{statusText}</p>
-        {speakLangInfo && activity === "speaking" && (
-          <p className="interpreter-voice-lang-name">
-            {speakLangInfo.flag} {speakLangInfo.name}
-          </p>
-        )}
-      </div>
-
-      {micDenied && <div className="interpreter-error">{ui.interpreterMicRequired}</div>}
-      {errorText && !micDenied && (
-        <div className="interpreter-error interpreter-error-soft" onClick={() => setError("")}>
-          {errorText}
-        </div>
-      )}
 
       <div className="interpreter-session-row">
         {sessionActive ? (
@@ -299,6 +239,73 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
       </div>
 
       <p className="interpreter-footer-hint">{ui.interpreterReleaseHint}</p>
+
+      <div className="interpreter-voice-arena">
+        <VoiceWave active={waveActive} color={waveColor} />
+        <div className="interpreter-voice-center">
+          {activity === "processing" && <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />}
+          {activity === "speaking" && speakLangInfo && (
+            <span className="interpreter-speaking-flag">{speakLangInfo.flag}</span>
+          )}
+          {activity === "listening" && (
+            <span className="interpreter-listening-icon">
+              <Mic className="w-8 h-8" />
+            </span>
+          )}
+          {activity === "idle" && sessionActive && (
+            <Volume2 className="w-8 h-8 text-emerald-500" />
+          )}
+          {!sessionActive && activity === "idle" && (
+            <Languages className="w-8 h-8 text-slate-300" />
+          )}
+        </div>
+        <p className="interpreter-voice-status">{statusText}</p>
+        {speakLangInfo && activity === "speaking" && (
+          <p className="interpreter-voice-lang-name">
+            {speakLangInfo.flag} {speakLangInfo.name}
+          </p>
+        )}
+      </div>
+
+      {micDenied && <div className="interpreter-error">{ui.interpreterMicRequired}</div>}
+      {errorText && !micDenied && (
+        <div className="interpreter-error interpreter-error-soft" onClick={() => setError("")}>
+          {errorText}
+        </div>
+      )}
+
+      <details className="interpreter-lang-details">
+        <summary className="interpreter-lang-summary">
+          {myLangInfo.flag} {myLangInfo.name} ↔ {theirLangInfo.flag} {theirLangInfo.name}
+        </summary>
+        <div className="interpreter-lang-bar interpreter-lang-bar-stacked">
+          <LangSelect
+            label={ui.interpreterMyLang}
+            value={myLang}
+            onChange={setMyLang}
+            search={mySearch}
+            onSearchChange={setMySearch}
+            searchPlaceholder={ui.search}
+          />
+          <button
+            type="button"
+            onClick={swapLanguages}
+            className="interpreter-swap-btn interpreter-swap-btn-center"
+            title={ui.interpreterSwapLang}
+            aria-label={ui.interpreterSwapLang}
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+          </button>
+          <LangSelect
+            label={ui.interpreterTheirLang}
+            value={theirLang}
+            onChange={setTheirLang}
+            search={theirSearch}
+            onSearchChange={setTheirSearch}
+            searchPlaceholder={ui.search}
+          />
+        </div>
+      </details>
     </div>
   );
 }

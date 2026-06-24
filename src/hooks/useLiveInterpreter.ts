@@ -4,13 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { TranslationAudioQueue } from "@/lib/audioQueue";
 import { isDuplicateTranscript } from "@/lib/call-translation";
-import { acquireMicrophoneStream } from "@/lib/mic-permission";
+import { acquireMicrophoneStream, prefetchMicrophoneAccess } from "@/lib/mic-permission";
 import { getPreferredAudioMimeType, isIOS, requestWakeLock } from "@/lib/mobile";
 
 export type InterpreterSpeaker = "me" | "them";
 export type InterpreterActivity = "idle" | "listening" | "processing" | "speaking";
 
 const PARTNER_LANG_KEY = "tcall:interpreter-partner-lang";
+const MIN_RECORD_MS = 550;
+const MIN_BLOB_BYTES = 400;
 
 function loadPartnerLang(defaultLang: string): string {
   if (typeof window === "undefined") return defaultLang === "uz" ? "en" : "uz";
@@ -38,6 +40,10 @@ export function useLiveInterpreter(userLanguage: string) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recordingSpeakerRef = useRef<InterpreterSpeaker | null>(null);
+  const pointerHeldRef = useRef(false);
+  const recordStartedAtRef = useRef(0);
+  const stopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mimeTypeRef = useRef("audio/webm");
   const audioQueueRef = useRef<TranslationAudioQueue | null>(null);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const lastTranscriptRef = useRef("");
@@ -67,7 +73,19 @@ export function useLiveInterpreter(userLanguage: string) {
     setMyLang(userLanguage);
   }, [userLanguage]);
 
+  useEffect(() => {
+    void prefetchMicrophoneAccess();
+  }, []);
+
+  const clearStopTimer = useCallback(() => {
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+      stopTimerRef.current = null;
+    }
+  }, []);
+
   const releaseMic = useCallback(() => {
+    clearStopTimer();
     if (recorderRef.current?.state !== "inactive") {
       try {
         recorderRef.current?.stop();
@@ -81,9 +99,10 @@ export function useLiveInterpreter(userLanguage: string) {
     chunksRef.current = [];
     recordingSpeakerRef.current = null;
     setRecording(null);
-  }, []);
+  }, [clearStopTimer]);
 
   const stopSession = useCallback(() => {
+    pointerHeldRef.current = false;
     releaseMic();
     audioQueueRef.current?.stop();
     void wakeLockRef.current?.release();
@@ -117,7 +136,11 @@ export function useLiveInterpreter(userLanguage: string) {
   const processRecording = useCallback(
     async (blob: Blob, speaker: InterpreterSpeaker) => {
       if (processingRef.current) return;
-      if (blob.size < 600) return;
+      if (blob.size < MIN_BLOB_BYTES) {
+        setError("no_speech");
+        setActivity("idle");
+        return;
+      }
 
       const sourceLang = speaker === "me" ? myLangRef.current : theirLangRef.current;
       const targetLang = speaker === "me" ? theirLangRef.current : myLangRef.current;
@@ -134,7 +157,8 @@ export function useLiveInterpreter(userLanguage: string) {
           .filter(Boolean);
 
         const formData = new FormData();
-        const isMp4 = blob.type.includes("mp4") || blob.type.includes("aac");
+        const mime = blob.type || mimeTypeRef.current;
+        const isMp4 = mime.includes("mp4") || mime.includes("aac");
         formData.append("audio", blob, isMp4 ? "speech.mp4" : "speech.webm");
         formData.append("sourceLang", sourceLang);
         formData.append("targetLang", targetLang);
@@ -222,13 +246,9 @@ export function useLiveInterpreter(userLanguage: string) {
     }
   }, [ensureAudioQueue]);
 
-  const beginRecording = useCallback(
-    async (speaker: InterpreterSpeaker) => {
-      if (processingRef.current) return;
-      if (recordingSpeakerRef.current) return;
-
-      const ok = await startSession();
-      if (!ok || !streamRef.current) return;
+  const startRecorderInternal = useCallback(
+    (speaker: InterpreterSpeaker) => {
+      if (!streamRef.current || recordingSpeakerRef.current) return;
 
       const audioTrack = streamRef.current.getAudioTracks()[0];
       if (!audioTrack?.enabled) return;
@@ -237,8 +257,10 @@ export function useLiveInterpreter(userLanguage: string) {
       setActivity("listening");
 
       const mimeType = getPreferredAudioMimeType();
+      mimeTypeRef.current = mimeType;
       chunksRef.current = [];
       recordingSpeakerRef.current = speaker;
+      recordStartedAtRef.current = Date.now();
       setRecording(speaker);
       setError("");
 
@@ -256,12 +278,21 @@ export function useLiveInterpreter(userLanguage: string) {
           setRecording(null);
           recorderRef.current = null;
 
-          if (!sp || chunksRef.current.length === 0) {
+          if (!sp) {
             setActivity("idle");
             return;
           }
-          const blob = new Blob(chunksRef.current, { type: mimeType });
+
+          const parts = chunksRef.current.filter((c) => c.size > 0);
           chunksRef.current = [];
+
+          if (parts.length === 0) {
+            setActivity("idle");
+            setError("no_speech");
+            return;
+          }
+
+          const blob = new Blob(parts, { type: mimeTypeRef.current });
           void processRecording(blob, sp);
         };
 
@@ -272,7 +303,8 @@ export function useLiveInterpreter(userLanguage: string) {
           setActivity("idle");
         };
 
-        recorder.start();
+        const timeslice = mimeType.includes("mp4") || mimeType.includes("aac") ? 400 : 250;
+        recorder.start(timeslice);
         recorderRef.current = recorder;
 
         if (isIOS()) {
@@ -293,21 +325,62 @@ export function useLiveInterpreter(userLanguage: string) {
         setError("error");
       }
     },
-    [processRecording, startSession]
+    [processRecording]
   );
 
-  const endRecording = useCallback(() => {
+  const stopRecorderInternal = useCallback(() => {
     const recorder = recorderRef.current;
-    if (recorder?.state === "recording") {
+    if (!recorder || recorder.state !== "recording") return;
+
+    clearStopTimer();
+
+    const elapsed = Date.now() - recordStartedAtRef.current;
+    const wait = MIN_RECORD_MS - elapsed;
+
+    const doStop = () => {
       try {
-        recorder.stop();
+        if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       } catch {
         recordingSpeakerRef.current = null;
         setRecording(null);
         setActivity("idle");
       }
-    }
-  }, []);
+    };
+
+    if (wait > 0) stopTimerRef.current = setTimeout(doStop, wait);
+    else doStop();
+  }, [clearStopTimer]);
+
+  const beginRecording = useCallback(
+    async (speaker: InterpreterSpeaker) => {
+      if (processingRef.current) return;
+      pointerHeldRef.current = true;
+
+      const arm = () => {
+        if (!pointerHeldRef.current) return;
+        startRecorderInternal(speaker);
+      };
+
+      if (streamRef.current) {
+        arm();
+        return;
+      }
+
+      setActivity("listening");
+      const ok = await startSession();
+      if (ok && pointerHeldRef.current) arm();
+      else if (!ok) {
+        pointerHeldRef.current = false;
+        setActivity("idle");
+      }
+    },
+    [startRecorderInternal, startSession]
+  );
+
+  const endRecording = useCallback(() => {
+    pointerHeldRef.current = false;
+    stopRecorderInternal();
+  }, [stopRecorderInternal]);
 
   const swapLanguages = useCallback(() => {
     setMyLang(theirLangRef.current);

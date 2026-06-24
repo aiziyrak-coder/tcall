@@ -8,6 +8,15 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
+function pickFilename(name: string, buffer: Buffer): string {
+  if (name && name.includes(".")) return name;
+  const head = buffer.subarray(0, 12);
+  if (head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) return "speech.webm";
+  if (head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70) return "speech.mp4";
+  if (head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x46) return "speech.wav";
+  return name || "speech.webm";
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession(req);
@@ -39,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await audio.arrayBuffer());
-    if (buffer.length < 800) {
+    if (buffer.length < 350) {
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
 
@@ -53,8 +62,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const filename = pickFilename(audio.name || "speech.webm", buffer);
     const whisperHint = sourceLang === "auto" ? undefined : sourceLang;
-    const rawText = await transcribeAudio(buffer, audio.name || "speech.webm", whisperHint);
+
+    let rawText = await transcribeAudio(buffer, filename, whisperHint);
+    if (!isValidTranscript(rawText) && whisperHint) {
+      rawText = await transcribeAudio(buffer, filename, undefined);
+    }
     if (!isValidTranscript(rawText)) {
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }

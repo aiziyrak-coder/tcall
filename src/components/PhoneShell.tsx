@@ -32,11 +32,16 @@ const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof UIText }[] = [
   { id: "recents", icon: Clock, labelKey: "recents" },
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
-  { id: "interpreter", icon: Languages, labelKey: "interpreterTab" },
   { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
   { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
 ];
+
+const BOTTOM_TAB: { id: PhoneTab; icon: typeof Languages; labelKey: keyof UIText } = {
+  id: "interpreter",
+  icon: Languages,
+  labelKey: "interpreterTab",
+};
 
 const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
   keypad: Phone,
@@ -89,6 +94,25 @@ export function PhoneShell({
               </button>
             );
           })}
+          <div className="app-sidebar-spacer" aria-hidden />
+          {(() => {
+            const { id, icon: Icon, labelKey } = BOTTOM_TAB;
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onTabChange(id)}
+                className={`app-sidebar-item app-sidebar-item-bottom ${active ? "app-sidebar-item-active" : ""}`}
+                title={ui[labelKey] as string}
+              >
+                <span className="app-sidebar-icon-wrap">
+                  <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
+                </span>
+                <span className="app-sidebar-label">{ui[labelKey] as string}</span>
+              </button>
+            );
+          })()}
         </nav>
       </aside>
 
