@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { transcribeAudio, translateForInterpreter, textToSpeech } from "@/lib/openai";
+import { translateForInterpreter, textToSpeech } from "@/lib/openai";
 import { clampTranscript } from "@/lib/call-service";
 import { isValidTranscript } from "@/lib/call-translation";
+import { pickFilename, transcribeForInterpreter } from "@/lib/interpreter-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
-
-function pickFilename(name: string, buffer: Buffer): string {
-  if (name && name.includes(".")) return name;
-  const head = buffer.subarray(0, 12);
-  if (head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) return "speech.webm";
-  if (head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70) return "speech.mp4";
-  if (head[0] === 0x52 && head[1] === 0x49 && head[2] === 0x46 && head[3] === 0x46) return "speech.wav";
-  return name || "speech.webm";
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,10 +16,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
     }
 
-    const limited = rateLimit(`interpreter:${session.userId}:${clientIp(req)}`, 45, 60_000);
+    const limited = rateLimit(`interpreter:${session.userId}:${clientIp(req)}`, 60, 60_000);
     if (!limited.ok) {
       return NextResponse.json(
-        { error: `Juda ko'p so'rov. ${limited.retryAfterSec}s kuting` },
+        { error: "rate_limit", retryAfterSec: limited.retryAfterSec },
         { status: 429 }
       );
     }
@@ -48,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await audio.arrayBuffer());
-    if (buffer.length < 350) {
+    if (buffer.length < 280) {
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
 
@@ -64,12 +56,10 @@ export async function POST(req: NextRequest) {
 
     const filename = pickFilename(audio.name || "speech.webm", buffer);
     const whisperHint = sourceLang === "auto" ? undefined : sourceLang;
+    const rawText = await transcribeForInterpreter(buffer, filename, whisperHint);
 
-    let rawText = await transcribeAudio(buffer, filename, whisperHint);
-    if (!isValidTranscript(rawText) && whisperHint) {
-      rawText = await transcribeAudio(buffer, filename, undefined);
-    }
     if (!isValidTranscript(rawText)) {
+      console.warn("Interpreter no speech:", { bytes: buffer.length, type: audio.type, sourceLang, targetLang });
       return NextResponse.json({ error: "no_speech", original: "", translated: "" }, { status: 422 });
     }
 
@@ -91,7 +81,7 @@ export async function POST(req: NextRequest) {
     const translated = await translateForInterpreter(original, effectiveSource, targetLang, recentLines);
 
     let audioBase64: string | undefined;
-    if (translated.trim()) {
+    if (withSpeech && translated.trim()) {
       const audioBuf = await textToSpeech(translated, targetLang);
       if (audioBuf) audioBase64 = audioBuf.toString("base64");
     }

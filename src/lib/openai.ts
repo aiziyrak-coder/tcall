@@ -248,35 +248,42 @@ Rules:
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
-/** OpenAI TTS — tilga mos ovoz bilan tarjima matnini o'qish */
+/** OpenAI TTS — tilga mos ovoz bilan tarjima matnini o'qish (HD fail bo'lsa tts-1 ga tushadi) */
 export async function textToSpeech(text: string, langHint?: string): Promise<Buffer | null> {
   if (!text.trim()) return null;
 
   const voice = getTTSVoice(langHint);
   const speed = getTTSSpeed(langHint);
-  const model = getTTSModel();
+  const primary = getTTSModel();
 
-  const res = await fetch("https://api.openai.com/v1/audio/speech", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${requireApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      input: text.slice(0, 4096),
-      voice,
-      speed,
-      response_format: "mp3",
-    }),
-  });
+  async function synth(model: "tts-1" | "tts-1-hd"): Promise<Buffer | null> {
+    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${requireApiKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        input: text.slice(0, 4096),
+        voice,
+        speed,
+        response_format: "mp3",
+      }),
+    });
 
-  if (!res.ok) {
-    console.error("TTS error:", await res.text());
-    return null;
+    if (!res.ok) {
+      console.error(`TTS error (${model}):`, await res.text());
+      return null;
+    }
+
+    return Buffer.from(await res.arrayBuffer());
   }
 
-  return Buffer.from(await res.arrayBuffer());
+  const first = await synth(primary);
+  if (first) return first;
+  if (primary === "tts-1-hd") return synth("tts-1");
+  return null;
 }
 
 /** GPT — qisqa xulosa yoki kontekst (keyingi bosqich uchun) */

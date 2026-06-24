@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
   Languages,
@@ -86,6 +86,53 @@ function LangSelect({
   );
 }
 
+function PttButton({
+  speaker,
+  active,
+  disabled,
+  onPressStart,
+  onPressEnd,
+  className,
+  children,
+}: {
+  speaker: InterpreterSpeaker;
+  active: boolean;
+  disabled: boolean;
+  onPressStart: (s: InterpreterSpeaker) => void;
+  onPressEnd: () => void;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const handleStart = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    markUserGesture();
+    void unlockAudio();
+    onPressStart(speaker);
+  };
+
+  const handleEnd = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    onPressEnd();
+  };
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onPointerDown={handleStart}
+      onPointerUp={handleEnd}
+      onPointerCancel={handleEnd}
+      onTouchStart={handleStart}
+      onTouchEnd={handleEnd}
+      onTouchCancel={handleEnd}
+      onContextMenu={(e) => e.preventDefault()}
+      className={`${className} ${active ? "interpreter-ptt-active" : ""}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
   const ui = useUI(userLanguage);
   const [mySearch, setMySearch] = useState("");
@@ -105,45 +152,36 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
     micDenied,
     startSession,
     stopSession,
-    beginRecording,
-    endRecording,
+    pressStart,
+    pressEnd,
     swapLanguages,
   } = useLiveInterpreter(userLanguage);
 
-  const handleActivate = async () => {
-    await unlockAudio();
-    await startSession();
-  };
-
-  const handlePointerDown = (speaker: InterpreterSpeaker) => (e: React.PointerEvent) => {
-    e.preventDefault();
+  useEffect(() => {
     markUserGesture();
     void unlockAudio();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    void beginRecording(speaker);
-  };
+  }, []);
 
-  const handlePointerUp = (e: React.PointerEvent) => {
-    e.preventDefault();
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    endRecording();
+  const handleActivate = async () => {
+    markUserGesture();
+    await unlockAudio();
+    await startSession();
   };
 
   const myLangInfo = getLanguage(myLang);
   const theirLangInfo = getLanguage(theirLang);
   const speakLangInfo = activeTargetLang ? getLanguage(activeTargetLang) : null;
   const sameLang = myLang === theirLang;
+  const busy = activity === "processing";
 
   const errorText =
     error === "no_speech"
       ? ui.interpreterNoSpeech
-      : error === "error"
-        ? ui.interpreterError
-        : error || "";
+      : error === "rate_limit"
+        ? ui.interpreterRateLimit
+        : error === "error"
+          ? ui.interpreterError
+          : error || "";
 
   const statusText =
     activity === "listening"
@@ -199,14 +237,13 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
       </div>
 
       <div className="interpreter-ptt-grid">
-        <button
-          type="button"
-          disabled={sameLang || activity === "processing"}
-          onPointerDown={handlePointerDown("me")}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onContextMenu={(e) => e.preventDefault()}
-          className={`interpreter-ptt interpreter-ptt-me ${recording === "me" ? "interpreter-ptt-active" : ""}`}
+        <PttButton
+          speaker="me"
+          active={recording === "me"}
+          disabled={sameLang || busy}
+          onPressStart={pressStart}
+          onPressEnd={pressEnd}
+          className="interpreter-ptt interpreter-ptt-me"
         >
           <div className="interpreter-ptt-icon">
             <User className="w-7 h-7" strokeWidth={2} />
@@ -216,16 +253,15 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
           <span className="interpreter-ptt-lang">
             {myLangInfo.flag} → {theirLangInfo.flag}
           </span>
-        </button>
+        </PttButton>
 
-        <button
-          type="button"
-          disabled={sameLang || activity === "processing"}
-          onPointerDown={handlePointerDown("them")}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onContextMenu={(e) => e.preventDefault()}
-          className={`interpreter-ptt interpreter-ptt-them ${recording === "them" ? "interpreter-ptt-active" : ""}`}
+        <PttButton
+          speaker="them"
+          active={recording === "them"}
+          disabled={sameLang || busy}
+          onPressStart={pressStart}
+          onPressEnd={pressEnd}
+          className="interpreter-ptt interpreter-ptt-them"
         >
           <div className="interpreter-ptt-icon">
             <Users className="w-7 h-7" strokeWidth={2} />
@@ -235,7 +271,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
           <span className="interpreter-ptt-lang">
             {theirLangInfo.flag} → {myLangInfo.flag}
           </span>
-        </button>
+        </PttButton>
       </div>
 
       <p className="interpreter-footer-hint">{ui.interpreterReleaseHint}</p>
@@ -252,12 +288,8 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
               <Mic className="w-8 h-8" />
             </span>
           )}
-          {activity === "idle" && sessionActive && (
-            <Volume2 className="w-8 h-8 text-emerald-500" />
-          )}
-          {!sessionActive && activity === "idle" && (
-            <Languages className="w-8 h-8 text-slate-300" />
-          )}
+          {activity === "idle" && sessionActive && <Volume2 className="w-8 h-8 text-emerald-500" />}
+          {!sessionActive && activity === "idle" && <Languages className="w-8 h-8 text-slate-300" />}
         </div>
         <p className="interpreter-voice-status">{statusText}</p>
         {speakLangInfo && activity === "speaking" && (
