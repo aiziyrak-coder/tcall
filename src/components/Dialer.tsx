@@ -8,6 +8,8 @@ import { getUI } from "@/lib/languages";
 import { playDialTone, unlockAudio } from "@/lib/ringtone";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
+import { mapLookupUser } from "@/lib/user-profile";
+import { TcallLogo } from "@/components/TcallLogo";
 
 interface DialerProps {
   userLanguage: string;
@@ -33,37 +35,32 @@ export function Dialer({ userLanguage }: DialerProps) {
   const { dial } = useCallContext();
   const [digits, setDigits] = useState("");
   const [lookupUser, setLookupUser] = useState<UserProfileData | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
   const [calling, setCalling] = useState(false);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   const refreshLookup = useCallback(async (id: string) => {
-    const r = await apiFetch(`/api/users/lookup?tcallId=${id}`);
-    const d = await r.json();
-    if (d.found && d.user) {
-      setLookupUser({
-        name: d.user.name,
-        tcallId: d.user.tcallId,
-        language: d.user.language,
-        status: d.user.status,
-        online: d.user.online,
-        bio: d.user.bio,
-        blockedYou: d.user.blockedYou,
-        blockedByYou: d.user.blockedByYou,
-        isFriend: d.user.isFriend,
-        unblockRequestPending: d.user.unblockRequestPending,
-        unblockRequestFromThem: d.user.unblockRequestFromThem,
-      });
-      if (d.user.blockedYou) setError(ui.blocked);
-      else setError("");
-    } else {
-      setLookupUser(null);
+    setLookupLoading(true);
+    try {
+      const r = await apiFetch(`/api/users/lookup?tcallId=${id}`);
+      const d = await r.json();
+      if (d.found && d.user) {
+        setLookupUser(mapLookupUser(d.user));
+        if (d.user.blockedYou) setError(ui.blocked);
+        else setError("");
+      } else {
+        setLookupUser(null);
+      }
+    } finally {
+      setLookupLoading(false);
     }
   }, [ui.blocked]);
 
   useEffect(() => {
     if (digits.length !== 9) {
       setLookupUser(null);
+      setLookupLoading(false);
       return;
     }
     const timer = setTimeout(() => void refreshLookup(digits), 250);
@@ -107,6 +104,8 @@ export function Dialer({ userLanguage }: DialerProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
       if (e.key >= "0" && e.key <= "9") press(e.key);
       else if (e.key === "Backspace") press("del");
       else if (e.key === "Enter") void handleCall();
@@ -127,18 +126,21 @@ export function Dialer({ userLanguage }: DialerProps) {
 
   return (
     <div className="ios-keypad">
-      <div className="ios-keypad-display">
-        {!lookupUser && digits.length !== 9 && (
+      <div className="ios-keypad-display ios-keypad-display-scroll">
+        {!lookupUser && !lookupLoading && digits.length !== 9 && (
           <p className="ios-keypad-hint">{ui.dialNumber}</p>
         )}
-        {!lookupUser && digits.length === 9 && (
+        {!lookupUser && !lookupLoading && digits.length === 9 && (
           <p className="ios-keypad-error">{ui.numberNotFound}</p>
+        )}
+        {lookupLoading && digits.length === 9 && (
+          <div className="py-2 flex justify-center"><TcallLogo size="xs" animate /></div>
         )}
         <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
         {error && <p className="ios-keypad-error mt-1">{error}</p>}
 
         {lookupUser && (
-          <div className="mt-3 text-left">
+          <div className="mt-3 text-left dialer-profile-wrap">
             <UserProfileCard
               ui={ui}
               user={lookupUser}

@@ -1860,3 +1860,87 @@ body.has-mini-call .chat-app-thread .chat-composer {
 .friends-unblock-item {
   @apply gap-2;
 }
+
+.user-avatar {
+  @apply rounded-2xl overflow-hidden bg-brand-100 text-brand-700 flex items-center justify-center shrink-0 font-bold;
+}
+
+.user-avatar-sm { @apply w-8 h-8 text-[10px]; }
+.user-avatar-md { @apply w-11 h-11 text-sm; }
+.user-avatar-lg { @apply w-14 h-14 text-base; }
+.user-avatar-xl { @apply w-16 h-16 text-lg; }
+
+.user-avatar-img {
+  @apply w-full h-full object-cover;
+}
+
+.user-avatar-initials {
+  @apply leading-none;
+}
+
+.user-avatar-group {
+  @apply bg-green-100 text-green-700;
+}
+
+.profile-details-block {
+  @apply mt-3 pt-3 border-t border-black/[0.06] space-y-1.5;
+}
+
+.profile-details-title {
+  @apply text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2;
+}
+
+.profile-detail-row {
+  @apply flex gap-2 text-sm leading-snug;
+}
+
+.profile-detail-label {
+  @apply text-slate-500 shrink-0 min-w-[7rem];
+}
+
+.profile-detail-value {
+  @apply text-slate-800 flex-1 break-words;
+}
+
+.settings-profile-hero {
+  @apply flex flex-col items-center gap-3 py-4 mb-2;
+}
+
+.settings-avatar-actions {
+  @apply flex flex-wrap gap-2 justify-center;
+}
+
+.settings-section-label {
+  @apply text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2;
+}
+
+.settings-field-full {
+  @apply col-span-full;
+}
+
+.ios-settings-panel-wide {
+  max-height: min(92vh, 720px);
+}
+
+.ios-settings-panel-wide .ios-settings-body {
+  max-height: calc(min(92vh, 720px) - 120px);
+}
+
+.vanity-tier-count {
+  @apply ml-1 px-1.5 py-0.5 rounded-full bg-black/10 text-[10px] font-semibold;
+}
+
+.ios-keypad-display-scroll {
+  max-height: 42vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dialer-profile-wrap {
+  max-height: 36vh;
+  overflow-y: auto;
+}
+
+.chat-thread-avatar-btn {
+  @apply bg-transparent border-0 p-0;
+}

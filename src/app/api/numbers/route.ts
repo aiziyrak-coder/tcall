@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { tiersForFilter, CATALOG_TIER_FILTERS, type VanityTier } from "@/lib/vanity-pricing";
 import { getUserVanityState } from "@/lib/vanity-service";
 
 export async function GET(req: NextRequest) {
@@ -19,27 +20,44 @@ export async function GET(req: NextRequest) {
   const where: Prisma.VanityNumberWhereInput = { available: true };
 
   if (tier && tier !== "all") {
-    where.tier = { startsWith: tier };
+    const tiers = tiersForFilter(tier);
+    if (tiers?.length) where.tier = { in: tiers };
   }
   if (q.length >= 2) where.number = { contains: q };
 
-  const [numbers, total, vanityState] = await Promise.all([
+  const [numbers, total, vanityState, tierGroups] = await Promise.all([
     prisma.vanityNumber.findMany({
       where,
-      orderBy: [{ tier: "asc" }, { price: "asc" }],
+      orderBy: [{ price: "asc" }, { number: "asc" }],
       skip: (page - 1) * limit,
       take: limit,
       select: { id: true, number: true, price: true, tier: true },
     }),
     prisma.vanityNumber.count({ where }),
     getUserVanityState(session.userId),
+    prisma.vanityNumber.groupBy({
+      by: ["tier"],
+      where: { available: true },
+      _count: { tier: true },
+    }),
   ]);
+
+  const tierCounts: Record<string, number> = { all: 0 };
+  for (const row of tierGroups) tierCounts.all += row._count.tier;
+  for (const filter of CATALOG_TIER_FILTERS) {
+    if (filter === "all") continue;
+    const tiers = tiersForFilter(filter) ?? [];
+    tierCounts[filter] = tierGroups
+      .filter((g) => tiers.includes(g.tier as VanityTier))
+      .reduce((sum, g) => sum + g._count.tier, 0);
+  }
 
   return NextResponse.json({
     numbers,
     total,
     page,
     pages: Math.ceil(total / limit),
+    tierCounts,
     owned: vanityState.owned,
     pendingRequest: vanityState.pendingRequest,
   });

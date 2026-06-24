@@ -364,13 +364,13 @@ export async function getConversationsForUser(userId: string, userLang: string) 
       conversation: {
         include: {
           members: {
-            include: { user: { select: { id: true, name: true, tcallId: true, language: true } } },
+            include: { user: { select: { id: true, name: true, tcallId: true, language: true, avatar: true } } },
           },
           messages: {
             orderBy: { createdAt: "desc" },
             take: 1,
             include: {
-              sender: { select: { id: true, name: true, tcallId: true, language: true } },
+              sender: { select: { id: true, name: true, tcallId: true, language: true, avatar: true } },
               translations: true,
             },
           },
@@ -416,12 +416,14 @@ export async function getConversationsForUser(userId: string, userLang: string) 
         id: conv.id,
         type: conv.type,
         title,
+        avatar: conv.avatar,
         createdById: conv.createdById,
         members: conv.members.map((cm) => ({
           userId: cm.user.id,
           name: cm.user.name,
           tcallId: cm.user.tcallId,
           language: cm.user.language,
+          avatar: cm.user.avatar,
           role: (cm.role as MemberRole) || "member",
         })),
         lastMessage: lastMsg

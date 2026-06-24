@@ -23,6 +23,7 @@ import { useCallContext } from "@/components/providers/CallProvider";
 import { ChatGroupMembersPanel } from "@/components/ChatGroupMembersPanel";
 import { ChatThreadMenuSheet } from "@/components/ChatThreadMenuSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { GroupAvatar, UserAvatar } from "@/components/UserAvatar";
 import { TcallLogo } from "@/components/TcallLogo";
 
 const EMOJIS = [
@@ -49,11 +50,12 @@ interface ConversationItem {
   id: string;
   type: string;
   title: string;
+  avatar?: string | null;
   createdById?: string;
   unreadCount: number;
   updatedAt: string;
   lastMessage: ChatMessageItem | null;
-  members: { userId: string; name: string; tcallId: string | null; role?: string }[];
+  members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; role?: string }[];
 }
 
 interface ChatMessengerProps {
@@ -99,6 +101,8 @@ export function ChatMessenger({
   const [editGroupName, setEditGroupName] = useState("");
   const [showRenameGroup, setShowRenameGroup] = useState(false);
   const [showPartnerProfile, setShowPartnerProfile] = useState(false);
+  const [groupAvatarUploading, setGroupAvatarUploading] = useState(false);
+  const groupAvatarRef = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -374,6 +378,23 @@ export function ChatMessenger({
     await loadConversations();
   };
 
+  const uploadGroupAvatar = async (file: File) => {
+    if (!activeId) return;
+    setGroupAvatarUploading(true);
+    setActionError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await apiFetch(`/api/chat/conversations/${activeId}/avatar`, { method: "POST", body: fd });
+      if (!r.ok) throw new Error();
+      await loadConversations();
+    } catch {
+      setActionError(ui.chatActionFailed);
+    } finally {
+      setGroupAvatarUploading(false);
+    }
+  };
+
   const leaveChat = async (purgeGroup = false) => {
     if (!activeId) return;
     setActionError("");
@@ -444,37 +465,53 @@ export function ChatMessenger({
           </button>
           <button
             type="button"
-            className={`chat-thread-avatar ${isGroup ? "chat-conv-avatar-group" : "touch-manipulation"}`}
+            className="chat-thread-avatar-btn touch-manipulation shrink-0"
             onClick={() => !isGroup && partner?.tcallId && setShowPartnerProfile(true)}
           >
             {isGroup ? (
-              <Users className="w-5 h-5" />
+              <GroupAvatar
+                conversationId={activeConv.id}
+                title={activeConv.title}
+                avatar={activeConv.avatar}
+                size="md"
+                isGroup
+              />
+            ) : partner ? (
+              <UserAvatar
+                userId={partner.userId}
+                name={partner.name}
+                avatar={partner.avatar}
+                size="md"
+              />
             ) : (
-              activeConv.title.slice(0, 2).toUpperCase()
+              <div className="chat-thread-avatar">{activeConv.title.slice(0, 2).toUpperCase()}</div>
             )}
           </button>
-          <button
-            type="button"
-            className="flex-1 min-w-0 text-left touch-manipulation"
-            onClick={() => !isGroup && partner?.tcallId && setShowPartnerProfile(true)}
-          >
-            <p className="chat-thread-title">{activeConv.title}</p>
-            {!isGroup && partner?.tcallId && (
-              <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
-            )}
-            {isGroup && (
-              <span
-                className="text-xs text-slate-500 mt-0.5 inline-block"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void refreshAndOpenMembers();
-                }}
-                role="button"
+          <div className="flex-1 min-w-0 text-left min-w-0">
+            {isGroup ? (
+              <>
+                <p className="chat-thread-title">{activeConv.title}</p>
+                <button
+                  type="button"
+                  className="text-xs text-slate-500 mt-0.5 hover:text-brand-600 touch-manipulation"
+                  onClick={() => void refreshAndOpenMembers()}
+                >
+                  {activeConv.members.length} {ui.chatMembers} · {ui.chatViewMembers}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="w-full text-left touch-manipulation"
+                onClick={() => partner?.tcallId && setShowPartnerProfile(true)}
               >
-                {activeConv.members.length} {ui.chatMembers} · {ui.chatViewMembers}
-              </span>
+                <p className="chat-thread-title">{activeConv.title}</p>
+                {partner?.tcallId && (
+                  <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
+                )}
+              </button>
             )}
-          </button>
+          </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {!isGroup && partner?.tcallId && (
               <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
@@ -651,6 +688,36 @@ export function ChatMessenger({
                 <h3 className="font-bold">{ui.chatRenameGroup}</h3>
                 <button type="button" onClick={() => setShowRenameGroup(false)} className="ios-icon-btn"><X className="w-5 h-5" /></button>
               </div>
+              <div className="flex flex-col items-center gap-3 mb-4">
+                <GroupAvatar
+                  conversationId={activeConv.id}
+                  title={activeConv.title}
+                  avatar={activeConv.avatar}
+                  size="xl"
+                  isGroup
+                />
+                <input
+                  ref={groupAvatarRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void uploadGroupAvatar(f);
+                    e.target.value = "";
+                  }}
+                />
+                {canManageGroup && (
+                  <button
+                    type="button"
+                    className="btn-secondary btn-compact text-xs"
+                    disabled={groupAvatarUploading}
+                    onClick={() => groupAvatarRef.current?.click()}
+                  >
+                    {groupAvatarUploading ? ui.photoUploading : ui.changeGroupPhoto}
+                  </button>
+                )}
+              </div>
               <input
                 className="input-field-compact mb-3"
                 value={editGroupName}
@@ -689,9 +756,24 @@ export function ChatMessenger({
           {conversations.map((c) => (
             <li key={c.id}>
               <button type="button" className="chat-conv-item" onClick={() => void openConversation(c.id)}>
-                <div className={`chat-conv-avatar ${c.type === "group" ? "chat-conv-avatar-group" : ""}`}>
-                  {c.type === "group" ? <Users className="w-5 h-5" /> : c.title.slice(0, 2).toUpperCase()}
-                </div>
+                {c.type === "group" ? (
+                  <GroupAvatar
+                    conversationId={c.id}
+                    title={c.title}
+                    avatar={c.avatar}
+                    size="md"
+                    isGroup
+                  />
+                ) : (
+                  (() => {
+                    const p = c.members.find((m) => m.userId !== userId);
+                    return p ? (
+                      <UserAvatar userId={p.userId} name={p.name} avatar={p.avatar} size="md" />
+                    ) : (
+                      <div className="chat-conv-avatar">{c.title.slice(0, 2).toUpperCase()}</div>
+                    );
+                  })()
+                )}
                 <div className="flex-1 min-w-0 text-left">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold truncate">{c.title}</p>

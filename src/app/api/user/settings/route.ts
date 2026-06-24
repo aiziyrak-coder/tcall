@@ -3,6 +3,9 @@ import { z } from "zod";
 import { getSession, createToken, jsonWithSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LANGUAGES } from "@/lib/languages";
+import { userAvatarUrl } from "@/lib/avatar-url";
+
+const optionalStr = (max: number) => z.string().max(max).optional().nullable();
 
 const schema = z
   .object({
@@ -11,12 +14,55 @@ const schema = z
     translationMode: z.enum(["text", "voice"]).optional(),
     mode: z.enum(["text", "voice"]).optional(),
     status: z.enum(["available", "busy", "dnd", "away"]).optional(),
-    bio: z.string().max(160).optional(),
+    bio: optionalStr(120),
+    about: optionalStr(300),
+    age: z.number().int().min(13).max(120).optional().nullable(),
+    city: optionalStr(80),
+    country: optionalStr(80),
+    address: optionalStr(160),
+    workplace: optionalStr(120),
+    education: optionalStr(120),
+    graduatedFrom: optionalStr(120),
+    profession: optionalStr(80),
+    interests: optionalStr(300),
+    skills: optionalStr(300),
   })
   .transform((d) => ({
     ...d,
     translationMode: d.translationMode ?? d.mode,
   }));
+
+const userSelect = {
+  id: true,
+  email: true,
+  name: true,
+  language: true,
+  translationMode: true,
+  status: true,
+  bio: true,
+  about: true,
+  avatar: true,
+  age: true,
+  city: true,
+  country: true,
+  address: true,
+  workplace: true,
+  education: true,
+  graduatedFrom: true,
+  profession: true,
+  interests: true,
+  skills: true,
+  tcallId: true,
+} as const;
+
+function withAvatarUrl(user: { id: string; avatar: string | null } & Record<string, unknown>) {
+  const { id, avatar, ...rest } = user;
+  return {
+    ...rest,
+    avatar,
+    avatarUrl: avatar ? userAvatarUrl(id, avatar) : null,
+  };
+}
 
 export async function GET(req: NextRequest) {
   const session = await getSession(req);
@@ -24,10 +70,11 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, email: true, language: true, translationMode: true, status: true, bio: true, tcallId: true },
+      select: userSelect,
   });
 
-  return NextResponse.json({ user });
+  if (!user) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
+  return NextResponse.json({ user: withAvatarUrl(user) });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -37,15 +84,21 @@ export async function PATCH(req: NextRequest) {
 
     const body = schema.parse(await req.json());
 
+    const data: Record<string, unknown> = {};
+    const fields = [
+      "name", "language", "translationMode", "status", "bio", "about", "age",
+      "city", "country", "address", "workplace", "education", "graduatedFrom",
+      "profession", "interests", "skills",
+    ] as const;
+
+    for (const key of fields) {
+      if (body[key] !== undefined) data[key] = body[key];
+    }
+
     const user = await prisma.user.update({
       where: { id: session.userId },
-      data: {
-        ...(body.name !== undefined && { name: body.name }),
-        ...(body.language !== undefined && { language: body.language }),
-        ...(body.translationMode !== undefined && { translationMode: body.translationMode }),
-        ...(body.status !== undefined && { status: body.status }),
-        ...(body.bio !== undefined && { bio: body.bio }),
-      },
+      data,
+      select: userSelect,
     });
 
     const token = await createToken({
@@ -57,16 +110,7 @@ export async function PATCH(req: NextRequest) {
       translationMode: user.translationMode,
     });
 
-    return jsonWithSession(
-      {
-        name: user.name,
-        language: user.language,
-        translationMode: user.translationMode,
-        status: user.status,
-        bio: user.bio,
-      },
-      token
-    );
+    return jsonWithSession({ user: withAvatarUrl(user) }, token);
   } catch (e) {
     if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors[0].message }, { status: 400 });
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });

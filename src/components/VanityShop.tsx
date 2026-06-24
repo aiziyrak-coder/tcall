@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Sparkles, Crown, Search, Phone, ChevronLeft, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
+import { formatVanityPrice, formatTierLabel, CATALOG_TIER_FILTERS } from "@/lib/vanity-pricing";
 import { getUI } from "@/lib/languages";
 import { TcallLogo } from "@/components/TcallLogo";
 import { VanityContactModal } from "@/components/VanityContactModal";
@@ -47,15 +47,7 @@ const TIER_COLORS: Record<string, string> = {
   free: "from-slate-200/20 to-slate-300/10 border-slate-300/25",
 };
 
-const TIERS = [
-  "all",
-  "bronze",
-  "silver",
-  "gold",
-  "platinum",
-  "platinum_premium",
-  "vip",
-] as const;
+const TIERS = CATALOG_TIER_FILTERS;
 
 export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
   const ui = getUI(userLanguage);
@@ -70,6 +62,7 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
+  const [tierCounts, setTierCounts] = useState<Record<string, number>>({});
   const [contactModal, setContactModal] = useState<{ number: string; price: number; tier: string } | null>(null);
 
   const [customDigits, setCustomDigits] = useState("");
@@ -100,6 +93,7 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
       setOwned(data.owned || null);
       setPendingRequest(data.pendingRequest || null);
       setPages(data.pages || 1);
+      setTierCounts(data.tierCounts || {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Xatolik");
     } finally {
@@ -258,6 +252,9 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
                 className={`vanity-tier-chip ${tier === t ? "vanity-tier-chip-active" : ""}`}
               >
                 {t === "all" ? ui.all : formatTierLabel(t, ui)}
+                {tierCounts[t] != null && (
+                  <span className="vanity-tier-count">{tierCounts[t]}</span>
+                )}
               </button>
             ))}
           </div>

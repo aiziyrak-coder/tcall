@@ -140,4 +140,25 @@ export function formatTierLabel(tier: string, ui: Record<string, string>): strin
   return tier.replace(/_/g, " ");
 }
 
+/** Katalog filtri — har chip faqat o'z oilasidagi tierlarni ko'rsatadi */
+export const TIER_FILTER_GROUPS: Record<string, VanityTier[]> = {
+  bronze: ["bronze"],
+  silver: ["silver", "silver_plus", "silver_plus_plus"],
+  gold: ["gold", "gold_plus", "gold_plus_plus"],
+  platinum: ["platinum", "platinum_plus", "platinum_plus_plus"],
+  platinum_premium: ["platinum_premium", "platinum_premium_plus", "platinum_premium_plus_plus"],
+  vip: ["vip"],
+};
+
+export const CATALOG_TIER_FILTERS = ["all", "bronze", "silver", "gold", "platinum", "platinum_premium", "vip"] as const;
+
+export function tiersForFilter(filter: string): VanityTier[] | null {
+  if (filter === "all" || !filter) return null;
+  return TIER_FILTER_GROUPS[filter] ?? null;
+}
+
+export function allVanityTiers(): VanityTier[] {
+  return Object.keys(TIER_PRICE_SOM) as VanityTier[];
+}
+
 export { toVanityUsdPrice } from "@/lib/vanity-currency";

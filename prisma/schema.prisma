@@ -18,6 +18,17 @@ model User {
   status          String   @default("available")
   bio             String?
   avatar          String?
+  age             Int?
+  city            String?
+  country         String?
+  address         String?
+  workplace       String?
+  education       String?
+  graduatedFrom   String?
+  profession      String?
+  interests       String?
+  skills          String?
+  about           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -173,6 +184,7 @@ model Conversation {
   id          String   @id @default(cuid())
   type        String   @default("direct")
   name        String?
+  avatar      String?
   createdById String
   createdBy   User     @relation("ConversationCreator", fields: [createdById], references: [id])
   createdAt   DateTime @default(now())

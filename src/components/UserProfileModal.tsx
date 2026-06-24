@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
 import { TcallLogo } from "@/components/TcallLogo";
 import { useCallContext } from "@/components/providers/CallProvider";
+import { mapLookupUser } from "@/lib/user-profile";
 
 interface UserProfileModalProps {
   tcallId: string;
@@ -32,19 +33,7 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
         setUser(null);
         return;
       }
-      setUser({
-        name: d.user.name,
-        tcallId: d.user.tcallId,
-        language: d.user.language,
-        status: d.user.status,
-        online: d.user.online,
-        bio: d.user.bio,
-        blockedYou: d.user.blockedYou,
-        blockedByYou: d.user.blockedByYou,
-        isFriend: d.user.isFriend,
-        unblockRequestPending: d.user.unblockRequestPending,
-        unblockRequestFromThem: d.user.unblockRequestFromThem,
-      });
+      setUser(mapLookupUser(d.user));
     } catch {
       setError(ui.loadError);
     } finally {

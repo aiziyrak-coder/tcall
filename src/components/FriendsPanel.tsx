@@ -21,6 +21,8 @@ import { useCallContext } from "@/components/providers/CallProvider";
 import { TcallLogo } from "@/components/TcallLogo";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { UserAvatar } from "@/components/UserAvatar";
+import { mapLookupUser } from "@/lib/user-profile";
 
 interface Friend {
   id: string;
@@ -79,25 +81,17 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
     void load();
   }, [load]);
 
-  const refreshSearch = async (digits: string) => {
-    const res = await apiFetch(`/api/users/lookup?tcallId=${digits}`);
-    const data = await res.json();
-    if (data.found && data.user) {
-      setSearchResult({
-        name: data.user.name,
-        tcallId: data.user.tcallId,
-        language: data.user.language,
-        status: data.user.status,
-        online: data.user.online,
-        bio: data.user.bio,
-        blockedYou: data.user.blockedYou,
-        blockedByYou: data.user.blockedByYou,
-        isFriend: data.user.isFriend,
-        unblockRequestPending: data.user.unblockRequestPending,
-        unblockRequestFromThem: data.user.unblockRequestFromThem,
-      });
+  useEffect(() => {
+    const digits = searchId.replace(/\D/g, "");
+    if (digits.length !== 9) {
+      setSearchResult(null);
+      setSearchError("");
+      return;
     }
-  };
+    const timer = setTimeout(() => void runSearch(), 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchId]);
 
   const runSearch = async () => {
     const digits = searchId.replace(/\D/g, "");
@@ -116,19 +110,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
         setSearchError(ui.userNotFound);
         return;
       }
-      setSearchResult({
-        name: data.user.name,
-        tcallId: data.user.tcallId,
-        language: data.user.language,
-        status: data.user.status,
-        online: data.user.online,
-        bio: data.user.bio,
-        blockedYou: data.user.blockedYou,
-        blockedByYou: data.user.blockedByYou,
-        isFriend: data.user.isFriend,
-        unblockRequestPending: data.user.unblockRequestPending,
-        unblockRequestFromThem: data.user.unblockRequestFromThem,
-      });
+      setSearchResult(mapLookupUser(data.user));
     } catch {
       setSearchError(ui.loadError);
     } finally {
@@ -142,7 +124,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
     try {
       await fn();
       await load();
-      if (refreshDigits) await refreshSearch(refreshDigits);
+      if (refreshDigits && refreshDigits.length === 9) await runSearch();
     } catch {
       setActionError(ui.chatActionFailed);
     } finally {
@@ -208,8 +190,8 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
           <h3 className="friends-section-title">{ui.incomingUnblockRequests}</h3>
           <ul className="ios-list">
             {incomingUnblocks.map((req) => (
-              <li key={req.id} className="ios-list-item friends-unblock-item">
-                <div className="ios-contact-avatar">{req.requester.name[0]?.toUpperCase()}</div>
+                <li key={req.id} className="ios-list-item friends-unblock-item">
+                <UserAvatar name={req.requester.name} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{req.requester.name}</p>
                   <p className="text-xs font-mono text-slate-500">{formatTcallId(req.requester.tcallId)}</p>
@@ -334,10 +316,10 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
                 <li key={f.id} className="ios-list-item ios-contact-item">
                   <button
                     type="button"
-                    className="ios-contact-avatar touch-manipulation"
+                    className="touch-manipulation shrink-0"
                     onClick={() => setProfileModalId(f.tcallId)}
                   >
-                    {f.name[0]?.toUpperCase()}
+                    <UserAvatar name={f.name} size="md" />
                   </button>
                   <button
                     type="button"

@@ -13,20 +13,13 @@ import {
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage } from "@/lib/languages";
 import { getStatusLabel } from "@/lib/status";
+import { UserAvatar } from "@/components/UserAvatar";
+import { formatProfileAge, type UserProfileFields } from "@/lib/user-profile";
 
-export interface UserProfileData {
-  name: string;
-  tcallId: string;
-  language?: string;
-  status?: string;
-  online?: boolean;
-  bio?: string | null;
-  blockedYou?: boolean;
-  blockedByYou?: boolean;
-  isFriend?: boolean;
-  unblockRequestPending?: boolean;
-  unblockRequestFromThem?: boolean;
-}
+export type UserProfileData = UserProfileFields & {
+  userId?: string;
+  avatarUrl?: string | null;
+};
 
 interface UserProfileCardProps {
   ui: Record<string, string>;
@@ -41,6 +34,15 @@ interface UserProfileCardProps {
   onAcceptUnblock?: () => void;
   onRejectUnblock?: () => void;
   loading?: boolean;
+}
+
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="profile-detail-row">
+      <span className="profile-detail-label">{label}</span>
+      <span className="profile-detail-value">{value}</span>
+    </div>
+  );
 }
 
 export function UserProfileCard({
@@ -59,11 +61,31 @@ export function UserProfileCard({
 }: UserProfileCardProps) {
   const lang = user.language ? getLanguage(user.language) : null;
   const blocked = user.blockedYou || user.blockedByYou;
+  const ageStr = formatProfileAge(user.age, ui);
+
+  const details: { label: string; value: string }[] = [];
+  if (ageStr) details.push({ label: ui.profileAge, value: ageStr });
+  if (user.city) details.push({ label: ui.profileCity, value: user.city });
+  if (user.country) details.push({ label: ui.profileCountry, value: user.country });
+  if (user.address) details.push({ label: ui.profileAddress, value: user.address });
+  if (user.workplace) details.push({ label: ui.profileWorkplace, value: user.workplace });
+  if (user.education) details.push({ label: ui.profileEducation, value: user.education });
+  if (user.graduatedFrom) details.push({ label: ui.profileGraduatedFrom, value: user.graduatedFrom });
+  if (user.profession) details.push({ label: ui.profileProfession, value: user.profession });
+  if (user.interests) details.push({ label: ui.profileInterests, value: user.interests });
+  if (user.skills) details.push({ label: ui.profileSkills, value: user.skills });
+  if (user.about) details.push({ label: ui.profileAbout, value: user.about });
 
   return (
     <div className="user-profile-card">
       <div className="user-profile-head">
-        <div className="user-profile-avatar">{user.name.slice(0, 2).toUpperCase()}</div>
+        <UserAvatar
+          userId={user.userId}
+          name={user.name}
+          avatar={user.avatarUrl || user.avatar}
+          size="xl"
+          className="shrink-0"
+        />
         <div className="flex-1 min-w-0">
           <p className="user-profile-name">{user.name}</p>
           <p className="user-profile-id font-mono">{formatTcallId(user.tcallId)}</p>
@@ -81,6 +103,19 @@ export function UserProfileCard({
           {user.blockedByYou && <p className="user-profile-warn">{ui.blocked}</p>}
         </div>
       </div>
+
+      {details.length > 0 && (
+        <div className="profile-details-block">
+          <p className="profile-details-title">{ui.profileDetails}</p>
+          {details.map((d) => (
+            <ProfileRow key={d.label} label={d.label} value={d.value} />
+          ))}
+        </div>
+      )}
+
+      {!blocked && details.length === 0 && !user.bio && (
+        <p className="text-xs text-slate-400 py-1">{ui.profileNoDetails}</p>
+      )}
 
       {user.unblockRequestFromThem && (
         <div className="user-profile-unblock-banner">
