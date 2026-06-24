@@ -709,13 +709,23 @@
 }
 
 .tcall-logo-img {
-  @apply relative bg-transparent shrink-0;
+  @apply relative shrink-0;
+  background: transparent;
+}
+
+.tcall-logo-icon-crop {
+  @apply overflow-hidden;
+}
+
+.tcall-logo-icon-crop .tcall-logo-image {
+  object-fit: cover;
+  object-position: top center;
 }
 
 .tcall-logo-image {
-  @apply object-contain bg-transparent;
+  @apply object-contain;
   display: block;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
+  background: transparent;
 }
 
 .tcall-logo-pulse {

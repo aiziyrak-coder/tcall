@@ -74,6 +74,7 @@ export function PhoneHeader({
         <TcallLogo
           size="sm"
           layout="horizontal"
+          variant="icon"
           title={title}
           subtitle={subtitle}
           className="min-w-0 flex-1"

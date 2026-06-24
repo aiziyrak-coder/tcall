@@ -68,10 +68,7 @@ export function useCall({
   const [socketConnected, setSocketConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const [micStatus, setMicStatus] = useState<MicStatus>(() => {
-    if (typeof window !== "undefined" && wasMicGrantedBefore()) return "checking";
-    return "pending";
-  });
+  const [micStatus, setMicStatus] = useState<MicStatus>("pending");
 
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);

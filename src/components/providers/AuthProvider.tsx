@@ -52,8 +52,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = useState<User | null>(() => readCachedUser());
-  const [loading, setLoading] = useState(() => !readCachedUser());
+  const [user, setUserState] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const setUser = useCallback((next: User | null) => {
@@ -77,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [setUser]);
 
   useEffect(() => {
+    const cached = readCachedUser();
+    if (cached) setUserState(cached);
     void refreshSession().finally(() => setLoading(false));
   }, [refreshSession]);
 

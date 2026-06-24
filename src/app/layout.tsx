@@ -11,8 +11,12 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Tcall" },
   icons: {
-    icon: [{ url: "/logo.png", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/logo.png", type: "image/png", sizes: "512x512" },
+    ],
     apple: [{ url: "/logo.png", type: "image/png" }],
+    shortcut: "/favicon.ico",
   },
   formatDetection: { telephone: false },
   other: { "mobile-web-app-capable": "yes" },
