@@ -1,5 +1,4 @@
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -61,19 +60,9 @@ export async function verifyToken(token: string): Promise<SessionPayload | null>
   }
 }
 
-/** Custom server (tsx) bilan ishlaydi — NextRequest dan cookie o'qish */
+/** Custom server (tsx) bilan ishlaydi — faqat NextRequest dan cookie o'qish */
 export async function getSession(req?: NextRequest): Promise<SessionPayload | null> {
-  let token = req?.cookies.get("session")?.value;
-
-  if (!token) {
-    try {
-      const cookieStore = await cookies();
-      token = cookieStore.get("session")?.value;
-    } catch {
-      return null;
-    }
-  }
-
+  const token = req?.cookies.get("session")?.value;
   if (!token) return null;
   return verifyToken(token);
 }
@@ -94,17 +83,4 @@ export function jsonClearSession(data: unknown = { ok: true }) {
   const opts = sessionCookieOptions();
   res.cookies.set("session", "", { ...opts, maxAge: 0 });
   return res;
-}
-
-/** @deprecated — jsonWithSession ishlating */
-export async function setSessionCookie(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set("session", token, sessionCookieOptions());
-}
-
-/** @deprecated — jsonClearSession ishlating */
-export async function clearSessionCookie() {
-  const cookieStore = await cookies();
-  const domain = process.env.COOKIE_DOMAIN;
-  cookieStore.delete({ name: "session", path: "/", ...(domain ? { domain } : {}) });
 }
