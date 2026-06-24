@@ -72,8 +72,8 @@ export function PhoneHeader({
     <div className="flex items-start justify-between px-1">
       <div>
         {showLogo ? (
-          <div className="flex items-center gap-2.5">
-            <TcallLogo size="sm" />
+          <div className="flex items-center gap-3">
+            <TcallLogo size="md" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
           </div>
         ) : (

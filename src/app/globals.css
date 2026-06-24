@@ -631,8 +631,12 @@
 }
 
 .tcall-logo-img {
-  @apply relative;
-  filter: drop-shadow(0 4px 12px rgba(0, 122, 255, 0.15));
+  @apply relative bg-transparent;
+}
+
+.tcall-logo-image {
+  @apply object-contain bg-transparent;
+  display: block;
 }
 
 .tcall-logo-pulse {

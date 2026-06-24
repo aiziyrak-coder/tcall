@@ -94,7 +94,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex flex-col items-center gap-3 mb-6">
-            <TcallLogo size="lg" showTagline />
+            <TcallLogo size="xl" showTagline />
           </Link>
           <h1 className="text-2xl font-bold">Kirish</h1>
           <p className="text-slate-500 mt-2">Hisobingizga kiring</p>

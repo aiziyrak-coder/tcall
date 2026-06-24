@@ -5,12 +5,12 @@ import Image from "next/image";
 type LogoSize = "xs" | "sm" | "md" | "lg" | "xl" | "splash";
 
 const SIZES: Record<LogoSize, number> = {
-  xs: 28,
-  sm: 36,
-  md: 48,
-  lg: 64,
-  xl: 88,
-  splash: 120,
+  xs: 36,
+  sm: 52,
+  md: 72,
+  lg: 96,
+  xl: 128,
+  splash: 200,
 };
 
 interface TcallLogoProps {
@@ -35,10 +35,10 @@ export function TcallLogo({
           src="/logo.png"
           alt="Tcall"
           width={px}
-          height={px}
+          height={Math.round(px * 1.15)}
           priority={size === "splash" || size === "xl"}
-          className="object-contain"
-          style={{ width: px, height: "auto" }}
+          className="tcall-logo-image"
+          style={{ width: px, height: "auto", maxWidth: "100%" }}
         />
       </div>
       {showTagline && (

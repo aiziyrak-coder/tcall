@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Phone, Globe, Shield, Zap } from "lucide-react";
+import { TcallLogo } from "@/components/TcallLogo";
 
 export default function HomePage() {
   return (
@@ -13,7 +13,7 @@ export default function HomePage() {
 
         <nav className="relative z-10 flex items-center justify-between max-w-6xl mx-auto px-6 py-6">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Tcall" width={48} height={48} className="object-contain" priority />
+            <TcallLogo size="md" />
             <span className="text-xl font-bold">Tcall</span>
           </Link>
           <div className="flex items-center gap-3">

@@ -20,7 +20,7 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
             <AlertCircle className="w-8 h-8" />
           </div>
         ) : (
-          <TcallLogo size="lg" animate className="mb-1" />
+          <TcallLogo size="xl" animate className="mb-1" />
         )}
 
         <h2 className="mic-gate-title">
