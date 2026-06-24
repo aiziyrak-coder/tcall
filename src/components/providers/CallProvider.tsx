@@ -69,6 +69,7 @@ interface CallContextValue {
   enableNotifications: () => Promise<boolean>;
   quickMessageTarget: { tcallId: string; name?: string } | null;
   clearQuickMessageTarget: () => void;
+  socketConnected: boolean;
 }
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -97,6 +98,7 @@ export function CallProvider({
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [dialError, setDialError] = useState<string | null>(null);
   const [quickMessageTarget, setQuickMessageTarget] = useState<{ tcallId: string; name?: string } | null>(null);
+  const [socketConnected, setSocketConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -139,8 +141,11 @@ export function CallProvider({
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      /* Auth via cookie — server auto-registers userId */
+      setSocketConnected(true);
+      socket.emit("register-user", {});
     });
+
+    socket.on("disconnect", () => setSocketConnected(false));
 
     socket.on("incoming-call", (data: IncomingCall) => {
       setIncomingCall(data);
@@ -186,7 +191,7 @@ export function CallProvider({
     });
 
     socket.on("connect_error", () => {
-      /* Auth failed — session expired */
+      setSocketConnected(false);
     });
 
     return () => {
@@ -272,6 +277,11 @@ export function CallProvider({
   const dial = useCallback(async (tcallId: string) => {
     setDialError(null);
     await unlockAudio();
+
+    if (!socketRef.current?.connected) {
+      throw new DialError("Ulanish yo'q — sahifani yangilang yoki biroz kuting");
+    }
+
     const res = await apiFetch("/api/calls/dial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -288,17 +298,12 @@ export function CallProvider({
       });
     }
 
-    setOutgoingCall({
-      roomId: data.roomId,
-      callId: data.callId,
-      callee: data.callee,
-      calleeOnline: data.calleeOnline,
-    });
-
     if (!data.delivered) {
-      setDialError("Abonent offline — kuting yoki keyinroq qayta urining");
+      setDialError("Abonent hozir offline — qo'ng'iroq yuborildi, ulanganda jiringlaydi");
     }
-  }, []);
+
+    router.push(`/call/${data.roomId}`);
+  }, [router]);
 
   return (
     <CallContext.Provider
@@ -311,12 +316,13 @@ export function CallProvider({
         enableNotifications,
         quickMessageTarget,
         clearQuickMessageTarget: () => setQuickMessageTarget(null),
+        socketConnected,
       }}
     >
       {children}
 
       {dialError && (
-        <div className="fixed top-4 left-4 right-4 z-[60] bg-yellow-500/15 border border-yellow-500/30 text-yellow-200 rounded-xl px-4 py-3 text-sm text-center">
+        <div className="fixed top-4 left-4 right-4 z-[60] bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm text-center">
           {dialError}
         </div>
       )}

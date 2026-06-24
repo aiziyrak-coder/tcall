@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { emitToUser, isUserOnline } from "@/lib/socket-io";
 import { generateRoomId } from "@/lib/utils";
-import { userHasActiveCall } from "@/lib/call-service";
+import { userHasActiveCall, endStaleCallsForUser } from "@/lib/call-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -31,9 +31,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "O'zingizga qo'ng'iroq qilib bo'lmaydi" }, { status: 400 });
     }
 
-    if (await userHasActiveCall(session.userId)) {
+    if (await userHasActiveCall(session.userId, session.tcallId)) {
       return NextResponse.json({ error: "Siz allaqachon qo'ng'iroqdasiz" }, { status: 409 });
     }
+
+    await endStaleCallsForUser(session.userId, session.tcallId);
 
     const callee = await prisma.user.findUnique({
       where: { tcallId: targetId },
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (await userHasActiveCall(callee.id)) {
+    if (await userHasActiveCall(callee.id, callee.tcallId ?? undefined)) {
       return NextResponse.json(
         {
           error: "Abonent band",

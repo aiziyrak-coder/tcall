@@ -4,17 +4,48 @@ export const ACTIVE_STATUSES = ["waiting", "ringing", "active"] as const;
 export const RING_TIMEOUT_MS = 45_000;
 const MAX_TEXT_LENGTH = 2000;
 
-export async function userHasActiveCall(userId: string): Promise<boolean> {
+function ringingCutoff() {
+  return new Date(Date.now() - RING_TIMEOUT_MS);
+}
+
+export async function endStaleCallsForUser(userId: string, userTcallId?: string | null) {
+  const cutoff = ringingCutoff();
+
+  await prisma.call.updateMany({
+    where: {
+      status: { in: ["ringing", "waiting"] },
+      createdAt: { lt: cutoff },
+      OR: [
+        { hostId: userId },
+        ...(userTcallId ? [{ calleeTcallId: userTcallId }] : []),
+      ],
+    },
+    data: { status: "missed", endedAt: new Date() },
+  });
+
+  await prisma.call.updateMany({
+    where: { hostId: userId, status: "ringing" },
+    data: { status: "cancelled", endedAt: new Date() },
+  });
+}
+
+export async function userHasActiveCall(userId: string, userTcallId?: string | null): Promise<boolean> {
+  const cutoff = ringingCutoff();
+
   const call = await prisma.call.findFirst({
     where: {
       status: { in: [...ACTIVE_STATUSES] },
       OR: [
         { hostId: userId },
         { participants: { some: { userId, leftAt: null } } },
+        ...(userTcallId ? [{ calleeTcallId: userTcallId, status: { in: ["ringing", "active"] } }] : []),
       ],
     },
   });
-  return !!call;
+
+  if (!call) return false;
+  if (call.status === "ringing" && call.createdAt < cutoff) return false;
+  return true;
 }
 
 export async function getCallByRoomId(roomId: string) {

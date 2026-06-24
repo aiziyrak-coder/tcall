@@ -13,6 +13,7 @@ import {
   cancelCall,
   expireStaleRingingCalls,
   clampTranscript,
+  RING_TIMEOUT_MS,
 } from "./src/lib/call-service";
 import {
   setSocketIO,
@@ -109,13 +110,56 @@ app.prepare().then(async () => {
     }
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     const session = getSession(socket)!;
     let currentRoom: string | null = null;
     let currentUser: RoomUser | null = null;
 
     registerUserSocket(session.userId, socket.id);
     socket.join(`user:${session.userId}`);
+
+    try {
+      if (session.tcallId) {
+        const pendingIncoming = await prisma.call.findMany({
+          where: {
+            status: "ringing",
+            calleeTcallId: session.tcallId,
+            createdAt: { gte: new Date(Date.now() - RING_TIMEOUT_MS) },
+          },
+          include: {
+            host: { select: { id: true, name: true, language: true, tcallId: true } },
+          },
+        });
+        for (const call of pendingIncoming) {
+          socket.emit("incoming-call", {
+            roomId: call.roomId,
+            callId: call.id,
+            caller: {
+              userId: call.host.id,
+              name: call.host.name,
+              language: call.host.language,
+              tcallId: call.host.tcallId,
+            },
+          });
+        }
+      }
+
+      const acceptedCall = await prisma.call.findFirst({
+        where: {
+          hostId: session.userId,
+          status: "active",
+          callType: "dial",
+          createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        },
+        orderBy: { createdAt: "desc" },
+        include: { _count: { select: { participants: true } } },
+      });
+      if (acceptedCall && acceptedCall._count.participants >= 2) {
+        socket.emit("call-accepted", { roomId: acceptedCall.roomId });
+      }
+    } catch (e) {
+      console.error("Pending call sync error:", e);
+    }
 
     socket.on("register-user", (data: { translationMode?: string }) => {
       if (data?.translationMode && currentUser) {

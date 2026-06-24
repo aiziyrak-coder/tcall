@@ -84,7 +84,7 @@ export function Dialer({ userLanguage }: DialerProps) {
   }, [digits.length]);
 
   const handleCall = useCallback(async () => {
-    if (digits.length !== 9 || !lookupName) return;
+    if (digits.length !== 9) return;
     setCalling(true);
     setError("");
     try {
@@ -96,7 +96,7 @@ export function Dialer({ userLanguage }: DialerProps) {
     } finally {
       setCalling(false);
     }
-  }, [digits, lookupName, dial]);
+  }, [digits, dial]);
 
   const addContact = async () => {
     if (!lookupName || digits.length !== 9) return;
@@ -167,7 +167,7 @@ export function Dialer({ userLanguage }: DialerProps) {
         <div className="w-16" />
         <button
           onClick={handleCall}
-          disabled={digits.length !== 9 || !lookupName || calling}
+          disabled={digits.length !== 9 || calling}
           className="ios-call-green-btn"
           aria-label={ui.startCall}
         >

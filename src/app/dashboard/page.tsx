@@ -121,7 +121,7 @@ function DashboardInner({
   messageCount: number;
   setMessageCount: (n: number) => void;
 }) {
-  const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget } = useCallContext();
+  const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget, socketConnected } = useCallContext();
   const ui = getUI(user.language);
 
   const refresh = useCallback(() => {
@@ -220,6 +220,11 @@ function DashboardInner({
         }
       >
         {loadError && <div className="ios-error-banner mb-3">{loadError}</div>}
+        {!socketConnected && (
+          <div className="ios-error-banner mb-3 bg-amber-50 border-amber-200 text-amber-800">
+            Ulanish yo&apos;q — qo&apos;ng&apos;iroq qabul qilinmaydi. Sahifani yangilang.
+          </div>
+        )}
 
         {tab === "keypad" && (
           <>

@@ -621,10 +621,14 @@ export function useCall({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     resetPeerConnection();
-    socketRef.current?.emit("call-ended");
+    if (isHost && !remoteStreamRef.current && socketRef.current?.connected) {
+      socketRef.current.emit("call-cancel", { roomId });
+    } else {
+      socketRef.current?.emit("call-ended");
+    }
     socketRef.current?.disconnect();
     setCallStatus("ended");
-  }, [stopRecording, resetPeerConnection, stopTimer]);
+  }, [stopRecording, resetPeerConnection, stopTimer, isHost, roomId]);
 
   const partner = participants.find((p) => p.userId !== userId);
 
