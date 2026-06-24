@@ -1,4 +1,5 @@
 import { getAudioConstraints } from "./mobile";
+import { unlockBrowserAudio } from "./audio-unlock";
 
 const MIC_GRANTED_KEY = "tcall:mic-granted";
 
@@ -41,6 +42,7 @@ export async function requestMicrophoneStream(): Promise<MediaStream> {
   }
   const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
   markMicGranted();
+  void unlockBrowserAudio();
   return stream;
 }
 

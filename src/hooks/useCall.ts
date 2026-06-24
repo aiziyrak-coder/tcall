@@ -15,6 +15,10 @@ import {
   requestMicrophoneStream,
   wasMicGrantedBefore,
 } from "@/lib/mic-permission";
+import {
+  playMediaStreamOnElement,
+  unlockBrowserAudio,
+} from "@/lib/audio-unlock";
 import { getPeerConnectionConfig } from "@/lib/webrtc";
 import type { RoomParticipant, TranslationPayload } from "@/types/signaling";
 
@@ -90,6 +94,10 @@ export function useCall({
   const sessionActiveRef = useRef(false);
   const startSessionRef = useRef<(stream: MediaStream) => Promise<void>>(async () => {});
   const sessionStartedRef = useRef(false);
+  const remoteAudioCtxRef = useRef<AudioContext | null>(null);
+  const playRemoteAudioRef = useRef<() => void>(() => {});
+  const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
+  optsRef.current = { roomId, userId, userName, userLanguage, isHost };
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
@@ -238,6 +246,7 @@ export function useCall({
       setCallStatus("active");
       startTimer();
       clearOfferRetry();
+      playRemoteAudioRef.current();
     },
     [clearOfferRetry, startTimer]
   );
@@ -278,19 +287,25 @@ export function useCall({
         }
       };
 
-      stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+      const audioTrack = stream.getAudioTracks()[0];
+      const transceiver = pc.addTransceiver("audio", { direction: "sendrecv" });
+      if (audioTrack) {
+        void transceiver.sender.replaceTrack(audioTrack);
+      }
       return pc;
     },
-    [attachRemoteTrack, clearOfferRetry, resetPeerConnection, startTimer, startRecording]
+    [attachRemoteTrack, clearOfferRetry, startTimer, startRecording]
   );
 
   const scheduleReofferRef = useRef<() => void>(() => {});
 
   const sendOffer = useCallback(
     async (stream: MediaStream, socket: Socket, other: RoomParticipant, forceNew = false) => {
+      if (remoteStreamRef.current) return;
       if (pcRef.current && !forceNew) {
         const state = pcRef.current.connectionState;
-        if (state !== "failed" && state !== "closed" && !remoteStreamRef.current) return;
+        if (state === "connected") return;
+        if (makingOfferRef.current) return;
       }
       if (forceNew) resetPeerConnection();
       remoteIdRef.current = other.socketId;
@@ -300,7 +315,7 @@ export function useCall({
         const pc = createPeerConnection(stream, socket);
         pcRef.current = pc;
 
-        const offer = await pc.createOffer({ offerToReceiveAudio: true });
+        const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         socket.emit("offer", { offer, targetId: other.socketId });
         setCallStatus("connecting");
@@ -324,11 +339,9 @@ export function useCall({
   );
 
   const scheduleReoffer = useCallback(() => {
-    if (!isHost || offerRetryRef.current >= MAX_OFFER_RETRIES) {
-      if (offerRetryRef.current >= MAX_OFFER_RETRIES) {
-        setCallError("room_error");
-        setCallStatus("error");
-      }
+    if (offerRetryRef.current >= MAX_OFFER_RETRIES) {
+      setCallError("room_error");
+      setCallStatus("error");
       return;
     }
     const other = otherParticipantRef.current;
@@ -339,25 +352,34 @@ export function useCall({
     offerRetryRef.current += 1;
     resetPeerConnection();
     setCallStatus("connecting");
+
     setTimeout(() => {
-      if (streamRef.current && socketRef.current?.connected && otherParticipantRef.current) {
-        void sendOffer(streamRef.current, socketRef.current, otherParticipantRef.current, true);
+      const s = streamRef.current;
+      const sock = socketRef.current;
+      const peer = otherParticipantRef.current;
+      if (!s || !sock?.connected || !peer) return;
+
+      if (optsRef.current.isHost) {
+        void sendOffer(s, sock, peer, true);
+      } else {
+        sock.emit("request-reoffer", { targetId: peer.socketId });
       }
     }, 1200);
-  }, [isHost, resetPeerConnection, sendOffer]);
+  }, [resetPeerConnection, sendOffer]);
 
   scheduleReofferRef.current = scheduleReoffer;
 
   const handleRoomUsers = useCallback(
     async (users: RoomParticipant[], stream: MediaStream, socket: Socket) => {
       setParticipants(users);
+      const { userId: uid, isHost: host } = optsRef.current;
 
       if (users.length < 2) {
-        setCallStatus(isHost ? "ringing" : "waiting");
+        setCallStatus(host ? "ringing" : "waiting");
         return;
       }
 
-      const other = users.find((u) => u.userId !== userId);
+      const other = users.find((u) => u.userId !== uid);
       if (!other) return;
 
       otherParticipantRef.current = other;
@@ -369,35 +391,82 @@ export function useCall({
 
       if (pcBroken) resetPeerConnection();
 
-      const shouldOffer = isHost || (!other.isHost && socket.id! < other.socketId);
+      const shouldOffer =
+        optsRef.current.isHost || (!other.isHost && socket.id! < other.socketId);
       if (!shouldOffer) {
         setCallStatus("connecting");
         return;
       }
 
+      await new Promise((r) => setTimeout(r, 350));
       await sendOffer(stream, socket, other, pcBroken);
     },
-    [userId, isHost, resetPeerConnection, sendOffer]
+    [resetPeerConnection, sendOffer]
   );
 
-  const playRemoteAudio = useCallback(() => {
+  const playRemoteAudio = useCallback(async () => {
+    const stream = remoteStreamRef.current;
+    if (!stream) return;
+
     const el = remoteAudioRef.current;
-    if (el && remoteStreamRef.current) {
-      el.srcObject = remoteStreamRef.current;
-      el.volume = 1;
-      el.muted = false;
-      void el.play().catch((e) => console.warn("Remote audio play:", e));
+    if (el) {
+      const ok = await playMediaStreamOnElement(el, stream);
+      if (ok) return;
+    }
+
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      if (!remoteAudioCtxRef.current || remoteAudioCtxRef.current.state === "closed") {
+        remoteAudioCtxRef.current = new Ctx();
+      }
+      const ctx = remoteAudioCtxRef.current;
+      if (ctx.state === "suspended") await ctx.resume();
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(ctx.destination);
+    } catch (e) {
+      console.warn("Remote audio fallback:", e);
     }
   }, []);
 
+  playRemoteAudioRef.current = () => {
+    void playRemoteAudio();
+  };
+
   useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.volume = 1;
-      remoteAudioRef.current.muted = false;
-      remoteAudioRef.current.play().catch(() => {});
+    if (remoteStream) {
+      void playRemoteAudio();
     }
-  }, [remoteStream]);
+  }, [remoteStream, playRemoteAudio]);
+
+  const handlersRef = useRef({
+    handleRoomUsers,
+    createPeerConnection,
+    flushIceQueue,
+    startRecording,
+    stopRecording,
+    playTranslationAudio,
+    resetPeerConnection,
+    clearOfferRetry,
+    startTimer,
+    stopTimer,
+    sendOffer,
+  });
+  handlersRef.current = {
+    handleRoomUsers,
+    createPeerConnection,
+    flushIceQueue,
+    startRecording,
+    stopRecording,
+    playTranslationAudio,
+    resetPeerConnection,
+    clearOfferRetry,
+    startTimer,
+    stopTimer,
+    sendOffer,
+  };
 
   useEffect(() => {
     if (!enabled || !userId) return;
@@ -419,6 +488,9 @@ export function useCall({
       sessionStartedRef.current = true;
 
       try {
+        await unlockBrowserAudio();
+        void audioQueue.unlock();
+
         wakeLockRef.current = await requestWakeLock();
         if (!mounted) {
           stream.getTracks().forEach((t) => t.stop());
@@ -441,13 +513,14 @@ export function useCall({
 
         socket.on("connect", () => {
           setSocketConnected(true);
+          const o = optsRef.current;
           socket.emit("join-room", {
-            roomId,
-            userId,
-            name: userName,
-            language: userLanguage,
+            roomId: o.roomId,
+            userId: o.userId,
+            name: o.userName,
+            language: o.userLanguage,
             translationMode: translationModeRef.current,
-            isHost,
+            isHost: o.isHost,
           });
         });
 
@@ -464,12 +537,15 @@ export function useCall({
         });
 
         socket.on("room-users", (users: RoomParticipant[]) => {
-          if (streamRef.current) handleRoomUsers(users, streamRef.current, socket);
+          if (streamRef.current) {
+            void handlersRef.current.handleRoomUsers(users, streamRef.current, socket);
+          }
         });
 
         socket.on("offer", async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
           if (!streamRef.current) return;
-          if (isHost && makingOfferRef.current) return;
+          const polite = !optsRef.current.isHost;
+          if (makingOfferRef.current && !polite) return;
           remoteIdRef.current = senderId;
 
           try {
@@ -479,32 +555,32 @@ export function useCall({
               pcRef.current = null;
             }
             if (!pc) {
-              pc = createPeerConnection(streamRef.current, socket);
+              pc = handlersRef.current.createPeerConnection(streamRef.current, socket);
               pcRef.current = pc;
             }
 
             if (pc.signalingState === "have-local-offer") {
-              if (isHost) return;
+              if (!polite) return;
               try {
                 await pc.setLocalDescription({ type: "rollback" } as RTCSessionDescriptionInit);
               } catch {
-                resetPeerConnection();
-                pc = createPeerConnection(streamRef.current, socket);
+                handlersRef.current.resetPeerConnection();
+                pc = handlersRef.current.createPeerConnection(streamRef.current, socket);
                 pcRef.current = pc;
               }
             }
 
             await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            await flushIceQueue(pc);
+            await handlersRef.current.flushIceQueue(pc);
 
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             socket.emit("answer", { answer, targetId: senderId });
             setCallStatus("connecting");
-            startRecording(streamRef.current);
+            handlersRef.current.startRecording(streamRef.current);
           } catch (e) {
             console.error("Answer failed:", e);
-            resetPeerConnection();
+            handlersRef.current.resetPeerConnection();
           }
         });
 
@@ -512,8 +588,8 @@ export function useCall({
           if (!pcRef.current) return;
           try {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
-            await flushIceQueue(pcRef.current);
-            if (streamRef.current) startRecording(streamRef.current);
+            await handlersRef.current.flushIceQueue(pcRef.current);
+            if (streamRef.current) handlersRef.current.startRecording(streamRef.current);
           } catch (e) {
             console.error("Answer apply failed:", e);
           }
@@ -531,6 +607,16 @@ export function useCall({
           }
         });
 
+        socket.on("request-reoffer", () => {
+          if (!optsRef.current.isHost || !streamRef.current || !otherParticipantRef.current) return;
+          void handlersRef.current.sendOffer(
+            streamRef.current,
+            socket,
+            otherParticipantRef.current,
+            true
+          );
+        });
+
         socket.on("translation", (msg: TranslationPayload) => {
           msgCounterRef.current += 1;
           const entry: TranslationMessage = {
@@ -540,37 +626,37 @@ export function useCall({
           };
           setTranslations((prev) => [...prev.slice(-29), entry]);
 
-          if (msg.audioBase64 && msg.speaker !== userName) {
-            playTranslationAudio(msg.audioBase64);
+          if (msg.audioBase64 && msg.speaker !== optsRef.current.userName) {
+            handlersRef.current.playTranslationAudio(msg.audioBase64);
           }
         });
 
         socket.on("call-ended", () => {
-          stopTimer();
+          handlersRef.current.stopTimer();
           setCallStatus("ended");
         });
         socket.on("call-rejected", () => {
-          stopTimer();
+          handlersRef.current.stopTimer();
           setCallStatus("ended");
         });
         socket.on("call-timeout", () => {
-          stopTimer();
-          stopRecording();
-          resetPeerConnection();
+          handlersRef.current.stopTimer();
+          handlersRef.current.stopRecording();
+          handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
         });
         socket.on("call-cancelled", () => {
-          stopTimer();
-          stopRecording();
-          resetPeerConnection();
+          handlersRef.current.stopTimer();
+          handlersRef.current.stopRecording();
+          handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
         });
         socket.on("user-left", () => {
           if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
           userLeftTimerRef.current = setTimeout(() => {
             if (mounted) {
-              stopTimer();
-              resetPeerConnection();
+              handlersRef.current.stopTimer();
+              handlersRef.current.resetPeerConnection();
               setCallStatus("ended");
             }
           }, 8000);
@@ -612,57 +698,45 @@ export function useCall({
       mounted = false;
       sessionStartedRef.current = false;
       sessionActiveRef.current = false;
-      stopTimer();
-      clearOfferRetry();
-      stopRecording();
+      handlersRef.current.stopTimer();
+      handlersRef.current.clearOfferRetry();
+      handlersRef.current.stopRecording();
       audioQueue.stop();
       audioQueueRef.current = null;
       wakeLockRef.current?.release().catch(() => {});
-      resetPeerConnection();
+      remoteAudioCtxRef.current?.close().catch(() => {});
+      remoteAudioCtxRef.current = null;
+      handlersRef.current.resetPeerConnection();
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
 
       const hadRemote = !!remoteStreamRef.current;
       const socket = socketRef.current;
+      const host = optsRef.current.isHost;
+      const rid = optsRef.current.roomId;
 
       if (!intentionalEndRef.current) {
-        if (isHost && !hadRemote && socket?.connected) {
-          socket.emit("call-cancel", { roomId });
+        if (host && !hadRemote && socket?.connected) {
+          socket.emit("call-cancel", { roomId: rid });
         } else if (socket?.connected) {
           socket.emit("call-ended");
         }
         void apiFetch("/api/calls/end", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ roomId }),
+          body: JSON.stringify({ roomId: rid }),
         });
       }
 
       socket?.disconnect();
       socketRef.current = null;
     };
-  }, [
-    enabled,
-    roomId,
-    userId,
-    userName,
-    userLanguage,
-    isHost,
-    handleRoomUsers,
-    createPeerConnection,
-    flushIceQueue,
-    startRecording,
-    stopRecording,
-    playTranslationAudio,
-    resetPeerConnection,
-    clearOfferRetry,
-    startTimer,
-    stopTimer,
-  ]);
+  }, [enabled, roomId, userId]);
 
   const requestMicrophone = useCallback(async () => {
     setMicStatus("requesting");
     try {
+      await unlockBrowserAudio();
       const stream = await requestMicrophoneStream();
       await startSessionRef.current(stream);
       return true;

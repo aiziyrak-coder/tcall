@@ -16,6 +16,7 @@ import { useCall, type TranslationMode } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
 import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
+import { configureRemoteAudioElement } from "@/lib/audio-unlock";
 import { MicPermissionGate } from "@/components/MicPermissionGate";
 import type { User } from "@/hooks/useAuth";
 
@@ -71,8 +72,23 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
   const handleTap = useCallback(() => {
     void call.unlockAudio();
-    call.playRemoteAudio();
+    void call.playRemoteAudio();
   }, [call]);
+
+  useEffect(() => {
+    if (call.micStatus === "granted") {
+      void call.unlockAudio();
+      void call.playRemoteAudio();
+    }
+  }, [call.micStatus, call]);
+
+  const setRemoteAudioRef = useCallback(
+    (node: HTMLAudioElement | null) => {
+      call.remoteAudioRef.current = node;
+      if (node) configureRemoteAudioElement(node);
+    },
+    [call.remoteAudioRef]
+  );
 
   useEffect(() => {
     if (call.callStatus === "ended") {
@@ -154,7 +170,7 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
   return (
     <div className="phone-screen" onClick={handleTap}>
-      <audio ref={call.remoteAudioRef} autoPlay playsInline />
+      <audio ref={setRemoteAudioRef} autoPlay playsInline />
 
       <div className="phone-bg" />
       <div className={`phone-avatar-ring ${call.callStatus === "active" ? "phone-avatar-active" : ""}`}>

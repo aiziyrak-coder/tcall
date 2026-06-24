@@ -255,19 +255,25 @@ app.prepare().then(async () => {
     socket.on("offer", (data: { offer: RTCSessionDescriptionInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
       if (!isInRoom(currentRoom, data.targetId)) return;
-      socket.to(data.targetId).emit("offer", { offer: data.offer, senderId: socket.id });
+      io.to(data.targetId).emit("offer", { offer: data.offer, senderId: socket.id });
     });
 
     socket.on("answer", (data: { answer: RTCSessionDescriptionInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
       if (!isInRoom(currentRoom, data.targetId)) return;
-      socket.to(data.targetId).emit("answer", { answer: data.answer, senderId: socket.id });
+      io.to(data.targetId).emit("answer", { answer: data.answer, senderId: socket.id });
     });
 
     socket.on("ice-candidate", (data: { candidate: RTCIceCandidateInit; targetId: string }) => {
       if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
       if (!isInRoom(currentRoom, data.targetId)) return;
-      socket.to(data.targetId).emit("ice-candidate", { candidate: data.candidate, senderId: socket.id });
+      io.to(data.targetId).emit("ice-candidate", { candidate: data.candidate, senderId: socket.id });
+    });
+
+    socket.on("request-reoffer", (data: { targetId: string }) => {
+      if (!data?.targetId || !currentRoom || !isInRoom(currentRoom, socket.id)) return;
+      if (!isInRoom(currentRoom, data.targetId)) return;
+      io.to(data.targetId).emit("request-reoffer", { fromId: socket.id });
     });
 
     socket.on("speech-transcript", async (data: { text: string; isFinal: boolean }) => {
