@@ -1159,6 +1159,124 @@ body.tg-webapp .ios-tab-bar {
   to { opacity: 1; transform: none; }
 }
 
+/* Mini call bar — qo'ng'iroqni pastga yig'ish */
+.mini-call-bar {
+  position: fixed;
+  z-index: 55;
+  left: max(var(--app-safe-left), 0px);
+  right: max(var(--app-safe-right), 0px);
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  padding-bottom: max(0.5rem, var(--app-safe-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 768px) {
+  .mini-call-bar {
+    left: calc(var(--sidebar-w) + max(var(--app-safe-left), 0px));
+  }
+}
+
+body.has-mini-call .app-main-content {
+  padding-bottom: 4.75rem;
+}
+
+body.has-mini-call .chat-app-thread .chat-composer {
+  padding-bottom: calc(4.75rem + max(0.5rem, var(--app-safe-bottom)));
+}
+
+.mini-call-bar-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.08), rgba(0, 122, 255, 0.04));
+  border: 1px solid rgba(0, 122, 255, 0.12);
+  text-align: left;
+}
+
+.mini-call-bar-pulse {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background: #34c759;
+  flex-shrink: 0;
+  animation: miniCallPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes miniCallPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.92); }
+}
+
+.mini-call-bar-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.mini-call-bar-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1c1c1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-call-bar-status {
+  font-size: 0.75rem;
+  color: #34c759;
+  font-weight: 500;
+}
+
+.mini-call-bar-sub {
+  font-size: 0.6875rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-call-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.mini-call-bar-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2f2f7;
+  color: #1c1c1e;
+  touch-action: manipulation;
+}
+
+.mini-call-bar-btn-muted {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
+}
+
+.mini-call-bar-btn-end {
+  background: #ff3b30;
+  color: #fff;
+}
+
 /* Vanity shop */
 .vanity-shop {
   @apply glass rounded-2xl p-4;

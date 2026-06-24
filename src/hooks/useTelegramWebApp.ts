@@ -13,6 +13,8 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  version?: string;
+  isVersionAtLeast?: (version: string) => boolean;
   platform?: string;
   colorScheme?: "light" | "dark";
   safeAreaInset?: SafeInset;
@@ -59,6 +61,17 @@ function applyTelegramInsets(tg: TelegramWebApp) {
   root.style.setProperty("--tg-content-safe-right", `${content.right}px`);
 }
 
+function applyTelegramThemeColors(tg: TelegramWebApp) {
+  try {
+    if (typeof tg.isVersionAtLeast === "function" && tg.isVersionAtLeast("6.1")) {
+      tg.setHeaderColor?.("#ffffff");
+      tg.setBackgroundColor?.("#f2f2f7");
+    }
+  } catch {
+    /* older Telegram WebApp clients */
+  }
+}
+
 export function useTelegramWebApp() {
   const [isTelegram, setIsTelegram] = useState(false);
   const [ready, setReady] = useState(false);
@@ -72,8 +85,7 @@ export function useTelegramWebApp() {
 
     tg.ready();
     tg.expand();
-    tg.setHeaderColor?.("#ffffff");
-    tg.setBackgroundColor?.("#f2f2f7");
+    applyTelegramThemeColors(tg);
     applyTelegramInsets(tg);
 
     const onChange = () => applyTelegramInsets(tg);

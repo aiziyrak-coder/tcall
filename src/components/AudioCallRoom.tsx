@@ -9,22 +9,17 @@ import {
   Type,
   Volume2,
   Radio,
+  ChevronDown,
 } from "lucide-react";
-import { useCall, type TranslationMode } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
 import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
-import { configureRemoteAudioElement } from "@/lib/audio-unlock";
 import { MicPermissionGate } from "@/components/MicPermissionGate";
 import { AppSplash } from "@/components/AppSplash";
 import { TcallLogo } from "@/components/TcallLogo";
-import type { User } from "@/hooks/useAuth";
-
-interface AudioCallRoomProps {
-  roomId: string;
-  user: User;
-  isHost: boolean;
-}
+import { useAuth } from "@/hooks/useAuth";
+import { useCallContext } from "@/components/providers/CallProvider";
+import { useActiveCallOptional } from "@/components/active-call/ActiveCallStateContext";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -39,73 +34,50 @@ function getInitials(name: string): string {
 const LEAVE_DELAY_MS = 500;
 const ERROR_LEAVE_DELAY_MS = 2200;
 
-export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
+export function AudioCallRoom() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { minimizeCall, activeCall } = useCallContext();
+  const call = useActiveCallOptional();
   const leaveHandledRef = useRef(false);
 
-  const call = useCall({
-    roomId,
-    userId: user.userId,
-    userName: user.name,
-    userLanguage: user.language,
-    translationMode: (user.translationMode as TranslationMode) || "text",
-    isHost,
-    enabled: true,
-  });
-
-  const ui = getUI(user.language);
-  const userLang = getLanguage(user.language);
-  const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
-
   const leaveToDashboard = useCallback(() => {
-    if (leaveHandledRef.current) return;
+    if (!activeCall || leaveHandledRef.current) return;
     leaveHandledRef.current = true;
     playCallEndTone();
     void apiFetch("/api/calls/end", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomId }),
+      body: JSON.stringify({ roomId: activeCall.roomId }),
     }).finally(() => {
       router.replace("/dashboard");
     });
-  }, [roomId, router]);
+  }, [activeCall, router]);
 
   const handleTap = useCallback(() => {
-    void call.unlockAudio();
-    void call.playRemoteAudio();
+    void call?.unlockAudio();
+    void call?.playRemoteAudio();
   }, [call]);
 
   useEffect(() => {
-    if (call.micStatus === "granted") {
-      void call.unlockAudio();
-      void call.playRemoteAudio();
-    }
-  }, [call.micStatus, call]);
-
-  const setRemoteAudioRef = useCallback(
-    (node: HTMLAudioElement | null) => {
-      call.remoteAudioRef.current = node;
-      if (node) configureRemoteAudioElement(node);
-    },
-    [call.remoteAudioRef]
-  );
+    if (!call || call.callStatus !== "ended") return;
+    const timer = setTimeout(leaveToDashboard, LEAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [call, call?.callStatus, leaveToDashboard]);
 
   useEffect(() => {
-    if (call.callStatus === "ended") {
-      const timer = setTimeout(leaveToDashboard, LEAVE_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [call.callStatus, leaveToDashboard]);
+    if (!call || call.callStatus !== "error" || call.micStatus !== "granted") return;
+    const timer = setTimeout(() => {
+      call.endCall();
+      leaveToDashboard();
+    }, ERROR_LEAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [call, leaveToDashboard]);
 
-  useEffect(() => {
-    if (call.callStatus === "error" && call.micStatus === "granted") {
-      const timer = setTimeout(() => {
-        call.endCall();
-        leaveToDashboard();
-      }, ERROR_LEAVE_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [call.callStatus, call.micStatus, call, leaveToDashboard]);
+  if (!user || !activeCall || !call) return null;
+
+  const ui = getUI(user.language);
+  const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
 
   if (call.micStatus !== "granted" && call.callStatus !== "ended") {
     return (
@@ -152,8 +124,6 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
   return (
     <div className="phone-screen" onClick={handleTap}>
-      <audio ref={setRemoteAudioRef} autoPlay playsInline />
-
       <div className="phone-bg" />
       <div className={`phone-avatar-ring ${call.callStatus === "active" ? "phone-avatar-active" : ""}`}>
         <div className="phone-avatar">
@@ -230,9 +200,13 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
         <button onClick={() => call.endCall()} className="phone-control-btn phone-end-btn">
           <PhoneOff className="w-7 h-7" />
         </button>
-        <div className="phone-control-btn glass opacity-50 pointer-events-none">
-          <span className="text-xs font-mono">{userLang.flag}</span>
-        </div>
+        <button
+          onClick={() => minimizeCall()}
+          className="phone-control-btn glass"
+          title={ui.minimizeCall}
+        >
+          <ChevronDown className="w-6 h-6" />
+        </button>
       </footer>
     </div>
   );

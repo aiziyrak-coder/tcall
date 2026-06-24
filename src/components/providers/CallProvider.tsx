@@ -34,6 +34,9 @@ import {
 } from "@/lib/call-socket";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
+import { ActiveCallEngine } from "@/components/active-call/ActiveCallEngine";
+import { MiniCallBar } from "@/components/active-call/MiniCallBar";
+import type { User } from "@/hooks/useAuth";
 
 export interface IncomingCall {
   roomId: string;
@@ -76,6 +79,14 @@ interface CallContextValue {
   clearQuickMessageTarget: () => void;
   socketConnected: boolean;
   getSocket: () => Socket | null;
+  userLanguage: string;
+  userName: string;
+  activeCall: { roomId: string; isHost: boolean } | null;
+  callMinimized: boolean;
+  activateCall: (roomId: string, isHost: boolean) => void;
+  minimizeCall: () => void;
+  expandCall: () => void;
+  clearActiveCall: () => void;
 }
 
 const CallContext = createContext<CallContextValue | null>(null);
@@ -87,18 +98,14 @@ export function useCallContext() {
 }
 
 interface CallProviderProps {
-  userId: string;
-  userLanguage: string;
-  translationMode?: string;
+  user: User;
   children: ReactNode;
 }
 
-export function CallProvider({
-  userId,
-  userLanguage,
-  children,
-}: CallProviderProps) {
+export function CallProvider({ user, children }: CallProviderProps) {
   const router = useRouter();
+  const userId = user.userId;
+  const userLanguage = user.language;
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const [outgoingCall, setOutgoingCall] = useState<OutgoingCall | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -106,6 +113,8 @@ export function CallProvider({
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [quickMessageTarget, setQuickMessageTarget] = useState<{ tcallId: string; name?: string } | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [activeCall, setActiveCall] = useState<{ roomId: string; isHost: boolean } | null>(null);
+  const [callMinimized, setCallMinimized] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -327,6 +336,36 @@ export function CallProvider({
 
   cancelOutgoingRef.current = cancelOutgoing;
 
+  const activateCall = useCallback((roomId: string, isHost: boolean) => {
+    setActiveCall({ roomId: roomId.toUpperCase(), isHost });
+    setCallMinimized(false);
+  }, []);
+
+  const minimizeCall = useCallback(() => {
+    setCallMinimized(true);
+    router.push("/dashboard");
+  }, [router]);
+
+  const expandCall = useCallback(() => {
+    if (!activeCall) return;
+    setCallMinimized(false);
+    router.push(`/call/${activeCall.roomId}`);
+  }, [activeCall, router]);
+
+  const clearActiveCall = useCallback(() => {
+    setActiveCall(null);
+    setCallMinimized(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeCall && callMinimized) {
+      document.body.classList.add("has-mini-call");
+    } else {
+      document.body.classList.remove("has-mini-call");
+    }
+    return () => document.body.classList.remove("has-mini-call");
+  }, [activeCall, callMinimized]);
+
   const dial = useCallback(async (tcallId: string) => {
     setDialError(null);
     await unlockAudio();
@@ -370,9 +409,32 @@ export function CallProvider({
         clearQuickMessageTarget: () => setQuickMessageTarget(null),
         socketConnected,
         getSocket: () => socketRef.current,
+        userLanguage,
+        userName: user.name,
+        activeCall,
+        callMinimized,
+        activateCall,
+        minimizeCall,
+        expandCall,
+        clearActiveCall,
       }}
     >
-      {children}
+      {activeCall ? (
+        <ActiveCallEngine
+          roomId={activeCall.roomId}
+          isHost={activeCall.isHost}
+          user={user}
+          onEnded={() => {
+            clearActiveCall();
+            router.replace("/dashboard");
+          }}
+        >
+          {children}
+          {callMinimized && <MiniCallBar />}
+        </ActiveCallEngine>
+      ) : (
+        children
+      )}
 
       {dialError && (
         <div className="fixed top-4 left-4 right-4 z-[60] bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm text-center">

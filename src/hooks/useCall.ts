@@ -157,7 +157,8 @@ export function useCall({
     async (blob: Blob) => {
       if (processingRef.current || isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
       if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
-      if (blob.size < 500) return;
+      const minSize = blob.type.includes("mp4") || blob.type.includes("aac") ? 1800 : 500;
+      if (blob.size < minSize) return;
 
       processingRef.current = true;
       try {
@@ -175,6 +176,20 @@ export function useCall({
         lastTranscriptRef.current = text;
         if (sessionActiveRef.current && socketRef.current?.connected) {
           socketRef.current.emit("speech-transcript", { text, isFinal: true });
+          msgCounterRef.current += 1;
+          setTranslations((prev) => [
+            ...prev.slice(-29),
+            {
+              id: `self-${msgCounterRef.current}`,
+              original: text,
+              translated: text,
+              sourceLang: userLanguage,
+              targetLang: userLanguage,
+              speaker: optsRef.current.userName,
+              isFinal: true,
+              timestamp: Date.now(),
+            },
+          ]);
         }
 
         setTimeout(() => {
@@ -209,7 +224,8 @@ export function useCall({
           setIsListening(false);
         };
         recordingActiveRef.current = true;
-        recorder.start(700);
+        const timeslice = mimeType.includes("mp4") || mimeType.includes("aac") ? 1500 : 800;
+        recorder.start(timeslice);
         recorderRef.current = recorder;
         setIsListening(true);
       } catch (e) {
@@ -753,7 +769,21 @@ export function useCall({
 
     void bootstrap();
 
+    const onVisibility = () => {
+      if (
+        document.visibilityState === "visible" &&
+        streamRef.current &&
+        !isMutedRef.current &&
+        callStatusRef.current === "active" &&
+        !recorderRef.current
+      ) {
+        handlersRef.current.startRecording(streamRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
       mounted = false;
       sessionStartedRef.current = false;
       sessionActiveRef.current = false;

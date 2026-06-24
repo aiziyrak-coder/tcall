@@ -8,6 +8,25 @@ import { getUI } from "@/lib/languages";
 import { AudioCallRoom } from "@/components/AudioCallRoom";
 import { AppSplash } from "@/components/AppSplash";
 import { TcallLogo } from "@/components/TcallLogo";
+import { useCallContext } from "@/components/providers/CallProvider";
+
+function CallPageReady({
+  roomId,
+  isHost,
+}: {
+  roomId: string;
+  isHost: boolean;
+}) {
+  const { activateCall, callMinimized } = useCallContext();
+
+  useEffect(() => {
+    activateCall(roomId, isHost);
+  }, [roomId, isHost, activateCall]);
+
+  if (callMinimized) return null;
+
+  return <AudioCallRoom />;
+}
 
 export default function CallPage({ params }: { params: { roomId: string } }) {
   const { user, loading } = useAuth();
@@ -66,5 +85,5 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
     );
   }
 
-  return <AudioCallRoom roomId={roomId} user={user} isHost={isHost} />;
+  return <CallPageReady roomId={roomId} isHost={isHost} />;
 }
