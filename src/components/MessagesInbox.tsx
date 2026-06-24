@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Phone } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { useCallContext } from "@/components/providers/CallProvider";
 
 interface MessagesInboxProps {
@@ -13,7 +13,7 @@ interface MessagesInboxProps {
 }
 
 export function MessagesInbox({ userLanguage, onRead }: MessagesInboxProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [inbox, setInbox] = useState<Array<{
     id: string;

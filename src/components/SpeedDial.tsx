@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Phone } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { useCallContext } from "@/components/providers/CallProvider";
 
 interface SpeedDialProps {
@@ -12,7 +12,7 @@ interface SpeedDialProps {
 }
 
 export function SpeedDial({ userLanguage, favorites }: SpeedDialProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
 
   if (favorites.length === 0) return null;

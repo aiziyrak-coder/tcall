@@ -1,5 +1,6 @@
 import { getLanguageName } from "./languages";
 import { getWhisperLanguage, getWhisperPrompt } from "./call-translation";
+import { getTTSModel, getTTSSpeed, getTTSVoice } from "./tts-config";
 
 function getApiKey(): string | null {
   return process.env.OPENAI_API_KEY || null;
@@ -193,12 +194,67 @@ export async function translateWithGPT(
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
-/** OpenAI TTS — tarjima qilingan matnni ovozga aylantirish */
+/** GPT — yuzma-yuz tarjimon (ovozli chiqish uchun optimallashtirilgan) */
+export async function translateForInterpreter(
+  text: string,
+  sourceLang: string,
+  targetLang: string,
+  recentLines: string[] = []
+): Promise<string> {
+  if (!text.trim() || sourceLang === targetLang) return text;
+
+  const sourceName = getLanguageName(sourceLang);
+  const targetName = getLanguageName(targetLang);
+
+  const contextBlock =
+    recentLines.length > 0
+      ? `\n\nRecent dialogue (context only):\n${recentLines.slice(-6).join("\n")}`
+      : "";
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${requireApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: getModel(),
+      temperature: 0.1,
+      max_tokens: 500,
+      messages: [
+        {
+          role: "system",
+          content: `You are a world-class simultaneous interpreter for face-to-face conversations. Translate from ${sourceName} to ${targetName} for immediate text-to-speech playback.
+
+Rules:
+- Output ONLY natural spoken ${targetName} — as if a native speaker is talking aloud.
+- Use short, clear sentences that sound perfect when read by TTS.
+- Preserve exact meaning, tone, names, numbers, and intent.
+- Do NOT add explanations, notes, brackets, or punctuation meant for reading.
+- Do NOT transliterate — write fully in ${targetName} script/alphabet.
+- Match formality level of the original speaker.${contextBlock}`,
+        },
+        { role: "user", content: text },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    console.error("GPT interpreter translate error:", await res.text());
+    return text;
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || text;
+}
+
+/** OpenAI TTS — tilga mos ovoz bilan tarjima matnini o'qish */
 export async function textToSpeech(text: string, langHint?: string): Promise<Buffer | null> {
   if (!text.trim()) return null;
 
-  const voice = process.env.OPENAI_TTS_VOICE || "nova";
-  const speed = langHint && ["uz", "ru", "tr", "kk", "ky", "tg"].includes(langHint) ? 1.0 : 1.05;
+  const voice = getTTSVoice(langHint);
+  const speed = getTTSSpeed(langHint);
+  const model = getTTSModel();
 
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
@@ -207,7 +263,7 @@ export async function textToSpeech(text: string, langHint?: string): Promise<Buf
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "tts-1",
+      model,
       input: text.slice(0, 4096),
       voice,
       speed,

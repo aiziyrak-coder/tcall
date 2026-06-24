@@ -1,22 +1,6 @@
-export const LANGUAGES = [
-  { code: "uz", name: "O'zbek", flag: "🇺🇿" },
-  { code: "ru", name: "Русский", flag: "🇷🇺" },
-  { code: "en", name: "English", flag: "🇬🇧" },
-  { code: "tr", name: "Türkçe", flag: "🇹🇷" },
-  { code: "ar", name: "العربية", flag: "🇸🇦" },
-  { code: "zh", name: "中文", flag: "🇨🇳" },
-  { code: "ko", name: "한국어", flag: "🇰🇷" },
-  { code: "ja", name: "日本語", flag: "🇯🇵" },
-  { code: "de", name: "Deutsch", flag: "🇩🇪" },
-  { code: "fr", name: "Français", flag: "🇫🇷" },
-  { code: "es", name: "Español", flag: "🇪🇸" },
-  { code: "hi", name: "हिन्दी", flag: "🇮🇳" },
-  { code: "tg", name: "Тоҷикӣ", flag: "🇹🇯" },
-  { code: "kk", name: "Қазақ", flag: "🇰🇿" },
-  { code: "ky", name: "Кыргыз", flag: "🇰🇬" },
-] as const;
+import { LANGUAGES, SPEECH_LOCALES, type LanguageCode } from "./languages-list";
 
-export type LanguageCode = (typeof LANGUAGES)[number]["code"];
+export { LANGUAGES, SPEECH_LOCALES, type LanguageCode };
 
 export function getLanguage(code: string) {
   return LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
@@ -26,24 +10,9 @@ export function getLanguageName(code: string) {
   return getLanguage(code).name;
 }
 
-// Web Speech API locale mapping
-export const SPEECH_LOCALES: Record<string, string> = {
-  uz: "uz-UZ",
-  ru: "ru-RU",
-  en: "en-US",
-  tr: "tr-TR",
-  ar: "ar-SA",
-  zh: "zh-CN",
-  ko: "ko-KR",
-  ja: "ja-JP",
-  de: "de-DE",
-  fr: "fr-FR",
-  es: "es-ES",
-  hi: "hi-IN",
-  tg: "tg-TJ",
-  kk: "kk-KZ",
-  ky: "ky-KG",
-};
+export function isSupportedLanguage(code: string): boolean {
+  return LANGUAGES.some((l) => l.code === code);
+}
 
 export const UI_TEXT = {
   uz: {
@@ -327,7 +296,7 @@ export const UI_TEXT = {
     callHistory: "Qo'ng'iroq tarixi",
     interpreterTab: "Tarjimon",
     interpreterTitle: "Real vaqt tarjimon",
-    interpreterDesc: "Telefonni ikki kishi orasida tuting — gapirganingiz tarjima qilinib ovoz chiqadi",
+    interpreterDesc: "Telefonni ikki kishi orasida tuting — gapirganingiz OpenAI ovozida tarjima qilinadi",
     interpreterMyLang: "Mening tilim",
     interpreterTheirLang: "Sherik tili",
     interpreterSwapLang: "Til almashtirish",
@@ -345,7 +314,7 @@ export const UI_TEXT = {
     interpreterNoSpeech: "Ovoz aniqlanmadi — qayta urinib ko'ring",
     interpreterError: "Tarjima xatosi — qayta urinib ko'ring",
     interpreterSameLang: "Ikkala til bir xil — boshqa til tanlang",
-    interpreterHint: "Telefonni sherigingizga qarab tuting. U gapirganda «U gapiradi» tugmasini bosing.",
+    interpreterHint: "Mikrofonni yoqing. Ushlab gapiring — tarjima ovozda eshitiladi.",
     interpreterSessionActive: "Faol",
     interpreterVoiceOn: "Ovoz yoqilgan",
     interpreterVoiceOff: "Ovoz o'chirilgan",
@@ -935,7 +904,7 @@ export const UI_TEXT = {
     callHistory: "Call history",
     interpreterTab: "Interpreter",
     interpreterTitle: "Live interpreter",
-    interpreterDesc: "Hold the phone between you — speech is translated and spoken aloud",
+    interpreterDesc: "Hold the phone between you — OpenAI speaks the translation aloud in the target language",
     interpreterMyLang: "My language",
     interpreterTheirLang: "Their language",
     interpreterSwapLang: "Swap languages",
@@ -953,7 +922,7 @@ export const UI_TEXT = {
     interpreterNoSpeech: "No speech detected — try again",
     interpreterError: "Translation error — try again",
     interpreterSameLang: "Both languages are the same — pick different ones",
-    interpreterHint: "Hold the phone between you. When they speak, press «They speak».",
+    interpreterHint: "Enable the mic. Hold to speak — translation plays as voice only.",
     interpreterSessionActive: "Active",
     interpreterVoiceOn: "Voice on",
     interpreterVoiceOff: "Voice off",

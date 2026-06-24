@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info, User } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
-import { getLanguage, getUI } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { formatDuration } from "@/lib/status";
 import { useCallContext, DialError } from "@/components/providers/CallProvider";
 import { CallDetailModal } from "@/components/CallDetailModal";
@@ -28,7 +29,7 @@ interface RecentsListProps {
 }
 
 export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: RecentsListProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [dialError, setDialError] = useState("");
   const [detailRoomId, setDetailRoomId] = useState<string | null>(null);

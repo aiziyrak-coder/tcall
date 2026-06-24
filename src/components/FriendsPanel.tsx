@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { TcallLogo } from "@/components/TcallLogo";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
@@ -46,7 +46,7 @@ interface FriendsPanelProps {
 }
 
 export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [blocks, setBlocks] = useState<BlockItem[]>([]);

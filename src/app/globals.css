@@ -819,6 +819,109 @@ body.tg-webapp .ios-tab-bar {
   @apply text-[10px] text-center text-slate-400 px-2 leading-relaxed shrink-0;
 }
 
+.interpreter-panel-voice .interpreter-history {
+  display: none;
+}
+
+.interpreter-lang-bar-stacked {
+  @apply flex-col items-stretch gap-2;
+}
+
+.interpreter-lang-bar-stacked .interpreter-swap-btn-center {
+  @apply self-center mb-0;
+}
+
+.interpreter-lang-search-wrap {
+  @apply relative mb-1;
+}
+
+.interpreter-lang-search-icon {
+  @apply absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none;
+}
+
+.interpreter-lang-search {
+  @apply w-full rounded-lg border border-black/5 bg-white pl-8 pr-2 py-1.5 text-xs text-slate-700;
+  @apply focus:outline-none focus:ring-2 focus:ring-brand-400/30;
+}
+
+.interpreter-voice-arena {
+  @apply relative flex flex-col items-center justify-center rounded-2xl px-4 py-8 min-h-[180px];
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.interpreter-voice-wave {
+  @apply absolute inset-0 flex items-center justify-center gap-1.5 opacity-30;
+}
+
+.interpreter-voice-wave-active {
+  @apply opacity-100;
+}
+
+.interpreter-voice-bar {
+  @apply w-1.5 rounded-full;
+  height: 12px;
+  transition: height 0.15s ease;
+}
+
+.interpreter-voice-wave-active .interpreter-voice-bar {
+  animation: interpreter-bar 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes interpreter-bar {
+  0% { height: 12px; opacity: 0.5; }
+  100% { height: 48px; opacity: 1; }
+}
+
+.interpreter-voice-center {
+  @apply relative z-10 flex items-center justify-center w-16 h-16;
+}
+
+.interpreter-speaking-flag {
+  @apply text-5xl leading-none;
+  animation: interpreter-flag-pop 0.35s ease-out;
+}
+
+@keyframes interpreter-flag-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.interpreter-listening-icon {
+  @apply text-red-500;
+  animation: interpreter-mic-pulse 1s ease-in-out infinite;
+}
+
+@keyframes interpreter-mic-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.interpreter-voice-status {
+  @apply relative z-10 text-sm font-medium text-slate-600 text-center mt-3 px-4;
+}
+
+.interpreter-voice-lang-name {
+  @apply relative z-10 text-xs text-violet-600 font-semibold mt-1;
+}
+
+.interpreter-session-row {
+  @apply flex justify-center;
+}
+
+.interpreter-session-btn {
+  @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all;
+}
+
+.interpreter-session-start {
+  @apply bg-emerald-500 text-white shadow-md hover:bg-emerald-600 active:scale-95;
+}
+
+.interpreter-session-stop {
+  @apply bg-slate-200 text-slate-700 hover:bg-slate-300 active:scale-95;
+}
+
 .room-hero {
   @apply relative overflow-hidden rounded-2xl px-5 py-5 text-center;
   background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 45%, #ffffff 100%);

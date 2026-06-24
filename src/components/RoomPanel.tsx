@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { unlockAudio } from "@/lib/ringtone";
@@ -31,7 +31,7 @@ interface RoomParticipant {
 }
 
 export function RoomPanel({ userLanguage }: RoomPanelProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const [joinCode, setJoinCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);

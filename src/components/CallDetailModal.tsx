@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Phone, FileText } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { formatDuration } from "@/lib/status";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { TcallLogo } from "@/components/TcallLogo";
@@ -17,7 +17,7 @@ interface CallDetailModalProps {
 }
 
 export function CallDetailModal({ roomId, userLanguage, userTcallId, onClose }: CallDetailModalProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [call, setCall] = useState<{
     status: string;

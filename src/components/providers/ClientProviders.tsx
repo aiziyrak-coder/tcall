@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/components/providers/AuthProvider";
 import { CallProvider } from "@/components/providers/CallProvider";
+import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import { TelegramInit } from "@/components/TelegramInit";
 import { AppSplash } from "@/components/AppSplash";
 
@@ -28,9 +29,11 @@ function CallBridge({ children }: { children: React.ReactNode }) {
   if (!user) return <>{children}</>;
 
   return (
-    <CallProvider user={user}>
-      <div className="app-page-enter">{children}</div>
-    </CallProvider>
+    <LocaleProvider lang={user.language} key={user.language}>
+      <CallProvider user={user}>
+        <div className="app-page-enter">{children}</div>
+      </CallProvider>
+    </LocaleProvider>
   );
 }
 

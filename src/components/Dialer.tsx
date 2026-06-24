@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Phone, Delete } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { playDialTone, unlockAudio } from "@/lib/ringtone";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
@@ -31,7 +31,7 @@ const KEYPAD: { digit: string; letters?: string }[] = [
 ];
 
 export function Dialer({ userLanguage }: DialerProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [digits, setDigits] = useState("");
   const [lookupUser, setLookupUser] = useState<UserProfileData | null>(null);

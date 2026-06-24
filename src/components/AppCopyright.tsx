@@ -1,6 +1,6 @@
 "use client";
 
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 
 interface AppCopyrightProps {
   userLanguage?: string;
@@ -13,7 +13,7 @@ export function AppCopyright({
   compact = false,
   className = "",
 }: AppCopyrightProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
 
   return (
     <p

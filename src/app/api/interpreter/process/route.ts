@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { transcribeAudio, translateForCall, textToSpeech } from "@/lib/openai";
+import { transcribeAudio, translateForInterpreter, textToSpeech } from "@/lib/openai";
 import { clampTranscript } from "@/lib/call-service";
 import { isValidTranscript } from "@/lib/call-translation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
@@ -74,10 +74,10 @@ export async function POST(req: NextRequest) {
     }
 
     const effectiveSource = sourceLang === "auto" ? session.language : sourceLang;
-    const translated = await translateForCall(original, effectiveSource, targetLang, recentLines);
+    const translated = await translateForInterpreter(original, effectiveSource, targetLang, recentLines);
 
     let audioBase64: string | undefined;
-    if (withSpeech && translated.trim()) {
+    if (translated.trim()) {
       const audioBuf = await textToSpeech(translated, targetLang);
       if (audioBuf) audioBase64 = audioBuf.toString("base64");
     }

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Save, Camera, Trash2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { LANGUAGES, getUI } from "@/lib/languages";
+import { LANGUAGES } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
 import { AppCopyright } from "@/components/AppCopyright";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -36,7 +37,7 @@ interface ProfileForm {
 }
 
 export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: SettingsPanelProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const [form, setForm] = useState<ProfileForm>({
     name: user.name,
     language: user.language,

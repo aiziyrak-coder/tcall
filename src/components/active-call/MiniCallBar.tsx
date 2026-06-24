@@ -3,7 +3,7 @@
 import { Mic, MicOff, PhoneOff, Maximize2 } from "lucide-react";
 import { useActiveCall } from "./ActiveCallStateContext";
 import { useCallContext } from "@/components/providers/CallProvider";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -14,7 +14,7 @@ function formatDuration(seconds: number): string {
 export function MiniCallBar() {
   const call = useActiveCall();
   const { expandCall, userLanguage, userName } = useCallContext();
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
 
   const partnerName = call.partner?.name || ui.waiting;
   const status =

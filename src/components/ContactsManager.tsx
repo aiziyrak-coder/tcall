@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import { Phone, Star, Plus, Trash2, Pencil, MessageSquare } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getLanguage, getUI } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { TcallLogo } from "@/components/TcallLogo";
 
@@ -21,7 +22,7 @@ interface ContactsManagerProps {
 }
 
 export function ContactsManager({ userLanguage }: ContactsManagerProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);

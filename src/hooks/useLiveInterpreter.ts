@@ -8,16 +8,7 @@ import { acquireMicrophoneStream } from "@/lib/mic-permission";
 import { getPreferredAudioMimeType, isIOS, requestWakeLock } from "@/lib/mobile";
 
 export type InterpreterSpeaker = "me" | "them";
-
-export interface InterpreterEntry {
-  id: string;
-  speaker: InterpreterSpeaker;
-  original: string;
-  translated: string;
-  sourceLang: string;
-  targetLang: string;
-  timestamp: number;
-}
+export type InterpreterActivity = "idle" | "listening" | "processing" | "speaking";
 
 const PARTNER_LANG_KEY = "tcall:interpreter-partner-lang";
 
@@ -37,10 +28,9 @@ export function useLiveInterpreter(userLanguage: string) {
   const [theirLang, setTheirLang] = useState(() => loadPartnerLang(userLanguage));
   const [sessionActive, setSessionActive] = useState(false);
   const [recording, setRecording] = useState<InterpreterSpeaker | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [entries, setEntries] = useState<InterpreterEntry[]>([]);
+  const [activity, setActivity] = useState<InterpreterActivity>("idle");
+  const [activeTargetLang, setActiveTargetLang] = useState<string | null>(null);
+  const [entries, setEntries] = useState<{ original: string; translated: string }[]>([]);
   const [error, setError] = useState("");
   const [micDenied, setMicDenied] = useState(false);
 
@@ -54,7 +44,6 @@ export function useLiveInterpreter(userLanguage: string) {
   const processingRef = useRef(false);
   const myLangRef = useRef(myLang);
   const theirLangRef = useRef(theirLang);
-  const voiceEnabledRef = useRef(voiceEnabled);
   const entriesRef = useRef(entries);
 
   useEffect(() => {
@@ -69,11 +58,6 @@ export function useLiveInterpreter(userLanguage: string) {
       /* ignore */
     }
   }, [theirLang]);
-
-  useEffect(() => {
-    voiceEnabledRef.current = voiceEnabled;
-    audioQueueRef.current?.setEnabled(voiceEnabled);
-  }, [voiceEnabled]);
 
   useEffect(() => {
     entriesRef.current = entries;
@@ -105,7 +89,8 @@ export function useLiveInterpreter(userLanguage: string) {
     void wakeLockRef.current?.release();
     wakeLockRef.current = null;
     setSessionActive(false);
-    setProcessing(false);
+    setActivity("idle");
+    setActiveTargetLang(null);
     processingRef.current = false;
   }, [releaseMic]);
 
@@ -119,8 +104,11 @@ export function useLiveInterpreter(userLanguage: string) {
   const ensureAudioQueue = useCallback(() => {
     if (!audioQueueRef.current) {
       const queue = new TranslationAudioQueue();
-      queue.setSpeakingCallback(setSpeaking);
-      queue.setEnabled(voiceEnabledRef.current);
+      queue.setEnabled(true);
+      queue.setSpeakingCallback((speaking) => {
+        setActivity(speaking ? "speaking" : "idle");
+        if (!speaking) setActiveTargetLang(null);
+      });
       audioQueueRef.current = queue;
     }
     return audioQueueRef.current;
@@ -135,7 +123,8 @@ export function useLiveInterpreter(userLanguage: string) {
       const targetLang = speaker === "me" ? theirLangRef.current : myLangRef.current;
 
       processingRef.current = true;
-      setProcessing(true);
+      setActivity("processing");
+      setActiveTargetLang(targetLang);
       setError("");
 
       try {
@@ -149,7 +138,7 @@ export function useLiveInterpreter(userLanguage: string) {
         formData.append("audio", blob, isMp4 ? "speech.mp4" : "speech.webm");
         formData.append("sourceLang", sourceLang);
         formData.append("targetLang", targetLang);
-        formData.append("withSpeech", voiceEnabledRef.current ? "true" : "false");
+        formData.append("withSpeech", "true");
         if (recentContext.length) formData.append("context", JSON.stringify(recentContext));
 
         const res = await apiFetch("/api/interpreter/process", { method: "POST", body: formData });
@@ -157,47 +146,54 @@ export function useLiveInterpreter(userLanguage: string) {
 
         if (res.status === 422 || data.error === "no_speech") {
           setError("no_speech");
+          setActivity("idle");
+          setActiveTargetLang(null);
           return;
         }
 
         if (!res.ok) {
-          setError(data.error || "error");
+          setError("error");
+          setActivity("idle");
+          setActiveTargetLang(null);
           return;
         }
 
         const original = String(data.original || "").trim();
         const translated = String(data.translated || "").trim();
-        if (!original) return;
-        if (isDuplicateTranscript(lastTranscriptRef.current, original)) return;
+        if (!original) {
+          setActivity("idle");
+          setActiveTargetLang(null);
+          return;
+        }
+        if (isDuplicateTranscript(lastTranscriptRef.current, original)) {
+          setActivity("idle");
+          setActiveTargetLang(null);
+          return;
+        }
 
         lastTranscriptRef.current = original;
         setTimeout(() => {
           if (lastTranscriptRef.current === original) lastTranscriptRef.current = "";
         }, 4000);
 
-        const entry: InterpreterEntry = {
-          id: `${Date.now()}-${speaker}`,
-          speaker,
-          original,
-          translated: translated || original,
-          sourceLang: data.sourceLang || sourceLang,
-          targetLang: data.targetLang || targetLang,
-          timestamp: Date.now(),
-        };
+        setEntries((prev) => [...prev.slice(-19), { original, translated: translated || original }]);
 
-        setEntries((prev) => [...prev.slice(-49), entry]);
-
-        if (data.audioBase64 && voiceEnabledRef.current) {
+        if (data.audioBase64) {
           const queue = ensureAudioQueue();
           await queue.unlock();
+          setActiveTargetLang(targetLang);
           queue.enqueue(data.audioBase64);
+        } else {
+          setActivity("idle");
+          setActiveTargetLang(null);
         }
       } catch (e) {
         console.error("Interpreter process failed:", e);
         setError("error");
+        setActivity("idle");
+        setActiveTargetLang(null);
       } finally {
         processingRef.current = false;
-        setProcessing(false);
       }
     },
     [ensureAudioQueue]
@@ -238,6 +234,7 @@ export function useLiveInterpreter(userLanguage: string) {
       if (!audioTrack?.enabled) return;
 
       audioQueueRef.current?.stop();
+      setActivity("listening");
 
       const mimeType = getPreferredAudioMimeType();
       chunksRef.current = [];
@@ -259,7 +256,10 @@ export function useLiveInterpreter(userLanguage: string) {
           setRecording(null);
           recorderRef.current = null;
 
-          if (!sp || chunksRef.current.length === 0) return;
+          if (!sp || chunksRef.current.length === 0) {
+            setActivity("idle");
+            return;
+          }
           const blob = new Blob(chunksRef.current, { type: mimeType });
           chunksRef.current = [];
           void processRecording(blob, sp);
@@ -269,6 +269,7 @@ export function useLiveInterpreter(userLanguage: string) {
           recordingSpeakerRef.current = null;
           setRecording(null);
           recorderRef.current = null;
+          setActivity("idle");
         };
 
         recorder.start();
@@ -288,6 +289,7 @@ export function useLiveInterpreter(userLanguage: string) {
       } catch {
         recordingSpeakerRef.current = null;
         setRecording(null);
+        setActivity("idle");
         setError("error");
       }
     },
@@ -302,6 +304,7 @@ export function useLiveInterpreter(userLanguage: string) {
       } catch {
         recordingSpeakerRef.current = null;
         setRecording(null);
+        setActivity("idle");
       }
     }
   }, []);
@@ -311,11 +314,6 @@ export function useLiveInterpreter(userLanguage: string) {
     setTheirLang(myLangRef.current);
   }, []);
 
-  const clearHistory = useCallback(() => {
-    setEntries([]);
-    lastTranscriptRef.current = "";
-  }, []);
-
   return {
     myLang,
     theirLang,
@@ -323,11 +321,8 @@ export function useLiveInterpreter(userLanguage: string) {
     setTheirLang,
     sessionActive,
     recording,
-    processing,
-    speaking,
-    voiceEnabled,
-    setVoiceEnabled,
-    entries,
+    activity,
+    activeTargetLang,
     error,
     setError,
     micDenied,
@@ -336,6 +331,5 @@ export function useLiveInterpreter(userLanguage: string) {
     beginRecording,
     endRecording,
     swapLanguages,
-    clearHistory,
   };
 }

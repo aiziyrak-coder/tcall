@@ -11,7 +11,8 @@ import {
   Radio,
   ChevronDown,
 } from "lucide-react";
-import { getLanguage, getUI } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { apiFetch } from "@/lib/api";
 import { playCallEndTone } from "@/lib/ringtone";
 import { MicPermissionGate } from "@/components/MicPermissionGate";
@@ -76,7 +77,7 @@ export function AudioCallRoom() {
 
   if (!user || !activeCall || !call) return null;
 
-  const ui = getUI(user.language);
+  const ui = useUI(user.language);
   const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
 
   if (call.micStatus !== "granted" && call.callStatus !== "ended") {

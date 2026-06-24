@@ -5,7 +5,7 @@ import { Sparkles, Crown, Search, Phone, ChevronLeft, ChevronRight } from "lucid
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { formatVanityPrice, formatTierLabel, CATALOG_TIER_FILTERS } from "@/lib/vanity-pricing";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { TcallLogo } from "@/components/TcallLogo";
 import { VanityContactModal } from "@/components/VanityContactModal";
 
@@ -50,7 +50,7 @@ const TIER_COLORS: Record<string, string> = {
 const TIERS = CATALOG_TIER_FILTERS;
 
 export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const [mode, setMode] = useState<"catalog" | "custom">("catalog");
   const [numbers, setNumbers] = useState<VanityNumber[]>([]);
   const [owned, setOwned] = useState<{ number: string; tier: string } | null>(null);

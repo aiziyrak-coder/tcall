@@ -1,7 +1,8 @@
 "use client";
 
 import { PhoneOff } from "lucide-react";
-import { getLanguage, getUI } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import type { OutgoingCall } from "@/components/providers/CallProvider";
 
@@ -12,7 +13,7 @@ interface OutgoingCallModalProps {
 }
 
 export function OutgoingCallModal({ call, userLanguage, onCancel }: OutgoingCallModalProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const lang = getLanguage(call.callee.language);
 
   return (

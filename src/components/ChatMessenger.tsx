@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI, getLanguage } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { resolveChatMediaUrl } from "@/lib/chat-media-url";
 import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
@@ -77,7 +78,7 @@ export function ChatMessenger({
   openName,
   onOpenHandled,
 }: ChatMessengerProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);

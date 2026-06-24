@@ -11,7 +11,8 @@ import {
   Languages,
   type LucideIcon,
 } from "lucide-react";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
+import type { UIText } from "@/lib/ui-locale-service";
 import { TcallLogo } from "@/components/TcallLogo";
 
 export type PhoneTab = "keypad" | "recents" | "friends" | "room" | "numbers" | "messages" | "interpreter";
@@ -27,7 +28,7 @@ interface PhoneShellProps {
   contentClassName?: string;
 }
 
-const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof ReturnType<typeof getUI> }[] = [
+const TABS: { id: PhoneTab; icon: typeof Phone; labelKey: keyof UIText }[] = [
   { id: "recents", icon: Clock, labelKey: "recents" },
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
@@ -57,7 +58,7 @@ export function PhoneShell({
   hideHeader,
   contentClassName,
 }: PhoneShellProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
 
   return (
     <div className="app-shell">

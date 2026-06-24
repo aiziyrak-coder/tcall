@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCallContext } from "@/components/providers/CallProvider";
-import { getLanguage, getUI } from "@/lib/languages";
+import { getLanguage } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
@@ -119,7 +120,7 @@ function DashboardInner({
   setMessageCount: (n: number) => void;
 }) {
   const { enableNotifications, notificationsEnabled, quickMessageTarget, clearQuickMessageTarget, socketConnected } = useCallContext();
-  const ui = getUI(user.language);
+  const ui = useUI(user.language);
   const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
   const [chatOpenTcallId, setChatOpenTcallId] = useState<string | null>(null);
   const [chatInThread, setChatInThread] = useState(false);

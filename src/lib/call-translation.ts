@@ -1,6 +1,11 @@
-/** Whisper API qo'llab-quvvatlaydigan til kodlari (ISO-639-1) */
+/** Whisper API qo'llab-quvvatlaydigan til kodlari (ISO-639-1) — qolganlari auto-detect */
 const WHISPER_LANGS = new Set([
   "uz", "ru", "en", "tr", "ar", "zh", "ko", "ja", "de", "fr", "es", "hi", "kk",
+  "ky", "tg", "pt", "it", "pl", "uk", "fa", "ur", "bn", "vi", "th", "id", "ms",
+  "nl", "sv", "no", "da", "fi", "cs", "sk", "hu", "ro", "bg", "hr", "sr", "sl",
+  "he", "ta", "te", "mr", "gu", "ml", "pa", "ne", "si", "mn", "az", "ka", "hy",
+  "sw", "af", "tl", "be", "ca", "eu", "gl", "is", "ga", "cy", "mt", "lb", "sq",
+  "mk", "bs", "ps", "am", "yo", "ha", "my", "km", "lo",
 ]);
 
 /** Whisper uchun til kodi — qo'llab-quvvatlanmasa auto-detect */
@@ -54,11 +59,26 @@ function normalizeForDedup(text: string): string {
 
 export function getWhisperPrompt(language: string): string {
   const prompts: Record<string, string> = {
-    uz: "Telefon qo'ng'irog'i, o'zbek tilida suhbat.",
-    ru: "Телефонный звонок, разговор на русском языке.",
-    en: "Phone call conversation in English.",
-    tr: "Telefon görüşmesi, Türkçe konuşma.",
-    ar: "مكالمة هاتفية، محادثة باللغة العربية.",
+    uz: "Yuzma-yuz suhbat, o'zbek tilida gapirish.",
+    ru: "Разговор лицом к лицу на русском языке.",
+    en: "Face-to-face conversation in English.",
+    tr: "Yüz yüze Türkçe konuşma.",
+    ar: "محادثة وجهاً لوجه باللغة العربية.",
+    zh: "面对面中文对话。",
+    ko: "대면 한국어 대화.",
+    ja: "対面での日本語会話。",
+    de: "Persönliches Gespräch auf Deutsch.",
+    fr: "Conversation en face à face en français.",
+    es: "Conversación cara a cara en español.",
+    hi: "हिंदी में सामने की बातचीत।",
+    pt: "Conversa presencial em português.",
+    it: "Conversazione faccia a faccia in italiano.",
+    fa: "مکالمه رو در رو به فارسی.",
+    vi: "Cuộc trò chuyện trực tiếp bằng tiếng Việt.",
+    id: "Percakapan langsung dalam bahasa Indonesia.",
+    kk: "Бет-бетке қазақ тілінде сөйлесу.",
+    ky: "Бет алды сүйлөшүү кыргызча.",
+    tg: "Суҳбати рӯ ба рӯ ба забони тоҷикӣ.",
   };
-  return prompts[language] || "Live phone call conversation.";
+  return prompts[language] || "Live face-to-face conversation between two people.";
 }

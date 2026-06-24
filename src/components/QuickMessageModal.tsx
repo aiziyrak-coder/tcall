@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, Send } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
-import { getUI } from "@/lib/languages";
+import { useUI } from "@/components/providers/LocaleProvider";
 
 const QUICK_TEMPLATES = [
   "Keyinroq qo'ng'iroq qiling",
@@ -28,7 +28,7 @@ export function QuickMessageModal({
   onClose,
   onSent,
 }: QuickMessageModalProps) {
-  const ui = getUI(userLanguage);
+  const ui = useUI(userLanguage);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
