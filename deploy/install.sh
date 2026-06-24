@@ -31,6 +31,7 @@ source .env 2>/dev/null || true
 npm ci
 npx prisma generate
 npx prisma db push
+mkdir -p public/uploads/avatars public/uploads/chat
 
 npm run build
 

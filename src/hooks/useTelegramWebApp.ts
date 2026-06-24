@@ -46,6 +46,16 @@ function readInset(v?: SafeInset): SafeInset {
   };
 }
 
+function supportsBackButton(tg: TelegramWebApp): boolean {
+  if (!tg.BackButton) return false;
+  try {
+    if (typeof tg.isVersionAtLeast === "function") return tg.isVersionAtLeast("6.1");
+  } catch {
+    return false;
+  }
+  return false;
+}
+
 function applyTelegramInsets(tg: TelegramWebApp) {
   const safe = readInset(tg.safeAreaInset);
   const content = readInset(tg.contentSafeAreaInset);
@@ -103,18 +113,30 @@ export function useTelegramWebApp() {
 
 export function bindTelegramBackButton(onBack: () => void, enabled: boolean) {
   const tg = window.Telegram?.WebApp;
-  if (!tg?.BackButton) return () => {};
+  if (!tg || !supportsBackButton(tg) || !tg.BackButton) return () => {};
 
   const handler = () => onBack();
   if (enabled) {
-    tg.BackButton.show();
-    tg.BackButton.onClick(handler);
+    try {
+      tg.BackButton.show();
+      tg.BackButton.onClick(handler);
+    } catch {
+      return () => {};
+    }
   } else {
-    tg.BackButton.hide();
+    try {
+      tg.BackButton.hide();
+    } catch {
+      /* ignore */
+    }
   }
 
   return () => {
-    tg.BackButton?.offClick(handler);
-    tg.BackButton?.hide();
+    try {
+      tg.BackButton?.offClick(handler);
+      tg.BackButton?.hide();
+    } catch {
+      /* ignore */
+    }
   };
 }

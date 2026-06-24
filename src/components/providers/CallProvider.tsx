@@ -154,109 +154,123 @@ export function CallProvider({ user, children }: CallProviderProps) {
   }, []);
 
   useEffect(() => {
-    const socket = io(getSocketUrl(), {
-      path: "/socket.io",
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 800,
-      reconnectionDelayMax: 5000,
-      timeout: 30000,
-      withCredentials: true,
-    });
-    socketRef.current = socket;
-    setSharedCallSocket(socket);
+    let cancelled = false;
+    let socket: Socket | null = null;
 
-    socket.on("connect", () => {
-      setSocketConnected(true);
-      notifySocketConnect(true);
-      socket.emit("register-user", {});
-    });
+    const timer = setTimeout(() => {
+      if (cancelled) return;
 
-    socket.io.on("reconnect", () => {
-      setSocketConnected(true);
-      notifySocketConnect(true);
-      socket.emit("register-user", {});
-    });
+      socket = io(getSocketUrl(), {
+        path: "/socket.io",
+        transports: ["polling", "websocket"],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 8000,
+        timeout: 30000,
+        withCredentials: true,
+        autoConnect: true,
+      });
+      socketRef.current = socket;
+      setSharedCallSocket(socket);
 
-    socket.on("disconnect", () => {
-      setSocketConnected(false);
-      notifySocketConnect(false);
-    });
+      socket.on("connect", () => {
+        setSocketConnected(true);
+        notifySocketConnect(true);
+        socket?.emit("register-user", {});
+      });
 
-    socket.on("incoming-call", (data: IncomingCall) => {
-      setIncomingCall(data);
-      showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
-      void unlockAudio().then(() => startRingtone());
-    });
+      socket.io.on("reconnect", () => {
+        setSocketConnected(true);
+        notifySocketConnect(true);
+        socket?.emit("register-user", {});
+      });
 
-    socket.on("call-accepted", ({ roomId }: { roomId: string }) => {
-      clearRingTimeout();
-      stopRingback();
-      setOutgoingCall(null);
-      const rid = roomId.toUpperCase();
-      const current =
-        typeof window !== "undefined" ? window.location.pathname.toUpperCase() : "";
-      if (!current.endsWith(`/CALL/${rid}`)) {
-        router.push(`/call/${rid}`);
-      }
-    });
+      socket.on("disconnect", () => {
+        setSocketConnected(false);
+        notifySocketConnect(false);
+      });
 
-    socket.on("call-rejected", () => {
-      clearRingTimeout();
-      stopRingback();
-      playCallEndTone();
-      setOutgoingCall(null);
-    });
+      socket.on("connect_error", () => {
+        setSocketConnected(false);
+      });
 
-    socket.on("call-timeout", () => {
-      clearRingTimeout();
-      stopRingback();
-      playCallEndTone();
-      setOutgoingCall(null);
-      setIncomingCall(null);
-    });
+      socket.on("incoming-call", (data: IncomingCall) => {
+        setIncomingCall(data);
+        showIncomingCallNotification(data.caller.name, formatTcallId(data.caller.tcallId));
+        void unlockAudio().then(() => startRingtone());
+      });
 
-    socket.on("call-cancelled", ({ roomId }: { roomId: string }) => {
-      stopRingtone();
-      setIncomingCall((prev) => (prev?.roomId === roomId ? null : prev));
-    });
+      socket.on("call-accepted", ({ roomId }: { roomId: string }) => {
+        clearRingTimeout();
+        stopRingback();
+        setOutgoingCall(null);
+        const rid = roomId.toUpperCase();
+        const current =
+          typeof window !== "undefined" ? window.location.pathname.toUpperCase() : "";
+        if (!current.endsWith(`/CALL/${rid}`)) {
+          router.push(`/call/${rid}`);
+        }
+      });
 
-    socket.on("call-error", ({ message }: { message: string }) => {
-      setDialError(message);
-      stopRingtone();
-    });
+      socket.on("call-rejected", () => {
+        clearRingTimeout();
+        stopRingback();
+        playCallEndTone();
+        setOutgoingCall(null);
+      });
 
-    socket.on("quick-message", () => {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("tcall:quick-message"));
-      }
-    });
+      socket.on("call-timeout", () => {
+        clearRingTimeout();
+        stopRingback();
+        playCallEndTone();
+        setOutgoingCall(null);
+        setIncomingCall(null);
+      });
 
-    socket.on("chat-message", (data: unknown) => {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("tcall:chat-message", { detail: data }));
-        window.dispatchEvent(new CustomEvent("tcall:quick-message"));
-      }
-    });
+      socket.on("call-cancelled", ({ roomId }: { roomId: string }) => {
+        stopRingtone();
+        setIncomingCall((prev) => (prev?.roomId === roomId ? null : prev));
+      });
 
-    socket.on("connect_error", () => {
-      setSocketConnected(false);
-    });
+      socket.on("call-error", ({ message }: { message: string }) => {
+        setDialError(message);
+        stopRingtone();
+      });
+
+      socket.on("quick-message", () => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:quick-message"));
+        }
+      });
+
+      socket.on("chat-message", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-message", { detail: data }));
+          window.dispatchEvent(new CustomEvent("tcall:quick-message"));
+        }
+      });
+    }, 150);
 
     const onVisible = () => {
-      if (document.visibilityState === "visible" && !socket.connected) {
-        socket.connect();
+      const s = socketRef.current;
+      if (document.visibilityState === "visible" && s && !s.connected) {
+        s.connect();
       }
     };
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
+      cancelled = true;
+      clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
       clearRingTimeout();
       stopRingtone();
       stopRingback();
-      socket.disconnect();
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+      }
       socketRef.current = null;
       setSharedCallSocket(null);
       notifySocketConnect(false);

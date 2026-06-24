@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Save, Camera, Trash2 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, parseApiJson } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
@@ -104,9 +104,9 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
       const fd = new FormData();
       fd.append("file", file);
       const res = await apiFetch("/api/user/avatar", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAvatarUrl(data.url);
+      const data = await parseApiJson<{ error?: string; url?: string }>(res);
+      if (!res.ok) throw new Error(data.error || "Yuklash xatosi");
+      if (data.url) setAvatarUrl(data.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : ui.chatActionFailed);
     } finally {

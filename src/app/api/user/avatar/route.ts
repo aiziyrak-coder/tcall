@@ -6,41 +6,53 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { userAvatarUrl } from "@/lib/avatar-url";
+import { extForImageMime, normalizeImageMime } from "@/lib/image-mime";
 
 const MAX_SIZE = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const UPLOAD_ROOT = join(process.cwd(), "public", "uploads", "avatars");
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+async function readUploadEntry(entry: FormDataEntryValue | null): Promise<{ buffer: Buffer; mime: string; name: string } | null> {
+  if (!entry || typeof entry === "string") return null;
+
+  const blob = entry as Blob;
+  if (!blob.size) return null;
+
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const name = entry instanceof File && entry.name ? entry.name : "photo.jpg";
+  const mime = normalizeImageMime(entry instanceof File ? entry.type : blob.type, buffer);
+  if (!mime) return null;
+
+  return { buffer, mime, name };
+}
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
-
-  const limited = rateLimit(`avatar:${session.userId}`, 10, 60_000);
-  if (!limited.ok) {
-    return NextResponse.json({ error: "Juda ko'p yuklash" }, { status: 429 });
-  }
-
   try {
-    const formData = await req.formData();
-    const file = formData.get("file");
-    if (!(file instanceof File) || !file.size) {
-      return NextResponse.json({ error: "Rasm kerak" }, { status: 400 });
+    const session = await getSession(req);
+    if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+
+    const limited = rateLimit(`avatar:${session.userId}`, 10, 60_000);
+    if (!limited.ok) {
+      return NextResponse.json({ error: "Juda ko'p yuklash" }, { status: 429 });
     }
-    if (file.size > MAX_SIZE) {
+
+    const formData = await req.formData();
+    const upload = await readUploadEntry(formData.get("file"));
+    if (!upload) {
+      return NextResponse.json({ error: "Rasm kerak (JPG, PNG, WebP, GIF)" }, { status: 400 });
+    }
+
+    if (upload.buffer.length > MAX_SIZE) {
       return NextResponse.json({ error: "Rasm juda katta (max 5 MB)" }, { status: 400 });
     }
 
-    const mime = file.type || "image/jpeg";
-    if (!ALLOWED.has(mime)) {
-      return NextResponse.json({ error: "Faqat JPG, PNG, WebP, GIF" }, { status: 400 });
-    }
-
-    const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("gif") ? "gif" : "jpg";
+    const ext = extForImageMime(upload.mime);
     const filename = `${randomUUID()}.${ext}`;
-    const dir = join(process.cwd(), "public", "uploads", "avatars", session.userId);
+    const dir = join(UPLOAD_ROOT, session.userId);
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
+    await writeFile(join(dir, filename), upload.buffer);
 
     await prisma.user.update({
       where: { id: session.userId },
@@ -56,12 +68,17 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  try {
+    const session = await getSession(req);
+    if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: { avatar: null },
-  });
-  return NextResponse.json({ ok: true });
+    await prisma.user.update({
+      where: { id: session.userId },
+      data: { avatar: null },
+    });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("Avatar delete error:", e);
+    return NextResponse.json({ error: "Xatolik" }, { status: 500 });
+  }
 }

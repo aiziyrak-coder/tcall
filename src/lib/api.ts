@@ -24,6 +24,18 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(apiUrl(path), { ...init, credentials: "include" });
 }
 
+/** API javobini xavfsiz JSON ga aylantirish — HTML xato sahifalarini ushlaydi */
+export async function parseApiJson<T = Record<string, unknown>>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const preview = text.replace(/\s+/g, " ").slice(0, 120);
+    throw new Error(preview || `Server xatosi (${res.status})`);
+  }
+}
+
 export function getSocketUrl(): string | undefined {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
