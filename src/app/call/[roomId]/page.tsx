@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { getUI } from "@/lib/languages";
 import { AudioCallRoom } from "@/components/AudioCallRoom";
 
 export default function CallPage({ params }: { params: { roomId: string } }) {
@@ -14,6 +16,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
   const [joinError, setJoinError] = useState("");
 
   const roomId = params.roomId.toUpperCase();
+  const ui = getUI(user?.language || "uz");
 
   useEffect(() => {
     if (!loading && !user) router.push("/login");
@@ -39,6 +42,12 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
       });
   }, [user, roomId]);
 
+  useEffect(() => {
+    if (joinState !== "error") return;
+    const timer = setTimeout(() => router.replace("/dashboard"), 3000);
+    return () => clearTimeout(timer);
+  }, [joinState, router]);
+
   if (loading || !user || joinState === "loading") {
     return (
       <div className="phone-screen flex items-center justify-center">
@@ -55,9 +64,10 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
         <div className="glass rounded-2xl p-8 max-w-md text-center">
           <h2 className="text-xl font-bold mb-2">Xatolik</h2>
           <p className="text-slate-500 mb-6">{joinError}</p>
-          <button onClick={() => router.push("/dashboard")} className="btn-primary">
-            Boshqaruv paneliga qaytish
-          </button>
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{ui.returningToDashboard}</span>
+          </div>
         </div>
       </div>
     );

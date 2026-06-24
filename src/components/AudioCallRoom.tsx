@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mic,
@@ -10,11 +10,12 @@ import {
   Volume2,
   AlertTriangle,
   Radio,
+  Loader2,
 } from "lucide-react";
 import { useCall, type TranslationMode } from "@/hooks/useCall";
 import { getLanguage, getUI } from "@/lib/languages";
 import { apiFetch } from "@/lib/api";
-import { formatTcallId } from "@/lib/tcallId";
+import { playCallEndTone } from "@/lib/ringtone";
 import type { User } from "@/hooks/useAuth";
 
 interface AudioCallRoomProps {
@@ -33,9 +34,12 @@ function getInitials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
+const LEAVE_DELAY_MS = 500;
+const ERROR_LEAVE_DELAY_MS = 2200;
+
 export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
   const router = useRouter();
-  const [showEndedModal, setShowEndedModal] = useState(false);
+  const leaveHandledRef = useRef(false);
 
   const call = useCall({
     roomId,
@@ -51,6 +55,19 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
   const userLang = getLanguage(user.language);
   const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
 
+  const leaveToDashboard = useCallback(() => {
+    if (leaveHandledRef.current) return;
+    leaveHandledRef.current = true;
+    playCallEndTone();
+    void apiFetch("/api/calls/end", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomId }),
+    }).finally(() => {
+      router.replace("/dashboard");
+    });
+  }, [roomId, router]);
+
   const handleTap = useCallback(() => {
     void call.unlockAudio();
     call.playRemoteAudio();
@@ -58,14 +75,20 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
 
   useEffect(() => {
     if (call.callStatus === "ended") {
-      apiFetch("/api/calls/end", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
-      }).catch(() => {});
-      setShowEndedModal(true);
+      const timer = setTimeout(leaveToDashboard, LEAVE_DELAY_MS);
+      return () => clearTimeout(timer);
     }
-  }, [call.callStatus, roomId]);
+  }, [call.callStatus, leaveToDashboard]);
+
+  useEffect(() => {
+    if (call.callStatus === "error") {
+      const timer = setTimeout(() => {
+        call.endCall();
+        leaveToDashboard();
+      }, ERROR_LEAVE_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [call.callStatus, call, leaveToDashboard]);
 
   const latestTranslation = call.translations.filter((t) => t.speaker !== user.name).slice(-1)[0];
   const latestOwn = call.translations.filter((t) => t.speaker === user.name).slice(-1)[0];
@@ -90,15 +113,25 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
           <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">{err.t}</h2>
           <p className="text-slate-500 mb-6 text-sm">{err.d}</p>
-          <button
-            onClick={() => {
-              call.endCall();
-              router.push("/dashboard");
-            }}
-            className="btn-primary w-full"
-          >
-            {ui.backToDashboard}
-          </button>
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{ui.returningToDashboard}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (call.callStatus === "ended") {
+    return (
+      <div className="phone-screen flex items-center justify-center p-5">
+        <div className="text-center">
+          <PhoneOff className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-600 font-medium">{ui.callEnded}</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-slate-400 mt-3">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{ui.returningToDashboard}</span>
+          </div>
         </div>
       </div>
     );
@@ -181,24 +214,13 @@ export function AudioCallRoom({ roomId, user, isHost }: AudioCallRoomProps) {
         >
           {call.isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
         </button>
-        <button onClick={() => { call.endCall(); setShowEndedModal(true); }} className="phone-control-btn phone-end-btn">
+        <button onClick={() => call.endCall()} className="phone-control-btn phone-end-btn">
           <PhoneOff className="w-7 h-7" />
         </button>
         <div className="phone-control-btn glass opacity-50 pointer-events-none">
           <span className="text-xs font-mono">{userLang.flag}</span>
         </div>
       </footer>
-
-      {showEndedModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4 safe-bottom">
-          <div className="glass rounded-t-3xl sm:rounded-2xl p-8 w-full max-w-sm text-center">
-            <PhoneOff className="w-11 h-11 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-lg font-bold mb-2 text-slate-900">{ui.callEnded}</h2>
-            <p className="text-slate-500 text-sm mb-6">{ui.callEndedDesc}</p>
-            <button onClick={() => router.push("/dashboard")} className="btn-primary w-full">{ui.backToDashboard}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
