@@ -44,18 +44,18 @@ pm2 delete tcall 2>/dev/null || true
 pm2 start deploy/ecosystem.config.js
 pm2 save
 
-# Nginx — faqat yangi fayllar, mavjudlarga tegmaymiz
-cp deploy/nginx/tcall.vizara.uz.conf /etc/nginx/sites-available/tcall.vizara.uz
-cp deploy/nginx/tcallapi.vizara.uz.conf /etc/nginx/sites-available/tcallapi.vizara.uz
-ln -sf /etc/nginx/sites-available/tcall.vizara.uz /etc/nginx/sites-enabled/tcall.vizara.uz
-ln -sf /etc/nginx/sites-available/tcallapi.vizara.uz /etc/nginx/sites-enabled/tcallapi.vizara.uz
+# Nginx
+cp deploy/nginx/tcall.uz.conf /etc/nginx/sites-available/tcall.uz
+cp deploy/nginx/api.tcall.uz.conf /etc/nginx/sites-available/api.tcall.uz
+ln -sf /etc/nginx/sites-available/tcall.uz /etc/nginx/sites-enabled/tcall.uz
+ln -sf /etc/nginx/sites-available/api.tcall.uz /etc/nginx/sites-enabled/api.tcall.uz
+rm -f /etc/nginx/sites-enabled/tcall.vizara.uz /etc/nginx/sites-enabled/tcallapi.vizara.uz 2>/dev/null || true
 
 nginx -t
 systemctl reload nginx
 
-# SSL (agar certbot bo'lsa)
 if command -v certbot &>/dev/null; then
-  certbot --nginx -d tcall.vizara.uz -d tcallapi.vizara.uz --non-interactive --agree-tos -m admin@vizara.uz --redirect 2>/dev/null || true
+  certbot --nginx -d tcall.uz -d www.tcall.uz -d api.tcall.uz --non-interactive --agree-tos -m admin@tcall.uz --redirect 2>/dev/null || true
 fi
 
 echo "=== Tcall deploy tugadi ==="

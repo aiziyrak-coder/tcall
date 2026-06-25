@@ -2,14 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getAdminEmails } from "@/lib/admin";
+import { DEFAULT_APP_URL, getAllowedOrigins, getPublicAppUrl } from "@/lib/domains";
 
 const protectedPaths = ["/dashboard", "/call", "/admin"];
-const ALLOWED_ORIGINS = [
-  "https://tcall.vizara.uz",
-  "https://tcallapi.vizara.uz",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-];
+const ALLOWED_ORIGINS = getAllowedOrigins();
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -19,18 +15,11 @@ function getJwtSecret() {
 
 function corsHeaders(origin: string | null) {
   const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : null;
-  if (!allowed) {
-    return {
-      "Access-Control-Allow-Origin": "https://tcall.vizara.uz",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Allow-Credentials": "true",
-    };
-  }
+  const fallback = getPublicAppUrl() || DEFAULT_APP_URL;
   return {
-    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Origin": allowed || fallback,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Tcall-Native",
     "Access-Control-Allow-Credentials": "true",
   };
 }

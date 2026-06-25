@@ -6,8 +6,7 @@
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">tcall.vizara.uz</domain>
-        <domain includeSubdomains="true">tcallapi.vizara.uz</domain>
-        <domain includeSubdomains="true">vizara.uz</domain>
+        <domain includeSubdomains="true">tcall.uz</domain>
+        <domain includeSubdomains="true">api.tcall.uz</domain>
     </domain-config>
 </network-security-config>

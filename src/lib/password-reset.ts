@@ -1,4 +1,5 @@
 import { createHash, randomInt } from "crypto";
+import { getPublicAppUrl } from "@/lib/domains";
 
 const CODE_TTL_MS = 15 * 60 * 1000;
 
@@ -20,7 +21,7 @@ export function resetCodeExpiresAt(): Date {
 }
 
 export function buildResetUrl(code: string, email: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "https://tcall.vizara.uz";
+  const base = getPublicAppUrl();
   const params = new URLSearchParams({ email, code });
   return `${base}/reset-password?${params.toString()}`;
 }

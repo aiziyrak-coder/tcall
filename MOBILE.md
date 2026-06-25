@@ -2,7 +2,7 @@
 
 Tcall endi **Capacitor** native ilova sifatida ishlaydi. Ilova **local emas** — to'g'ridan-to'g'ri production serverga ulanadi:
 
-**https://tcall.vizara.uz**
+**https://tcall.uz** (API: **https://api.tcall.uz**)
 
 Audio qo'ng'iroq, tarjima, chat va barcha funksiyalar server orqali ishlaydi.
 
@@ -154,7 +154,7 @@ Keyin Android Studio da qayta **Run**.
 
 ### Internet / login ishlamaydi
 - Telefon internetga ulanganini tekshiring
-- Brauzerda https://tcall.vizara.uz ochilishini tekshiring
+- Brauzerda https://tcall.uz ochilishini tekshiring
 
 ---
 
@@ -163,7 +163,8 @@ Keyin Android Studio da qayta **Run**.
 | Parametr | Qiymat |
 |----------|--------|
 | App ID | `uz.vizara.tcall` |
-| Server | `https://tcall.vizara.uz` |
+| Server | `https://tcall.uz` |
+| API | `https://api.tcall.uz` |
 | Min Android | API 24 (Android 7.0) |
 | Framework | Capacitor 8 |
 

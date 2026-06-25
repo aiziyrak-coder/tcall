@@ -1,4 +1,3 @@
-/** Parol tiklash email — Resend API orqali */
 export async function sendPasswordResetEmail(
   to: string,
   code: string,
@@ -7,7 +6,7 @@ export async function sendPasswordResetEmail(
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
 
-  const from = process.env.MAIL_FROM || "Tcall <noreply@tcall.vizara.uz>";
+  const from = process.env.MAIL_FROM || "Tcall <noreply@tcall.uz>";
   const html = `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
       <h2 style="color:#4f46e5">Tcall — Parolni tiklash</h2>

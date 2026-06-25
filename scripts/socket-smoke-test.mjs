@@ -4,7 +4,7 @@
  */
 import { io } from "socket.io-client";
 
-const BASE = process.argv[2] || "https://tcall.vizara.uz";
+const BASE = process.argv[2] || "https://api.tcall.uz";
 
 function parseCookies(setCookieHeaders) {
   const jar = {};

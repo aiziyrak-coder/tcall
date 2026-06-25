@@ -1,18 +1,25 @@
+import {
+  getPublicApiUrl,
+  getPublicAppUrl,
+  isAppHost,
+  isLocalHost,
+} from "@/lib/domains";
+
 /** Frontend URL (public site) */
 export function getAppUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL || "";
+  return getPublicAppUrl();
 }
 
-/** Production da frontend domeni orqali same-origin proxy (WebSocket/CORS muammosiz) */
+/** Frontend tcall.uz → API api.tcall.uz; localhost → same-origin */
 export function getApiUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
-    if (host === "tcall.vizara.uz" || host === "localhost" || host === "127.0.0.1") {
-      return "";
-    }
-    return process.env.NEXT_PUBLIC_API_URL || "";
+    if (isLocalHost(host)) return "";
+    if (host === "api.tcall.uz") return "";
+    if (isAppHost(host)) return getPublicApiUrl();
+    return getPublicApiUrl();
   }
-  return process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_APP_URL || "";
+  return getPublicApiUrl();
 }
 
 export function apiUrl(path: string): string {
@@ -44,12 +51,6 @@ export async function parseApiJson<T = Record<string, unknown>>(res: Response): 
 }
 
 export function getSocketUrl(): string | undefined {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "tcall.vizara.uz" || host === "localhost" || host === "127.0.0.1") {
-      return undefined;
-    }
-  }
-  const url = getApiUrl();
-  return url || undefined;
+  const api = getApiUrl();
+  return api || undefined;
 }

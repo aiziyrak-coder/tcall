@@ -2,7 +2,7 @@
  * Tcall production smoke test — auth, calls, security guards
  * Usage: node scripts/smoke-test.mjs [baseUrl]
  */
-const BASE = process.argv[2] || "https://tcall.vizara.uz";
+const BASE = process.argv[2] || "https://tcall.uz";
 const API = BASE;
 
 const results = [];

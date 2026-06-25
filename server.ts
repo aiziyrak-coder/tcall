@@ -28,15 +28,16 @@ import {
 } from "./src/lib/socket-io";
 import { seedVanityNumbers } from "./src/lib/tcallId";
 import { migrateChatMemberRoles } from "./src/lib/chat-migrate";
+import { getAllowedOrigins, getPublicApiUrl, getPublicAppUrl } from "./src/lib/domains";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
 const port = parseInt(process.env.PORT || "3000", 10);
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`;
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || appUrl;
+const appUrl = getPublicAppUrl() || `http://localhost:${port}`;
+const apiUrl = getPublicApiUrl() || appUrl;
 const allowedOrigins = dev
   ? ["http://localhost:3000", "http://127.0.0.1:3000", appUrl, apiUrl]
-  : [appUrl, apiUrl, "https://tcall.vizara.uz", "https://tcallapi.vizara.uz"].filter(Boolean);
+  : getAllowedOrigins();
 
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();

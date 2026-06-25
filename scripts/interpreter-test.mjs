@@ -2,7 +2,7 @@
  * Interpreter API smoke test
  * Usage: node scripts/interpreter-test.mjs [baseUrl]
  */
-const BASE = process.argv[2] || "https://tcall.vizara.uz";
+const BASE = process.argv[2] || "https://tcall.uz";
 
 function parseCookies(setCookieHeaders) {
   const jar = {};

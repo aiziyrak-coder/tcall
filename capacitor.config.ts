@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-const PRODUCTION_URL = process.env.TCALL_APP_URL || "https://tcall.vizara.uz";
+const PRODUCTION_URL = process.env.TCALL_APP_URL || "https://tcall.uz";
 
 const config: CapacitorConfig = {
   appId: "uz.vizara.tcall",
@@ -10,9 +10,9 @@ const config: CapacitorConfig = {
     url: `${PRODUCTION_URL}/login`,
     cleartext: false,
     allowNavigation: [
-      "tcall.vizara.uz",
-      "tcallapi.vizara.uz",
-      "vizara.uz",
+      "tcall.uz",
+      "www.tcall.uz",
+      "api.tcall.uz",
     ],
   },
   android: {
