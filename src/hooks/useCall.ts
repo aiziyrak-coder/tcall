@@ -53,6 +53,7 @@ interface UseCallOptions {
 const OFFER_RETRY_MS = 12_000;
 const MAX_OFFER_RETRIES = 8;
 const RELAY_FALLBACK_AFTER = 3;
+const USER_LEFT_GRACE_MS = 10_000;
 
 export function useCall({
   roomId,
@@ -106,6 +107,9 @@ export function useCall({
   const sessionStartedRef = useRef(false);
   const remoteAudioCtxRef = useRef<AudioContext | null>(null);
   const remoteAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const remoteAudioGainRef = useRef<GainNode | null>(null);
+  const reofferDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iceDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playRemoteAudioRef = useRef<() => void>(() => {});
   const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
   optsRef.current = { roomId, userId, userName, userLanguage, isHost };
@@ -169,11 +173,20 @@ export function useCall({
 
   const resetPeerConnection = useCallback(() => {
     clearOfferRetry();
+    if (reofferDelayTimerRef.current) {
+      clearTimeout(reofferDelayTimerRef.current);
+      reofferDelayTimerRef.current = null;
+    }
+    if (iceDisconnectTimerRef.current) {
+      clearTimeout(iceDisconnectTimerRef.current);
+      iceDisconnectTimerRef.current = null;
+    }
     iceQueueRef.current = [];
     remoteStreamRef.current = null;
     setRemoteStream(null);
     remoteAudioSourceRef.current?.disconnect();
     remoteAudioSourceRef.current = null;
+    remoteAudioGainRef.current = null;
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
@@ -265,13 +278,19 @@ export function useCall({
         if (ice === "connected" || ice === "completed") {
           setCallStatus("active");
           clearSlowHint();
+          if (iceDisconnectTimerRef.current) {
+            clearTimeout(iceDisconnectTimerRef.current);
+            iceDisconnectTimerRef.current = null;
+          }
           if (streamRef.current && !isMutedRef.current) {
             startTranslation();
           }
         } else if (ice === "failed") {
           scheduleReofferRef.current();
         } else if (ice === "disconnected") {
-          setTimeout(() => {
+          if (iceDisconnectTimerRef.current) clearTimeout(iceDisconnectTimerRef.current);
+          iceDisconnectTimerRef.current = setTimeout(() => {
+            iceDisconnectTimerRef.current = null;
             if (pcRef.current?.iceConnectionState === "disconnected") {
               scheduleReofferRef.current();
             }
@@ -352,7 +371,9 @@ export function useCall({
     setCallStatus("connecting");
     startSlowHint();
 
-    setTimeout(() => {
+    if (reofferDelayTimerRef.current) clearTimeout(reofferDelayTimerRef.current);
+    reofferDelayTimerRef.current = setTimeout(() => {
+      reofferDelayTimerRef.current = null;
       const s = streamRef.current;
       const sock = socketRef.current;
       const peer = otherParticipantRef.current;
@@ -366,6 +387,29 @@ export function useCall({
     }, 2000);
   }, [resetPeerConnection, sendOffer, startSlowHint]);
 
+  const endCallDueToPartnerLeft = useCallback(() => {
+    stopTranslation();
+    stopTimer();
+    resetPeerConnection();
+    setCallStatus("ended");
+    notifyCallsChanged();
+  }, [stopTranslation, stopTimer, resetPeerConnection]);
+
+  const schedulePartnerLeftEnd = useCallback(() => {
+    if (userLeftTimerRef.current) return;
+    userLeftTimerRef.current = setTimeout(() => {
+      userLeftTimerRef.current = null;
+      endCallDueToPartnerLeft();
+    }, USER_LEFT_GRACE_MS);
+  }, [endCallDueToPartnerLeft]);
+
+  const clearPartnerLeftTimer = useCallback(() => {
+    if (userLeftTimerRef.current) {
+      clearTimeout(userLeftTimerRef.current);
+      userLeftTimerRef.current = null;
+    }
+  }, []);
+
   scheduleReofferRef.current = scheduleReoffer;
 
   const handleRoomUsers = useCallback(
@@ -378,15 +422,14 @@ export function useCall({
 
       if (users.length < 2) {
         if (otherParticipantRef.current && callStatusRef.current === "active") {
-          stopTranslation();
-          handlersRef.current.stopTimer();
-          setCallStatus("ended");
-          notifyCallsChanged();
+          schedulePartnerLeftEnd();
           return;
         }
         setCallStatus(self?.isHost || host ? "ringing" : "waiting");
         return;
       }
+
+      clearPartnerLeftTimer();
 
       const other = users.find((u) => u.userId !== uid);
       if (!other) return;
@@ -423,7 +466,7 @@ export function useCall({
       await new Promise((r) => setTimeout(r, 400));
       await sendOffer(stream, socket, other, true);
     },
-    [resetPeerConnection, sendOffer, stopTranslation, startTranslation]
+    [resetPeerConnection, sendOffer, stopTranslation, startTranslation, schedulePartnerLeftEnd, clearPartnerLeftTimer]
   );
 
   const playRemoteAudio = useCallback(async () => {
@@ -447,9 +490,15 @@ export function useCall({
       const ctx = remoteAudioCtxRef.current;
       if (ctx.state === "suspended") await ctx.resume();
       remoteAudioSourceRef.current?.disconnect();
+      remoteAudioSourceRef.current = null;
+      remoteAudioGainRef.current = null;
+      const gain = ctx.createGain();
+      gain.gain.value = 1;
       const source = ctx.createMediaStreamSource(stream);
-      source.connect(ctx.destination);
+      source.connect(gain);
+      gain.connect(ctx.destination);
       remoteAudioSourceRef.current = source;
+      remoteAudioGainRef.current = gain;
     } catch (e) {
       console.warn("Remote audio fallback:", e);
     }
@@ -524,6 +573,8 @@ export function useCall({
       duckRemote: (duck) => {
         const el = remoteAudioRef.current;
         if (el) el.volume = duck ? 0.25 : 1;
+        const gain = remoteAudioGainRef.current;
+        if (gain) gain.gain.value = duck ? 0.25 : 1;
       },
     });
     translationEngineRef.current = engine;
@@ -610,10 +661,10 @@ export function useCall({
             await pc.setLocalDescription(answer);
             socket.emit("answer", { answer, targetId: senderId });
             setCallStatus("connecting");
-            handlersRef.current.startTranslation();
           } catch (e) {
             console.error("Answer failed:", e);
             handlersRef.current.resetPeerConnection();
+            scheduleReofferRef.current();
           }
         };
 
@@ -622,9 +673,9 @@ export function useCall({
           try {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
             await handlersRef.current.flushIceQueue(pcRef.current);
-            if (streamRef.current) handlersRef.current.startTranslation();
           } catch (e) {
             console.error("Answer apply failed:", e);
+            scheduleReofferRef.current();
           }
         };
 
@@ -701,13 +752,7 @@ export function useCall({
         };
 
         const onUserLeft = () => {
-          if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
-          userLeftTimerRef.current = null;
-          handlersRef.current.stopTimer();
-          handlersRef.current.stopTranslation();
-          handlersRef.current.resetPeerConnection();
-          setCallStatus("ended");
-          notifyCallsChanged();
+          schedulePartnerLeftEnd();
         };
 
         socket.on("connect", onConnect);
@@ -882,7 +927,7 @@ export function useCall({
         socketRef.current = null;
       }, 600);
     };
-  }, [enabled, roomId, userId, isHost]);
+  }, [enabled, roomId, userId]);
 
   const requestMicrophone = useCallback(async () => {
     setMicStatus("requesting");
@@ -961,7 +1006,8 @@ export function useCall({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     resetPeerConnection();
-    if (isHost && !remoteStreamRef.current && socketRef.current?.connected) {
+    const host = serverIsHostRef.current || optsRef.current.isHost;
+    if (host && !remoteStreamRef.current && socketRef.current?.connected) {
       socketRef.current.emit("call-cancel", { roomId });
     } else {
       socketRef.current?.emit("call-ended");
@@ -975,7 +1021,7 @@ export function useCall({
     detachSocketRef.current?.();
     detachSocketRef.current = null;
     setCallStatus("ended");
-  }, [stopTranslation, resetPeerConnection, stopTimer, isHost, roomId]);
+  }, [stopTranslation, resetPeerConnection, stopTimer, roomId]);
 
   const partner = participants.find((p) => p.userId !== userId);
 

@@ -67,8 +67,8 @@ export class CallTranslationEngine {
 
     this.audioQueue.setSpeakingCallback((speaking) => {
       this.opts.onSpeaking(speaking);
-      this.opts.onActivity(speaking ? "speaking" : "idle");
       if (speaking) {
+        this.opts.onActivity("speaking");
         this.recorder.stopAuto();
       } else {
         this.resumeAutoListen();
@@ -229,6 +229,12 @@ export class CallTranslationEngine {
         if (this.lastTranscript === original) this.lastTranscript = "";
       }, 5000);
 
+      const socket = this.opts.getSocket();
+      if (!socket?.connected) {
+        this.opts.onError("error", "relay");
+        return;
+      }
+
       const entry: TranslationMessage = {
         id: nextId("self"),
         original,
@@ -242,17 +248,12 @@ export class CallTranslationEngine {
       };
       this.opts.onTranslation(entry);
 
-      const socket = this.opts.getSocket();
-      if (socket?.connected) {
-        socket.emit("call-translation", {
+      socket.emit("call-translation", {
           original,
           translated: translated || original,
           sourceLang: data.sourceLang || sourceLang,
           targetLang,
         });
-      } else {
-        this.opts.onError("error", "relay");
-      }
     } catch (e) {
       console.error("Call translation failed:", e);
       this.opts.onError("error", source);

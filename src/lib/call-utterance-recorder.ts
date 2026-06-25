@@ -250,12 +250,16 @@ export class CallUtteranceRecorder {
     }
 
     if (!emit) {
-      const old = recorder.onstop;
       recorder.onstop = () => {
-        old?.call(recorder, new Event("stop"));
         this.chunks = [];
         this.capturing = false;
         this.captureMode = null;
+        this.setListening(false);
+      };
+    } else {
+      const oldOnStop = recorder.onstop;
+      recorder.onstop = (ev) => {
+        oldOnStop?.call(recorder, ev);
       };
     }
 
@@ -289,6 +293,10 @@ export class CallUtteranceRecorder {
   }
 
   destroy() {
+    if (this.iosMaxTimer) {
+      clearTimeout(this.iosMaxTimer);
+      this.iosMaxTimer = null;
+    }
     this.stop();
     this.sourceNode?.disconnect();
     this.sourceNode = null;

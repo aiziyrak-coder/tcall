@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { translateForInterpreter, textToSpeech } from "@/lib/openai";
 import { clampTranscript } from "@/lib/call-service";
 import { isValidInterpreterTranscript } from "@/lib/call-translation";
+import { isSupportedLanguage } from "@/lib/languages";
 import { pickFilename, transcribeForInterpreter } from "@/lib/interpreter-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
     const targetLang = (formData.get("targetLang") as string) || "en";
     const withSpeech = formData.get("withSpeech") !== "false";
     const recordMs = parseInt(String(formData.get("recordMs") || "0"), 10);
+
+    if (sourceLang !== "auto" && !isSupportedLanguage(sourceLang)) {
+      return NextResponse.json({ error: "Noto'g'ri manba tili" }, { status: 400 });
+    }
+    if (!isSupportedLanguage(targetLang)) {
+      return NextResponse.json({ error: "Noto'g'ri maqsad tili" }, { status: 400 });
+    }
 
     if (!audio) {
       return NextResponse.json({ error: "Audio fayl topilmadi" }, { status: 400 });

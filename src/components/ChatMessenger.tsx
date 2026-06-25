@@ -115,7 +115,7 @@ export function ChatMessenger({
   onOpenHandled,
 }: ChatMessengerProps) {
   const ui = useUI(userLanguage);
-  const { dial, getSocket } = useCallContext();
+  const { dial, getSocket, activeCall } = useCallContext();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
@@ -161,6 +161,25 @@ export function ChatMessenger({
   const voiceRecordStartedRef = useRef(0);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [actionError, setActionError] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (voiceTimerRef.current) {
+        clearInterval(voiceTimerRef.current);
+        voiceTimerRef.current = null;
+      }
+      const session = voiceSessionRef.current;
+      voiceSessionRef.current = null;
+      if (session) {
+        try {
+          session.recorder.stop();
+        } catch {
+          /* ignore */
+        }
+        session.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const messagesWrapRef = useRef<HTMLDivElement>(null);
@@ -893,6 +912,10 @@ export function ChatMessenger({
 
   const beginVoiceRecord = async () => {
     if (!activeId || uploading || sending || voiceSessionRef.current) return;
+    if (activeCall) {
+      setUploadError(ui.chatVoiceBlocked);
+      return;
+    }
     try {
       const session = await startVoiceRecord();
       voiceSessionRef.current = session;
@@ -1296,7 +1319,8 @@ export function ChatMessenger({
                 type="button"
                 className={`chat-composer-mic-btn ${recordingVoice ? "chat-composer-mic-recording" : ""}`}
                 aria-label={ui.chatVoiceHint}
-                disabled={uploading || sending}
+                disabled={uploading || sending || !!activeCall}
+                title={activeCall ? ui.chatVoiceBlocked : undefined}
                 onPointerDown={(e) => {
                   e.preventDefault();
                   void beginVoiceRecord();

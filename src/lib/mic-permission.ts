@@ -82,20 +82,16 @@ export async function prefetchMicrophoneAccess(): Promise<boolean> {
 
     const perm = await queryMicPermission();
     if (perm === "denied") return false;
-    if (perm === "granted") {
-      markMicGranted();
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
-        cacheMicStream(stream);
-        return true;
-      } catch {
-        return wasMicGrantedBefore();
-      }
-    }
+    if (perm !== "granted") return wasMicGrantedBefore();
 
-    const stream = await requestMicrophoneStream();
-    cacheMicStream(stream);
-    return true;
+    markMicGranted();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+      cacheMicStream(stream);
+      return true;
+    } catch {
+      return wasMicGrantedBefore();
+    }
   } catch {
     return false;
   }

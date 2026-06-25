@@ -257,9 +257,13 @@ app.prepare().then(async () => {
             data.language || dbUser?.language || session.language || "uz"
           );
           const translationMode =
-            data.translationMode === "voice" || dbUser?.translationMode === "voice"
+            data.translationMode === "voice"
               ? "voice"
-              : "text";
+              : data.translationMode === "text"
+                ? "text"
+                : dbUser?.translationMode === "voice"
+                  ? "voice"
+                  : "text";
           const dbIsHost = call.hostId === session.userId;
           currentRoom = roomId;
           registerUserSocket(userId, socket.id);
@@ -586,11 +590,18 @@ app.prepare().then(async () => {
 
     socket.on("call-ended", async () => {
       if (currentRoom) {
-        socket.to(currentRoom).emit("call-ended");
+        const roomId = currentRoom;
+        socket.to(roomId).emit("call-ended");
         try {
-          await markCallEnded(currentRoom, session.userId);
+          await markCallEnded(roomId, session.userId);
         } catch (e) {
           console.error("call-ended DB error:", e);
+        }
+        roomTranscriptContext.delete(roomId);
+        const room = rooms.get(roomId);
+        if (room) {
+          room.delete(socket.id);
+          if (room.size === 0) rooms.delete(roomId);
         }
       }
     });

@@ -29,6 +29,7 @@ function normalizeAudioBuffer(ctx: AudioContext, buffer: AudioBuffer): AudioBuff
 
 export class TranslationAudioQueue {
   private queue: string[] = [];
+  private static readonly MAX_QUEUE = 5;
   private playing = false;
   private enabled = true;
   private unlocked = false;
@@ -99,6 +100,9 @@ export class TranslationAudioQueue {
 
   enqueue(base64: string) {
     if (!this.enabled || !base64) return;
+    if (this.queue.length >= TranslationAudioQueue.MAX_QUEUE) {
+      this.queue.shift();
+    }
     this.queue.push(base64);
     void this.processQueue();
   }

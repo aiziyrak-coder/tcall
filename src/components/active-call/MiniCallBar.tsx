@@ -5,6 +5,7 @@ import { Mic, MicOff, PhoneOff, Maximize2, Languages, Loader2 } from "lucide-rea
 import { useActiveCall } from "./ActiveCallStateContext";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { useUI } from "@/components/providers/LocaleProvider";
+import { playCallEndTone } from "@/lib/ringtone";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -19,6 +20,7 @@ export function MiniCallBar() {
 
   useEffect(() => {
     if (call.callStatus !== "ended") return;
+    playCallEndTone();
     const timer = setTimeout(() => clearActiveCall(), 600);
     return () => clearTimeout(timer);
   }, [call.callStatus, clearActiveCall]);

@@ -92,9 +92,9 @@ interface CallContextValue {
   getSocket: () => Socket | null;
   userLanguage: string;
   userName: string;
-  activeCall: { roomId: string; isHost: boolean } | null;
+  activeCall: { roomId: string; isHost: boolean; callId?: string } | null;
   callMinimized: boolean;
-  activateCall: (roomId: string, isHost: boolean) => void;
+  activateCall: (roomId: string, isHost: boolean, callId?: string) => void;
   minimizeCall: () => void;
   expandCall: () => void;
   clearActiveCall: () => void;
@@ -125,7 +125,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [quickMessageTarget, setQuickMessageTarget] = useState<{ tcallId: string; name?: string } | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
-  const [activeCall, setActiveCall] = useState<{ roomId: string; isHost: boolean } | null>(null);
+  const [activeCall, setActiveCall] = useState<{ roomId: string; isHost: boolean; callId?: string } | null>(null);
   const [callMinimized, setCallMinimized] = useState(false);
   const [subscriptionPrompt, setSubscriptionPrompt] = useState<{
     requiredPlan?: ClientSubscriptionPlan;
@@ -448,6 +448,11 @@ export function CallProvider({ user, children }: CallProviderProps) {
 
   const [accepting, setAccepting] = useState(false);
 
+  const activateCall = useCallback((roomId: string, isHost: boolean, callId?: string) => {
+    setActiveCall({ roomId: roomId.toUpperCase(), isHost, callId });
+    setCallMinimized(false);
+  }, []);
+
   const acceptCall = useCallback(async () => {
     if (!incomingCall || accepting) return;
     setAccepting(true);
@@ -465,6 +470,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
       });
       const data = await parseApiJson<{
         error?: string;
+        callId?: string;
         requiresPlan?: ClientSubscriptionPlan;
         currentPlan?: ClientSubscriptionPlan;
       }>(res);
@@ -478,16 +484,16 @@ export function CallProvider({ user, children }: CallProviderProps) {
 
       socketRef.current?.emit("call-accept", { roomId });
       setIncomingCall(null);
+      activateCall(roomId, false, data.callId);
       router.push(`/call/${roomId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : ui.acceptCallFailed;
       setAcceptError(message);
-      socketRef.current?.emit("call-reject", { roomId });
       setIncomingCall(null);
     } finally {
       setAccepting(false);
     }
-  }, [incomingCall, accepting, router, ui]);
+  }, [incomingCall, accepting, router, ui, activateCall]);
 
   const cancelOutgoing = useCallback(() => {
     stopRingback();
@@ -500,11 +506,6 @@ export function CallProvider({ user, children }: CallProviderProps) {
   }, [outgoingCall, clearRingTimeout]);
 
   cancelOutgoingRef.current = cancelOutgoing;
-
-  const activateCall = useCallback((roomId: string, isHost: boolean) => {
-    setActiveCall({ roomId: roomId.toUpperCase(), isHost });
-    setCallMinimized(false);
-  }, []);
 
   const minimizeCall = useCallback(() => {
     setCallMinimized(true);
@@ -575,6 +576,10 @@ export function CallProvider({ user, children }: CallProviderProps) {
       });
     }
 
+    if (!data.roomId) {
+      throw new DialError(ui.dialError);
+    }
+
     if (data.roomId && data.callId && data.callee) {
       setOutgoingCall({
         roomId: data.roomId,
@@ -595,8 +600,9 @@ export function CallProvider({ user, children }: CallProviderProps) {
       setDialError(ui.dialSignalLost);
     }
 
+    activateCall(data.roomId, true, data.callId);
     router.push(`/call/${data.roomId}`);
-  }, [router, ui]);
+  }, [router, ui, activateCall]);
 
   return (
     <CallContext.Provider
@@ -626,6 +632,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
           roomId={activeCall.roomId}
           isHost={activeCall.isHost}
           user={user}
+          callMinimized={callMinimized}
           onEnded={() => {
             clearActiveCall();
           }}

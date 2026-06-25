@@ -32,7 +32,13 @@ function formatDuration(seconds: number): string {
 }
 
 function getInitials(name: string): string {
-  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 const LEAVE_DELAY_MS = 500;
@@ -106,8 +112,8 @@ export function AudioCallRoom() {
   useEffect(() => {
     if (!call || call.callStatus !== "ended") return;
 
-    if (call.callDuration >= 10 && activeCall?.roomId) {
-      ratingCallIdRef.current = activeCall.roomId;
+    if (call.callDuration >= 10 && activeCall?.callId) {
+      ratingCallIdRef.current = activeCall.callId;
       const timer = setTimeout(() => setShowRating(true), 300);
       return () => clearTimeout(timer);
     }
@@ -124,7 +130,7 @@ export function AudioCallRoom() {
       leaveToDashboard();
     }, ERROR_LEAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [call, leaveToDashboard]);
+  }, [call?.callStatus, leaveToDashboard]);
 
   useEffect(() => {
     if (!call?.translationError) return;
@@ -264,17 +270,18 @@ export function AudioCallRoom() {
           </p>
         )}
 
-        {errorLabel && (
-          <p
-            className="phone-translate-error"
-            onClick={(e) => {
-              e.stopPropagation();
-              call.clearTranslationError();
-            }}
-          >
-            {errorLabel}
-          </p>
-        )}
+      {errorLabel && (
+        <button
+          type="button"
+          className="phone-translate-error"
+          onClick={(e) => {
+            e.stopPropagation();
+            call.clearTranslationError();
+          }}
+        >
+          {errorLabel}
+        </button>
+      )}
 
         {activityLabel && translationEnabled && (
           <p className="phone-translate-status">
@@ -315,6 +322,7 @@ export function AudioCallRoom() {
             type="button"
             className={`phone-translate-ptt ${pttActive ? "phone-translate-ptt-active" : ""}`}
             disabled={call.isMuted}
+          aria-label={ui.interpreterHoldToTalk}
             onPointerDown={onPttStart}
             onPointerUp={onPttEnd}
             onPointerLeave={onPttEnd}
@@ -359,10 +367,11 @@ export function AudioCallRoom() {
             call.toggleMute();
           }}
           className={`phone-control-btn ${call.isMuted ? "bg-red-500" : "glass"}`}
+          aria-label={call.isMuted ? ui.unmute : ui.mute}
         >
           {call.isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
         </button>
-        <button type="button" onClick={() => call.endCall()} className="phone-control-btn phone-end-btn">
+        <button type="button" onClick={() => call.endCall()} className="phone-control-btn phone-end-btn" aria-label={ui.endCall}>
           <PhoneOff className="w-7 h-7" />
         </button>
         <button

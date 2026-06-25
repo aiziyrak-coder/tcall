@@ -11,6 +11,7 @@ interface ActiveCallEngineProps {
   isHost: boolean;
   user: User;
   onEnded: () => void;
+  callMinimized: boolean;
   children: React.ReactNode;
 }
 
@@ -18,7 +19,14 @@ function normalizeTranslationMode(value: string | undefined): TranslationMode {
   return value === "voice" ? "voice" : "text";
 }
 
-export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: ActiveCallEngineProps) {
+export function ActiveCallEngine({
+  roomId,
+  isHost,
+  user,
+  onEnded,
+  callMinimized,
+  children,
+}: ActiveCallEngineProps) {
   const call = useCall({
     roomId,
     userId: user.userId,
@@ -29,6 +37,8 @@ export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: Ac
     enabled: true,
   });
 
+  const { micStatus, unlockAudio, playRemoteAudio, callStatus } = call;
+
   const setRemoteAudioRef = useCallback(
     (node: HTMLAudioElement | null) => {
       call.remoteAudioRef.current = node;
@@ -38,34 +48,39 @@ export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: Ac
   );
 
   useEffect(() => {
-    if (call.micStatus === "granted") {
-      void call.unlockAudio();
-      void call.playRemoteAudio();
+    if (micStatus === "granted") {
+      void unlockAudio();
+      void playRemoteAudio();
     }
-  }, [call.micStatus, call]);
+  }, [micStatus, unlockAudio, playRemoteAudio]);
 
   return (
     <ActiveCallStateProvider value={call}>
       <audio ref={setRemoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden />
-      <CallEndedWatcher callStatus={call.callStatus} onEnded={onEnded} />
+      <CallEndedWatcher callStatus={callStatus} callMinimized={callMinimized} onEnded={onEnded} />
       {children}
     </ActiveCallStateProvider>
   );
 }
 
-/** Faqat minimizatsiya qilinganda sessiyani yopish — to'liq ekranda AudioCallRoom boshqaradi */
 function CallEndedWatcher({
   callStatus,
+  callMinimized,
   onEnded,
 }: {
   callStatus: string;
+  callMinimized: boolean;
   onEnded: () => void;
 }) {
   useEffect(() => {
     if (callStatus !== "ended") return;
     const path = typeof window !== "undefined" ? window.location.pathname : "";
     if (path.startsWith("/call/")) return;
-    onEnded();
-  }, [callStatus, onEnded]);
+
+    const delay = callMinimized ? 800 : 0;
+    const timer = setTimeout(() => onEnded(), delay);
+    return () => clearTimeout(timer);
+  }, [callStatus, callMinimized, onEnded]);
+
   return null;
 }

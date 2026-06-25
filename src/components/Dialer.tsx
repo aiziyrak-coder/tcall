@@ -151,11 +151,11 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
       setDigits("");
       setLookupUser(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Xatolik");
+      setError(e instanceof Error ? e.message : ui.genericError);
     } finally {
       setCalling(false);
     }
-  }, [digits, dial, blocked]);
+  }, [digits, dial, blocked, ui.genericError]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -340,7 +340,13 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
               );
             }
             return (
-              <button key={key} type="button" onClick={() => press(key)} className="ios-key">
+              <button
+                key={key}
+                type="button"
+                onClick={() => press(key)}
+                className="ios-key"
+                aria-label={key}
+              >
                 <span className="ios-key-digit">{key}</span>
                 {letters && <span className="ios-key-letters">{letters}</span>}
               </button>
