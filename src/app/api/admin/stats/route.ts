@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
+import { countTestUsers } from "@/lib/admin-cleanup";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession(req);
@@ -18,6 +19,8 @@ export async function GET(req: NextRequest) {
     totalMessages, pendingVanity,
     activeBans, pendingReports,
     totalRevenue,
+    vanityTotal, vanityAvailable, vanitySold,
+    testUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
@@ -32,12 +35,16 @@ export async function GET(req: NextRequest) {
     prisma.userBan.count({ where: { active: true } }),
     prisma.contentReport.count({ where: { status: "pending" } }),
     prisma.subscription.aggregate({ _sum: { price: true }, where: { status: "active" } }),
+    prisma.vanityNumber.count(),
+    prisma.vanityNumber.count({ where: { available: true } }),
+    prisma.vanityNumber.count({ where: { available: false } }),
+    countTestUsers(),
   ]);
 
   const usersWithoutSub = totalUsers - (freePlan + premiumPlan + premiumPlusPlan);
 
   return NextResponse.json({
-    users: { total: totalUsers, today: newUsersToday, week: newUsersWeek },
+    users: { total: totalUsers, today: newUsersToday, week: newUsersWeek, test: testUsers },
     subscriptions: {
       free: freePlan + usersWithoutSub,
       premium: premiumPlan,
@@ -46,6 +53,7 @@ export async function GET(req: NextRequest) {
     },
     calls: { total: totalCalls, today: callsToday },
     messages: { total: totalMessages },
+    vanity: { total: vanityTotal, available: vanityAvailable, sold: vanitySold },
     pending: { vanity: pendingVanity, reports: pendingReports },
     bans: activeBans,
     revenue: { total: (totalRevenue._sum.price ?? 0).toFixed(2) },

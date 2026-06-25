@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
-import { isAdminSession } from "@/lib/admin";
+import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!isAdminSession(session)) {
+  const session = await getAdminSession(req);
+  if (!session) {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }
 

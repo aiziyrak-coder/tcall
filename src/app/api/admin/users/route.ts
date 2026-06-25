@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
+import { purgeUsersByIds, purgeTestUsers, countTestUsers } from "@/lib/admin-cleanup";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession(req);
@@ -40,12 +41,14 @@ export async function GET(req: NextRequest) {
     prisma.user.count({ where }),
   ]);
 
-  return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit) });
+  const testUsers = await countTestUsers();
+
+  return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit), testUsers });
 }
 
 const updateSchema = z.object({
-  userId: z.string(),
-  action: z.enum(["reset_password", "delete", "ban", "unban", "set_subscription"]),
+  userId: z.string().optional(),
+  action: z.enum(["reset_password", "delete", "ban", "unban", "set_subscription", "purge_test_users"]),
   newPassword: z.string().min(6).optional(),
   banReason: z.string().max(500).optional(),
   banDays: z.number().int().min(1).max(365).optional(),
@@ -62,6 +65,17 @@ export async function PATCH(req: NextRequest) {
     const body = updateSchema.parse(await req.json());
     const { userId, action } = body;
 
+    // Test/mock foydalanuvchilarni ommaviy tozalash — userId shart emas (faqat super_admin)
+    if (action === "purge_test_users") {
+      if (session.role !== "super_admin") {
+        return NextResponse.json({ error: "Super admin kerak" }, { status: 403 });
+      }
+      const { deleted } = await purgeTestUsers();
+      return NextResponse.json({ ok: true, message: `${deleted} ta test foydalanuvchi o'chirildi`, deleted });
+    }
+
+    if (!userId) return NextResponse.json({ error: "userId kerak" }, { status: 400 });
+
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true } });
     if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
 
@@ -73,7 +87,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ ok: true, message: "Parol yangilandi" });
       }
       case "delete": {
-        await prisma.user.delete({ where: { id: userId } });
+        await purgeUsersByIds([userId]);
         return NextResponse.json({ ok: true, message: "Foydalanuvchi o'chirildi" });
       }
       case "ban": {

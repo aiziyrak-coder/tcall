@@ -16,12 +16,14 @@ const ui = getUI("uz");
 type Tab = "dashboard" | "users" | "subscriptions" | "vanity" | "chats" | "reports" | "admins";
 
 interface Stats {
-  users: { total: number; today: number; week: number };
+  users: { total: number; today: number; week: number; test?: number };
   subscriptions: { free: number; premium: number; premiumPlus: number; monthlyRevenue: string };
   calls: { total: number; today: number };
   messages: { total: number };
+  vanity?: { total: number; available: number; sold: number };
   pending: { vanity: number; reports: number };
   bans: number;
+  revenue?: { total: string };
 }
 
 interface UserRow {
@@ -42,6 +44,19 @@ interface VanityReq {
   id: string; number: string; price: number; tier: string; status: string; createdAt: string;
   user: { name: string; email: string; tcallId: string | null };
 }
+
+interface VanityCatalogItem {
+  id: string; number: string; price: number; tier: string; available: boolean;
+  purchasedAt: string | null;
+  user: { id: string; name: string; email: string; tcallId: string | null } | null;
+}
+
+const VANITY_TIERS = [
+  "free", "bronze", "silver", "silver_plus", "silver_plus_plus",
+  "gold", "gold_plus", "gold_plus_plus",
+  "platinum", "platinum_plus", "platinum_plus_plus",
+  "platinum_premium", "platinum_premium_plus", "platinum_premium_plus_plus", "vip",
+];
 
 interface AdminUser {
   id: string; email: string; name: string; role: string; createdAt: string; lastLoginAt: string | null;
@@ -77,6 +92,19 @@ export default function AdminPage() {
   const [subPage, setSubPage] = useState(1);
   const [subPages, setSubPages] = useState(1);
   const [vanityReqs, setVanityReqs] = useState<VanityReq[]>([]);
+  const [vanitySubTab, setVanitySubTab] = useState<"requests" | "catalog">("requests");
+  const [catalog, setCatalog] = useState<VanityCatalogItem[]>([]);
+  const [catalogCounts, setCatalogCounts] = useState<{ total: number; available: number; sold: number }>({ total: 0, available: 0, sold: 0 });
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPages, setCatalogPages] = useState(1);
+  const [catalogTier, setCatalogTier] = useState("all");
+  const [catalogAvail, setCatalogAvail] = useState("all");
+  const [catalogQ, setCatalogQ] = useState("");
+  const [editNum, setEditNum] = useState<VanityCatalogItem | null>(null);
+  const [editInput, setEditInput] = useState<{ price: string; tier: string; available: boolean }>({ price: "", tier: "", available: true });
+  const [newNumber, setNewNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   const [chats, setChats] = useState<Conversation[]>([]);
   const [chatInspect, setChatInspect] = useState<{ conv: Conversation; messages: { id: string; originalText: string | null; sender: { name: string }; createdAt: string }[] } | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
@@ -130,6 +158,25 @@ export default function AdminPage() {
     setLoading(false);
   }, []);
 
+  const loadCatalog = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(catalogPage),
+      limit: "50",
+      tier: catalogTier,
+      availability: catalogAvail,
+      ...(catalogQ.replace(/\D/g, "").length >= 1 ? { q: catalogQ.replace(/\D/g, "") } : {}),
+    });
+    const r = await adminFetch(`/api/admin/numbers?${params}`);
+    const d = await r.json();
+    if (r.ok) {
+      setCatalog(d.numbers || []);
+      setCatalogPages(d.pages || 1);
+      setCatalogCounts(d.counts || { total: 0, available: 0, sold: 0 });
+    }
+    setLoading(false);
+  }, [catalogPage, catalogTier, catalogAvail, catalogQ]);
+
   const loadChats = useCallback(async () => {
     setLoading(true);
     const r = await adminFetch(`/api/admin/chat-inspect?q=${encodeURIComponent(chatQ)}&page=1`);
@@ -155,11 +202,12 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab === "users") void loadUsers();
     if (tab === "subscriptions") void loadSubs();
-    if (tab === "vanity") void loadVanity();
+    if (tab === "vanity" && vanitySubTab === "requests") void loadVanity();
+    if (tab === "vanity" && vanitySubTab === "catalog") void loadCatalog();
     if (tab === "chats") void loadChats();
     if (tab === "reports") void loadReports();
     if (tab === "admins") void loadAdmins();
-  }, [tab, loadUsers, loadSubs, loadVanity, loadChats, loadReports, loadAdmins]);
+  }, [tab, vanitySubTab, loadUsers, loadSubs, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
 
   const doAction = async () => {
     if (!actionUser) return;
@@ -177,7 +225,74 @@ export default function AdminPage() {
 
   const reviewVanity = async (id: string, action: "approve" | "reject") => {
     const r = await adminFetch(`/api/admin/vanity-requests/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action }) });
-    if (r.ok) setVanityReqs((prev) => prev.filter((x) => x.id !== id));
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { setVanityReqs((prev) => prev.filter((x) => x.id !== id)); void loadStats(); }
+    else setError(d.error || "Xatolik");
+  };
+
+  const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(""), 3000); };
+
+  const openEditNum = (n: VanityCatalogItem) => {
+    setEditNum(n);
+    setEditInput({ price: String(n.price), tier: n.tier, available: n.available });
+  };
+
+  const saveNum = async () => {
+    if (!editNum) return;
+    setBusy(true); setError("");
+    const r = await adminFetch("/api/admin/numbers", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editNum.id, action: "update", price: Number(editInput.price), tier: editInput.tier, available: editInput.available }),
+    });
+    const d = await r.json();
+    setBusy(false);
+    if (!r.ok) { setError(d.error || "Xatolik"); return; }
+    setEditNum(null); void loadCatalog(); flash("Raqam yangilandi");
+  };
+
+  const releaseNum = async (id: string) => {
+    if (!window.confirm("Raqamni egasidan bo'shatib, sotuvga qaytarasizmi?")) return;
+    const r = await adminFetch("/api/admin/numbers", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, action: "release" }),
+    });
+    if (r.ok) { void loadCatalog(); flash("Raqam bo'shatildi"); }
+  };
+
+  const deleteNum = async (id: string) => {
+    if (!window.confirm("Bu raqamni katalogdan o'chirasizmi?")) return;
+    const r = await adminFetch(`/api/admin/numbers?id=${id}`, { method: "DELETE" });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { void loadCatalog(); flash("O'chirildi"); }
+    else setError(d.error || "Xatolik");
+  };
+
+  const addNum = async () => {
+    const num = newNumber.replace(/\D/g, "");
+    if (num.length !== 9) { setError("9 xonali raqam kiriting"); return; }
+    setBusy(true); setError("");
+    const r = await adminFetch("/api/admin/numbers", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number: num }),
+    });
+    const d = await r.json();
+    setBusy(false);
+    if (!r.ok) { setError(d.error || "Xatolik"); return; }
+    setNewNumber(""); void loadCatalog(); void loadStats(); flash("Raqam qo'shildi");
+  };
+
+  const purgeTestUsers = async () => {
+    const count = stats?.users.test ?? 0;
+    if (!window.confirm(`${count} ta test/demo foydalanuvchi butunlay o'chiriladi. Davom etamizmi?`)) return;
+    setBusy(true); setError("");
+    const r = await adminFetch("/api/admin/users", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "purge_test_users" }),
+    });
+    const d = await r.json();
+    setBusy(false);
+    if (!r.ok) { setError(d.error || "Xatolik"); return; }
+    void loadUsers(); void loadStats(); flash(d.message || "Tozalandi");
   };
 
   const inspectChat = async (id: string) => {
@@ -270,6 +385,9 @@ export default function AdminPage() {
           {error && (
             <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">{error}</div>
           )}
+          {notice && (
+            <div className="mb-4 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-4 py-3 text-sm">{notice}</div>
+          )}
 
           {/* ═══ DASHBOARD ═══ */}
           {tab === "dashboard" && stats && (
@@ -290,7 +408,7 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-4 mb-6">
                 {[
                   { label: "Bepul", count: stats.subscriptions.free, color: "text-slate-400", price: "$0" },
                   { label: "Premium", count: stats.subscriptions.premium, color: "text-blue-400", price: "$4.99/oy" },
@@ -303,6 +421,29 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-1.5"><Sparkles className="w-4 h-4" /> Chiroyli raqamlar</p>
+                  <p className="text-3xl font-bold text-white">{(stats.vanity?.total ?? 0).toLocaleString()}</p>
+                  <p className="text-slate-500 text-xs mt-1">Bo'sh: {(stats.vanity?.available ?? 0).toLocaleString()} · Sotilgan: {stats.vanity?.sold ?? 0}</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-green-400 mb-2">Jami daromad</p>
+                  <p className="text-3xl font-bold text-white">${stats.revenue?.total ?? "0.00"}</p>
+                  <p className="text-slate-500 text-xs mt-1">faol obunalardan</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-blue-400 mb-2">Xabarlar</p>
+                  <p className="text-3xl font-bold text-white">{stats.messages.total.toLocaleString()}</p>
+                  <p className="text-slate-500 text-xs mt-1">jami yuborilgan</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                  <p className="text-sm font-semibold text-red-400 mb-2">Test foydalanuvchilar</p>
+                  <p className="text-3xl font-bold text-white">{stats.users.test ?? 0}</p>
+                  <p className="text-slate-500 text-xs mt-1">tozalash mumkin</p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -312,6 +453,17 @@ export default function AdminPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">Foydalanuvchilar ({userTotal})</h2>
                 <div className="flex items-center gap-3">
+                  {admin?.role === "super_admin" && (stats?.users.test ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void purgeTestUsers()}
+                      disabled={busy}
+                      className="flex items-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-50"
+                      title="test.local / example.com foydalanuvchilarini o'chirish"
+                    >
+                      <Trash2 className="w-4 h-4" /> Test foydalanuvchilar ({stats?.users.test})
+                    </button>
+                  )}
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -427,32 +579,131 @@ export default function AdminPage() {
           {tab === "vanity" && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">Chiroyli raqam so'rovlari ({vanityReqs.length})</h2>
-                <button type="button" onClick={() => void loadVanity()} className="p-2 rounded-xl bg-slate-800 text-slate-300"><RefreshCw className="w-4 h-4" /></button>
+                <h2 className="text-xl font-bold text-white">Chiroyli raqamlar</h2>
+                <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                  <button type="button" onClick={() => setVanitySubTab("requests")} className={`px-4 py-1.5 rounded-lg text-sm font-medium ${vanitySubTab === "requests" ? "bg-brand-600 text-white" : "text-slate-400 hover:text-white"}`}>
+                    So'rovlar {stats?.pending.vanity ? `(${stats.pending.vanity})` : ""}
+                  </button>
+                  <button type="button" onClick={() => setVanitySubTab("catalog")} className={`px-4 py-1.5 rounded-lg text-sm font-medium ${vanitySubTab === "catalog" ? "bg-brand-600 text-white" : "text-slate-400 hover:text-white"}`}>
+                    Katalog
+                  </button>
+                </div>
               </div>
-              {vanityReqs.length === 0 ? (
-                <div className="text-center text-slate-500 py-16">Kutilayotgan so'rov yo'q</div>
-              ) : (
-                <div className="space-y-3">
-                  {vanityReqs.map((r) => (
-                    <div key={r.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-mono text-xl font-bold text-brand-400">{formatTcallId(r.number)}</p>
-                          <p className="text-slate-400 text-sm mt-1">{formatTierLabel(r.tier, ui)} · {formatVanityPrice(r.price)}</p>
-                          <p className="text-slate-500 text-sm mt-2">👤 {r.user.name} · {r.user.email}</p>
+
+              {/* ── So'rovlar ── */}
+              {vanitySubTab === "requests" && (
+                <>
+                  <div className="flex justify-end mb-3">
+                    <button type="button" onClick={() => void loadVanity()} className="p-2 rounded-xl bg-slate-800 text-slate-300"><RefreshCw className="w-4 h-4" /></button>
+                  </div>
+                  {vanityReqs.length === 0 ? (
+                    <div className="text-center text-slate-500 py-16">Kutilayotgan so'rov yo'q</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {vanityReqs.map((r) => (
+                        <div key={r.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-mono text-xl font-bold text-brand-400">{formatTcallId(r.number)}</p>
+                              <p className="text-slate-400 text-sm mt-1">{formatTierLabel(r.tier, ui)} · {formatVanityPrice(r.price)}</p>
+                              <p className="text-slate-500 text-sm mt-2">👤 {r.user.name} · {r.user.email}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => void reviewVanity(r.id, "approve")} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                                <Check className="w-4 h-4" /> Tasdiqlash
+                              </button>
+                              <button type="button" onClick={() => void reviewVanity(r.id, "reject")} className="flex items-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                                <X className="w-4 h-4" /> Rad etish
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button type="button" onClick={() => void reviewVanity(r.id, "approve")} className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                            <Check className="w-4 h-4" /> Tasdiqlash
-                          </button>
-                          <button type="button" onClick={() => void reviewVanity(r.id, "reject")} className="flex items-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-                            <X className="w-4 h-4" /> Rad etish
-                          </button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </>
+              )}
+
+              {/* ── Katalog ── */}
+              {vanitySubTab === "catalog" && (
+                <div>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3"><p className="text-slate-400 text-xs">Jami</p><p className="text-white text-lg font-bold">{catalogCounts.total.toLocaleString()}</p></div>
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3"><p className="text-green-400 text-xs">Bo'sh</p><p className="text-white text-lg font-bold">{catalogCounts.available.toLocaleString()}</p></div>
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3"><p className="text-purple-400 text-xs">Sotilgan</p><p className="text-white text-lg font-bold">{catalogCounts.sold.toLocaleString()}</p></div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className="bg-slate-800 border border-slate-700 text-white rounded-xl pl-9 pr-4 py-2 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Raqam qidirish..." value={catalogQ} onChange={(e) => { setCatalogQ(e.target.value); setCatalogPage(1); }} onKeyDown={(e) => e.key === "Enter" && void loadCatalog()} />
+                    </div>
+                    <select className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none" value={catalogTier} onChange={(e) => { setCatalogTier(e.target.value); setCatalogPage(1); }}>
+                      <option value="all">Barcha tier</option>
+                      {VANITY_TIERS.map((t) => <option key={t} value={t}>{formatTierLabel(t, ui)}</option>)}
+                    </select>
+                    <select className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none" value={catalogAvail} onChange={(e) => { setCatalogAvail(e.target.value); setCatalogPage(1); }}>
+                      <option value="all">Hammasi</option>
+                      <option value="available">Bo'sh</option>
+                      <option value="sold">Sotilgan</option>
+                    </select>
+                    <button type="button" onClick={() => void loadCatalog()} className="p-2 rounded-xl bg-slate-800 text-slate-300"><RefreshCw className="w-4 h-4" /></button>
+                    <div className="flex-1" />
+                    <div className="flex items-center gap-2">
+                      <input className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm w-36 font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Yangi raqam" value={newNumber} onChange={(e) => setNewNumber(e.target.value.replace(/\D/g, "").slice(0, 9))} inputMode="numeric" />
+                      <button type="button" onClick={() => void addNum()} disabled={busy || newNumber.replace(/\D/g, "").length !== 9} className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-xl text-sm font-medium disabled:opacity-50"><UserPlus className="w-4 h-4" /> Qo'shish</button>
+                    </div>
+                  </div>
+
+                  {loading ? <div className="text-center text-slate-500 py-10">Yuklanmoqda...</div> : (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-800">
+                            {["Raqam", "Tier", "Narx", "Holat", "Egasi", "Amallar"].map((h) => (
+                              <th key={h} className="px-4 py-3 text-left text-slate-400 font-medium">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {catalog.map((n) => (
+                            <tr key={n.id} className="hover:bg-slate-800/50">
+                              <td className="px-4 py-3 font-mono font-bold text-brand-400">{formatTcallId(n.number)}</td>
+                              <td className="px-4 py-3 text-slate-300">{formatTierLabel(n.tier, ui)}</td>
+                              <td className="px-4 py-3 text-slate-300">{formatVanityPrice(n.price)}</td>
+                              <td className="px-4 py-3">
+                                {n.available
+                                  ? <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">Bo'sh</span>
+                                  : <span className="px-2 py-1 rounded-lg text-xs font-semibold bg-purple-100 text-purple-700">Sotilgan</span>}
+                              </td>
+                              <td className="px-4 py-3 text-slate-400 text-xs">{n.user ? `${n.user.name} (${n.user.email})` : "—"}</td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-1">
+                                  <button type="button" title="Tahrirlash" onClick={() => openEditNum(n)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-brand-400"><Lock className="w-3.5 h-3.5" /></button>
+                                  {!n.available && n.user && (
+                                    <button type="button" title="Bo'shatish" onClick={() => void releaseNum(n.id)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-amber-400"><RefreshCw className="w-3.5 h-3.5" /></button>
+                                  )}
+                                  {!n.user && (
+                                    <button type="button" title="O'chirish" onClick={() => void deleteNum(n.id)} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {catalog.length === 0 && (
+                            <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">Raqam topilmadi</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                      {catalogPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800">
+                          <button type="button" disabled={catalogPage <= 1} onClick={() => setCatalogPage(p => p - 1)} className="p-1.5 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+                          <span className="text-slate-400 text-sm">{catalogPage} / {catalogPages}</span>
+                          <button type="button" disabled={catalogPage >= catalogPages} onClick={() => setCatalogPage(p => p + 1)} className="p-1.5 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -677,6 +928,38 @@ export default function AdminPage() {
               <button type="button" onClick={() => void doAction()} className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${actionType === "delete" || actionType === "ban" ? "bg-red-600 hover:bg-red-500" : "bg-brand-600 hover:bg-brand-500"}`}>
                 Tasdiqlash
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vanity number edit modal */}
+      {editNum && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditNum(null)}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-white font-bold mb-1">Raqamni tahrirlash</h3>
+            <p className="font-mono text-brand-400 text-lg mb-4">{formatTcallId(editNum.number)}</p>
+
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Tier</label>
+                <select className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none" value={editInput.tier} onChange={(e) => setEditInput(p => ({ ...p, tier: e.target.value }))}>
+                  {VANITY_TIERS.map((t) => <option key={t} value={t}>{formatTierLabel(t, ui)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-slate-400 text-xs mb-1 block">Narx (USD)</label>
+                <input type="number" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none" value={editInput.price} onChange={(e) => setEditInput(p => ({ ...p, price: e.target.value }))} />
+              </div>
+              <label className="flex items-center gap-2 text-slate-300 text-sm">
+                <input type="checkbox" checked={editInput.available} onChange={(e) => setEditInput(p => ({ ...p, available: e.target.checked }))} className="w-4 h-4 rounded" />
+                Sotuvda (bo'sh)
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setEditNum(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium">Bekor</button>
+              <button type="button" onClick={() => void saveNum()} disabled={busy} className="flex-1 bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">Saqlash</button>
             </div>
           </div>
         </div>
