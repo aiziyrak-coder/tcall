@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
 import { useAuth } from "@/hooks/useAuth";
-import { TcallLogo } from "@/components/TcallLogo";
-import { AppSplash } from "@/components/AppSplash";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { scrollInputIntoView } from "@/hooks/useAuthKeyboard";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,102 +40,88 @@ export default function RegisterPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="auth-app-shell">
-        <AppSplash message="Ro'yxatdan o'tish..." />
-      </div>
-    );
-  }
-
   return (
-    <div className="auth-app-shell app-page-enter">
-      <div className="auth-app-scroll">
-        <div className="auth-app-inner">
-        <div className="flex justify-center mb-8">
-          <TcallLogo
-            size="xl"
-            layout="horizontal"
-            title="Ro'yxatdan o'tish"
-            subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
-          />
-        </div>
+    <AuthShell
+      title="Ro'yxatdan o'tish"
+      subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
+    >
+      <form onSubmit={handleSubmit} className="auth-app-card space-y-5" noValidate>
+        {error && <div className="auth-form-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-app-card space-y-5">
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">
-              {error}
-            </div>
-          )}
+        <AuthField
+          name="name"
+          label="Ismingiz"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="Ali Valiyev"
+          required
+          autoComplete="name"
+          enterKeyHint="next"
+        />
 
-          <div>
-            <label className="block text-sm text-slate-600 mb-2">Ismingiz</label>
-            <input
-              className="input-field"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ali Valiyev"
-              required
-            />
-          </div>
+        <AuthField
+          name="email"
+          type="email"
+          label="Email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value.trim() })}
+          placeholder="ali@example.com"
+          required
+          autoComplete="email"
+          inputMode="email"
+          enterKeyHint="next"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
 
-          <div>
-            <label className="block text-sm text-slate-600 mb-2">Email</label>
-            <input
-              type="email"
-              className="input-field"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="ali@example.com"
-              required
-            />
-          </div>
+        <PasswordField
+          name="password"
+          label="Parol"
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          placeholder="Kamida 6 ta belgi"
+          minLength={6}
+          maxLength={128}
+          required
+          autoComplete="new-password"
+          enterKeyHint="next"
+        />
 
-          <div>
-            <label className="block text-sm text-slate-600 mb-2">Parol</label>
-            <input
-              type="password"
-              className="input-field"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Kamida 6 ta belgi"
-              minLength={6}
-              maxLength={128}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-slate-600 mb-2">Sizning tilingiz</label>
-            <select
-              className="input-field"
-              value={form.language}
-              onChange={(e) => setForm({ ...form, language: e.target.value })}
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.flag} {lang.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-slate-400 mt-1.5">
-              Boshqalar gapirganda tarjima shu tilga keladi
-            </p>
-          </div>
-
-          <button type="submit" disabled={loading} className="btn-primary w-full">
-            Ro&apos;yxatdan o&apos;tish
-          </button>
-
-          <p className="text-center text-sm text-slate-500">
-            Hisobingiz bormi?{" "}
-            <Link href="/login" className="text-brand-600 hover:underline">
-              Kirish
-            </Link>
+        <div>
+          <label htmlFor="language" className="block text-sm text-slate-600 mb-2">
+            Sizning tilingiz
+          </label>
+          <select
+            id="language"
+            name="language"
+            className="input-field auth-input"
+            value={form.language}
+            onChange={(e) => setForm({ ...form, language: e.target.value })}
+            onFocus={(e) => scrollInputIntoView(e.currentTarget)}
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.flag} {lang.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-400 mt-1.5">
+            Boshqalar gapirganda tarjima shu tilga keladi
           </p>
-        </form>
         </div>
-      </div>
-    </div>
+
+        <button type="submit" disabled={loading} className="auth-submit-btn">
+          {loading ? "Ro'yxatdan o'tish..." : "Ro'yxatdan o'tish"}
+        </button>
+
+        <p className="text-center text-sm text-slate-500">
+          Hisobingiz bormi?{" "}
+          <Link href="/login" className="text-brand-600 font-medium touch-manipulation">
+            Kirish
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

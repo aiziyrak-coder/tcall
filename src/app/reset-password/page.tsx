@@ -4,7 +4,9 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { TcallLogo } from "@/components/TcallLogo";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { PasswordField } from "@/components/auth/PasswordField";
 
 function ResetForm() {
   const router = useRouter();
@@ -34,7 +36,7 @@ function ResetForm() {
       const res = await apiFetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, password }),
+        body: JSON.stringify({ email: email.trim(), code, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
@@ -48,45 +50,66 @@ function ResetForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="auth-app-card space-y-4">
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div className="bg-green-500/10 border border-green-500/30 text-green-700 rounded-xl px-4 py-3 text-sm">
-          {message}
-        </div>
-      )}
-      <div>
-        <label className="block text-sm text-slate-600 mb-2">Email</label>
-        <input type="email" className="input-field" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      </div>
-      <div>
-        <label className="block text-sm text-slate-600 mb-2">Kod</label>
-        <input
-          type="text"
-          className="input-field text-center font-mono tracking-widest"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          maxLength={6}
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-slate-600 mb-2">Yangi parol</label>
-        <input type="password" className="input-field" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
-      </div>
-      <div>
-        <label className="block text-sm text-slate-600 mb-2">Tasdiqlash</label>
-        <input type="password" className="input-field" value={confirm} onChange={(e) => setConfirm(e.target.value)} minLength={6} required />
-      </div>
-      <button type="submit" disabled={loading} className="btn-primary w-full">
-        {loading ? "..." : "Parolni yangilash"}
+    <form onSubmit={handleSubmit} className="auth-app-card space-y-4" noValidate>
+      {error && <div className="auth-form-error">{error}</div>}
+      {message && <div className="auth-form-success">{message}</div>}
+
+      <AuthField
+        name="email"
+        type="email"
+        label="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        required
+        autoComplete="email"
+        inputMode="email"
+        enterKeyHint="next"
+      />
+
+      <AuthField
+        name="code"
+        type="text"
+        label="Kod"
+        className="text-center font-mono tracking-widest"
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        maxLength={6}
+        inputMode="numeric"
+        required
+        autoComplete="one-time-code"
+        enterKeyHint="next"
+      />
+
+      <PasswordField
+        name="password"
+        label="Yangi parol"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        minLength={6}
+        required
+        autoComplete="new-password"
+        enterKeyHint="next"
+      />
+
+      <PasswordField
+        name="confirm"
+        label="Tasdiqlash"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        minLength={6}
+        required
+        autoComplete="new-password"
+        enterKeyHint="go"
+      />
+
+      <button type="submit" disabled={loading} className="auth-submit-btn">
+        {loading ? "Saqlanmoqda..." : "Parolni yangilash"}
       </button>
+
       <p className="text-center text-sm">
-        <Link href="/login" className="text-brand-600">Login</Link>
+        <Link href="/login" className="text-brand-600 font-medium touch-manipulation inline-flex min-h-[44px] items-center justify-center w-full">
+          Login sahifasiga qaytish
+        </Link>
       </p>
     </form>
   );
@@ -94,17 +117,10 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="auth-app-shell app-page-enter">
-      <div className="auth-app-scroll">
-        <div className="auth-app-inner">
-          <div className="flex justify-center mb-8">
-            <TcallLogo size="lg" layout="horizontal" title="Yangi parol" />
-          </div>
-          <Suspense fallback={null}>
-            <ResetForm />
-          </Suspense>
-        </div>
-      </div>
-    </div>
+    <AuthShell title="Yangi parol" logoSize="lg">
+      <Suspense fallback={null}>
+        <ResetForm />
+      </Suspense>
+    </AuthShell>
   );
 }

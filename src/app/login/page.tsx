@@ -8,8 +8,10 @@ import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeApp } from "@/lib/native-app";
 import { loadRememberedLogin, saveRememberMe } from "@/lib/remember-login";
-import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { PasswordField } from "@/components/auth/PasswordField";
 
 function LoginForm() {
   const router = useRouter();
@@ -57,48 +59,53 @@ function LoginForm() {
   };
 
   if (loading || user) return <AppSplash message="Kirish..." />;
-  if (submitting) return <AppSplash message="Kirish..." />;
 
   return (
-    <form onSubmit={handleSubmit} className="auth-app-card space-y-5">
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm">
-          {error}
-        </div>
-      )}
+    <form onSubmit={handleSubmit} className="auth-app-card space-y-5" noValidate>
+      {error && <div className="auth-form-error">{error}</div>}
 
-      <div>
-        <label className="block text-sm text-slate-600 mb-2">Email</label>
-        <input
-          type="email"
-          className="input-field"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          placeholder="ali@example.com"
-          required
-          autoComplete="email"
-        />
-      </div>
+      <AuthField
+        name="email"
+        type="email"
+        label="Email"
+        value={form.email}
+        onChange={(e) => setForm({ ...form, email: e.target.value.trim() })}
+        placeholder="ali@example.com"
+        required
+        autoComplete="email"
+        inputMode="email"
+        enterKeyHint="next"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+      />
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm text-slate-600">Parol</label>
-          <Link href="/forgot-password" className="text-xs font-medium text-brand-600 touch-manipulation">
-            Parolni unutdim
-          </Link>
-        </div>
-        <input
-          type="password"
-          className="input-field"
-          value={form.password}
-          onChange={(e) => setForm({ ...form, password: e.target.value })}
-          required
-          autoComplete="current-password"
-        />
-      </div>
+      <PasswordField
+        name="password"
+        label="Parol"
+        value={form.password}
+        onChange={(e) => setForm({ ...form, password: e.target.value })}
+        required
+        autoComplete="current-password"
+        enterKeyHint="go"
+      />
 
-      <label className="flex items-center gap-2.5 text-sm text-slate-600 touch-manipulation select-none">
+      <p className="text-right -mt-2">
+        <Link
+          href="/forgot-password"
+          className="text-xs font-medium text-brand-600 touch-manipulation inline-flex min-h-[44px] items-center"
+        >
+          Parolni unutdim
+        </Link>
+      </p>
+
+      <label
+        htmlFor="remember-me"
+        className="flex items-center gap-2.5 text-sm text-slate-600 touch-manipulation select-none cursor-pointer min-h-[44px]"
+      >
         <input
+          id="remember-me"
+          name="remember"
           type="checkbox"
           checked={rememberMe}
           onChange={(e) => setRememberMe(e.target.checked)}
@@ -107,8 +114,8 @@ function LoginForm() {
         Eslab qolish
       </label>
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full">
-        Kirish
+      <button type="submit" disabled={submitting} className="auth-submit-btn">
+        {submitting ? "Kirish..." : "Kirish"}
       </button>
 
       {!isNativeApp() && (
@@ -125,18 +132,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="auth-app-shell app-page-enter">
-      <div className="auth-app-scroll">
-        <div className="auth-app-inner">
-          <div className="flex justify-center mb-8">
-            <TcallLogo size="xl" layout="horizontal" title="Kirish" subtitle="Hisobingizga kiring" />
-          </div>
-
-          <Suspense fallback={<AppSplash fullscreen={false} />}>
-            <LoginForm />
-          </Suspense>
-        </div>
-      </div>
-    </div>
+    <AuthShell title="Kirish" subtitle="Hisobingizga kiring">
+      <Suspense fallback={<AppSplash fullscreen={false} />}>
+        <LoginForm />
+      </Suspense>
+    </AuthShell>
   );
 }

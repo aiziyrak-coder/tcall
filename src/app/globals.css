@@ -122,6 +122,29 @@
     padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
       max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   }
+  .auth-input {
+    @apply text-base;
+  }
+  .auth-input-wrap {
+    @apply relative;
+  }
+  .auth-input-password {
+    padding-right: 3rem;
+  }
+  .auth-input-toggle {
+    @apply absolute right-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 active:text-slate-600 touch-manipulation;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .auth-form-error {
+    @apply bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm;
+  }
+  .auth-form-success {
+    @apply bg-green-500/10 border border-green-500/30 text-green-700 rounded-xl px-4 py-3 text-sm;
+  }
+  .auth-submit-btn {
+    @apply btn-primary w-full disabled:opacity-60 disabled:pointer-events-none;
+  }
   .auth-app-inner {
     @apply w-full max-w-lg;
   }
@@ -2813,6 +2836,18 @@ body.native-app .input-field:focus,
 body.native-app .input-field-compact:focus {
   border-color: rgba(79, 70, 229, 0.35);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+body.native-app .auth-app-scroll {
+  align-items: flex-start;
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+  padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+}
+
+body.native-app .auth-input,
+body.native-app .auth-input-wrap .input-field {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
 }
 
 body.native-app .ios-tab-bar {

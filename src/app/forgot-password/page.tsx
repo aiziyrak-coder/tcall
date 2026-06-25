@@ -4,7 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { TcallLogo } from "@/components/TcallLogo";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { PasswordField } from "@/components/auth/PasswordField";
 
 type Step = "email" | "code";
 
@@ -28,7 +30,7 @@ export default function ForgotPasswordPage() {
       const res = await apiFetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
@@ -49,7 +51,7 @@ export default function ForgotPasswordPage() {
       const res = await apiFetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
@@ -75,7 +77,7 @@ export default function ForgotPasswordPage() {
       const res = await apiFetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, password }),
+        body: JSON.stringify({ email: email.trim(), code, password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Xatolik");
@@ -89,103 +91,87 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-app-shell app-page-enter">
-      <div className="auth-app-scroll">
-        <div className="auth-app-inner">
-          <div className="flex justify-center mb-8">
-            <TcallLogo size="lg" layout="horizontal" title="Parolni tiklash" subtitle="Email orqali kod oling" />
-          </div>
+    <AuthShell title="Parolni tiklash" subtitle="Email orqali kod oling" logoSize="lg">
+      <div className="auth-app-card space-y-5">
+        {error && <div className="auth-form-error">{error}</div>}
+        {message && <div className="auth-form-success">{message}</div>}
 
-          <div className="auth-app-card space-y-5">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm">
-                {error}
-              </div>
-            )}
-            {message && (
-              <div className="bg-green-500/10 border border-green-500/30 text-green-700 rounded-xl px-4 py-3 text-sm">
-                {message}
-              </div>
-            )}
+        {step === "email" ? (
+          <form onSubmit={sendCode} className="space-y-5" noValidate>
+            <AuthField
+              name="email"
+              type="email"
+              label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              inputMode="email"
+              enterKeyHint="go"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button type="submit" disabled={loading} className="auth-submit-btn">
+              {loading ? "Yuborilmoqda..." : "Kod yuborish"}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={resetPassword} className="space-y-4" noValidate>
+            <AuthField
+              name="code"
+              type="text"
+              label="6 xonali kod"
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              className="text-center font-mono text-xl tracking-[0.35em]"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              required
+              autoComplete="one-time-code"
+              enterKeyHint="next"
+            />
+            <PasswordField
+              name="password"
+              label="Yangi parol"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={6}
+              required
+              autoComplete="new-password"
+              enterKeyHint="next"
+            />
+            <PasswordField
+              name="confirm"
+              label="Parolni tasdiqlang"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              minLength={6}
+              required
+              autoComplete="new-password"
+              enterKeyHint="go"
+            />
+            <button type="submit" disabled={loading} className="auth-submit-btn">
+              {loading ? "Saqlanmoqda..." : "Parolni yangilash"}
+            </button>
+            <button
+              type="button"
+              className="w-full text-sm text-brand-600 touch-manipulation disabled:opacity-50 min-h-[44px]"
+              disabled={loading || !email}
+              onClick={() => void resendCode()}
+            >
+              {loading ? "..." : "Kodni qayta yuborish"}
+            </button>
+          </form>
+        )}
 
-            {step === "email" ? (
-              <form onSubmit={sendCode} className="space-y-5">
-                <div>
-                  <label className="block text-sm text-slate-600 mb-2">Email</label>
-                  <input
-                    type="email"
-                    className="input-field"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full">
-                  {loading ? "..." : "Kod yuborish"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={resetPassword} className="space-y-4">
-                <div>
-                  <label className="block text-sm text-slate-600 mb-2">6 xonali kod</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="\d{6}"
-                    maxLength={6}
-                    className="input-field text-center font-mono text-xl tracking-[0.35em]"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-600 mb-2">Yangi parol</label>
-                  <input
-                    type="password"
-                    className="input-field"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-600 mb-2">Parolni tasdiqlang</label>
-                  <input
-                    type="password"
-                    className="input-field"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    minLength={6}
-                    required
-                    autoComplete="new-password"
-                  />
-                </div>
-                <button type="submit" disabled={loading} className="btn-primary w-full">
-                  {loading ? "..." : "Parolni yangilash"}
-                </button>
-                <button
-                  type="button"
-                  className="w-full text-sm text-brand-600 touch-manipulation disabled:opacity-50"
-                  disabled={loading || !email}
-                  onClick={() => void resendCode()}
-                >
-                  {loading ? "..." : "Kodni qayta yuborish"}
-                </button>
-              </form>
-            )}
-
-            <p className="text-center text-sm">
-              <Link href="/login" className="text-brand-600 font-medium">
-                Login sahifasiga qaytish
-              </Link>
-            </p>
-          </div>
-        </div>
+        <p className="text-center text-sm">
+          <Link href="/login" className="text-brand-600 font-medium touch-manipulation inline-flex min-h-[44px] items-center">
+            Login sahifasiga qaytish
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

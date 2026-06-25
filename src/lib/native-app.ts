@@ -112,7 +112,7 @@ export async function initNativeApp(onDeepLink?: (path: string) => void) {
   setupNativeTouchPolish();
 }
 
-/** Sariq hoshiya va qattiq fokus — yumshoq native touch */
+/** Sariq hoshiya va qattiq fokus — faqat tugmalar/havolalar uchun */
 function setupNativeTouchPolish() {
   if (typeof document === "undefined") return;
 
@@ -120,10 +120,21 @@ function setupNativeTouchPolish() {
     "touchend",
     (e) => {
       const t = e.target as HTMLElement | null;
-      if (!t?.closest("button, a, [role='button'], input, textarea, select, .touch-manipulation")) return;
+      if (!t) return;
+      // Matn kiritishda klaviaturani yopmang — Androidda ochilib yopilib qolmasin
+      if (t.closest("input, textarea, select, label, [contenteditable='true']")) return;
+      if (!t.closest("button, a, [role='button']")) return;
       requestAnimationFrame(() => {
         const active = document.activeElement as HTMLElement | null;
-        if (active?.blur && active !== document.body) active.blur();
+        if (
+          active?.blur &&
+          active !== document.body &&
+          (active instanceof HTMLInputElement ||
+            active instanceof HTMLTextAreaElement ||
+            active instanceof HTMLSelectElement)
+        ) {
+          active.blur();
+        }
       });
     },
     { passive: true }
