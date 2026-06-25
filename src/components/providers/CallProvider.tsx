@@ -36,6 +36,7 @@ import {
 import { SOCKET_CLIENT_OPTIONS } from "@/lib/socket-client";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
+import { ErrorToast } from "@/components/AppToast";
 import { ActiveCallEngine } from "@/components/active-call/ActiveCallEngine";
 import { MiniCallBar } from "@/components/active-call/MiniCallBar";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -596,17 +597,8 @@ export function CallProvider({ user, children }: CallProviderProps) {
         children
       )}
 
-      {dialError && (
-        <div className="fixed top-4 left-4 right-4 z-[60] bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm text-center">
-          {dialError}
-        </div>
-      )}
-
-      {acceptError && (
-        <div className="fixed top-4 left-4 right-4 z-[60] bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm text-center">
-          {acceptError}
-        </div>
-      )}
+      <ErrorToast message={dialError} type="warn" />
+      <ErrorToast message={acceptError} type="error" />
 
       {incomingCall && (
         <IncomingCallModal

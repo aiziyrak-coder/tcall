@@ -11,6 +11,7 @@ import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
+import { ReconnectPill, HintPill } from "@/components/AppToast";
 import { RecentsList } from "@/components/RecentsList";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { RoomPanel } from "@/components/RoomPanel";
@@ -21,7 +22,6 @@ import { ChatMessenger } from "@/components/ChatMessenger";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { LiveInterpreter } from "@/components/LiveInterpreter";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
-import { TcallLogo } from "@/components/TcallLogo";
 import { isNativeApp } from "@/lib/native-app";
 
 interface CallRecord {
@@ -299,17 +299,8 @@ function DashboardInner({
           />
         }
       >
-        {!socketConnected && (
-          <div className="ios-reconnect-banner shrink-0">
-            <TcallLogo size="xs" animate />
-            <span>{ui.reconnecting}</span>
-          </div>
-        )}
-        {notifHint && (
-          <div className="ios-reconnect-banner shrink-0 text-green-700 border-green-200 bg-green-50">
-            <span>{notifHint}</span>
-          </div>
-        )}
+        <ReconnectPill visible={!socketConnected} label={ui.reconnecting} />
+        <HintPill message={notifHint || null} />
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
