@@ -28,7 +28,8 @@
   --app-safe-left: max(env(safe-area-inset-left, 0px), var(--tg-content-safe-left));
   --app-safe-right: max(env(safe-area-inset-right, 0px), var(--tg-content-safe-right));
   --sidebar-w: 4.5rem;
-  --tab-bar-h: calc(78px + env(safe-area-inset-bottom, 0px));
+  --tab-bar-h: 72px;
+  --tab-bar-safe-h: calc(72px + env(safe-area-inset-bottom, 0px));
   --liquid-glass: rgba(255, 255, 255, 0.58);
   --liquid-glass-strong: rgba(255, 255, 255, 0.78);
   --liquid-border: rgba(255, 255, 255, 0.72);
@@ -499,6 +500,28 @@
   padding-right: var(--app-h-pad);
 }
 
+/* Mobil brauzer + ilova — bir xil fon va header */
+@media (max-width: 1023px) {
+  .app-shell {
+    background: #eff1f7;
+  }
+  .app-main {
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-main-header {
+    background: transparent;
+    border-bottom: none;
+    padding-bottom: 0.4rem;
+  }
+  .app-main-content {
+    background: transparent;
+  }
+  .ios-keypad {
+    background: transparent;
+  }
+}
+
 .app-main-content.ios-phone-content-chat {
   padding-left: 0;
   padding-right: 0;
@@ -564,10 +587,26 @@ body.tg-webapp .ios-tab-bar {
 
 .ios-my-number {
   @apply w-full text-center py-3 mb-2 flex flex-col items-center gap-0.5 touch-manipulation;
+  background: transparent;
+}
+
+/* Mobil rejimda my-number ni glass karta sifatida ko'rsatish */
+@media (max-width: 1023px) {
+  .ios-my-number {
+    background: rgba(255, 255, 255, 0.52);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 1.125rem;
+    margin: 0.5rem 0.25rem 0.25rem;
+    padding: 0.625rem 1rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  }
 }
 
 .ios-keypad {
-  @apply flex flex-col items-center pb-4 bg-white;
+  @apply flex flex-col items-center pb-4;
+  background: transparent;
 }
 
 .ios-keypad-display {
@@ -1579,46 +1618,64 @@ body.tg-webapp .ios-tab-bar {
 .app-tab-keypad {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding-bottom: 0.25rem;
+  justify-content: flex-start;
+  padding-bottom: 0.5rem;
 }
 
 .app-tab-keypad .ios-my-number {
   @apply py-2 mb-1;
 }
 
+.app-tab-keypad .ios-my-number {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0;
+}
+
 .app-tab-keypad .ios-keypad {
-  @apply pb-2 flex-1 justify-center;
+  padding-bottom: 0.5rem;
 }
 
 .app-tab-keypad .ios-keypad-grid {
-  max-width: min(280px, 88vw);
-  gap: clamp(4px, 1.2vh, 8px);
+  max-width: min(288px, 92vw);
+  gap: 6px;
 }
 
 .app-tab-keypad .ios-key {
-  max-height: clamp(48px, 9.5vh, 68px);
+  max-height: 66px;
+  min-height: 52px;
+  aspect-ratio: 1;
 }
 
 .app-tab-keypad .ios-key-spacer {
-  max-height: clamp(48px, 9.5vh, 68px);
+  max-height: 66px;
+  min-height: 52px;
+  aspect-ratio: 1;
 }
 
 .app-tab-keypad .ios-keypad-backspace {
-  width: clamp(2.5rem, 10vw, 2.75rem);
-  height: clamp(2.5rem, 10vw, 2.75rem);
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .app-tab-keypad .ios-key-digit {
-  @apply text-2xl;
+  font-size: 1.625rem;
 }
 
 .app-tab-keypad .ios-call-green-btn {
-  width: clamp(52px, 11vw, 64px);
-  height: clamp(52px, 11vw, 64px);
+  width: 62px;
+  height: 62px;
+}
+
+.app-tab-keypad .ios-keypad-display {
+  min-height: 48px;
+  margin-bottom: 0.5rem;
 }
 
 .ios-reconnect-banner {
@@ -2431,7 +2488,8 @@ body.has-mini-call .chat-app-thread .chat-composer {
   @apply shrink-0 border-t border-black/[0.06] bg-white/95 backdrop-blur-md py-2.5;
   padding-left: max(0.625rem, var(--app-safe-left));
   padding-right: max(0.625rem, var(--app-safe-right));
-  padding-bottom: max(0.625rem, var(--app-safe-bottom));
+  /* Brauzer va ilova ikkalasida ham to'g'ri */
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.04);
 }
 
@@ -2607,7 +2665,7 @@ body.has-mini-call .chat-app-thread .chat-composer {
   .chat-composer {
     padding-left: max(var(--app-h-pad), var(--app-safe-left));
     padding-right: max(var(--app-h-pad), var(--app-safe-right));
-    padding-bottom: max(0.75rem, var(--app-safe-bottom));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .chat-bubble-wrap {
@@ -3397,7 +3455,8 @@ body.native-app .chat-input {
   -webkit-text-size-adjust: 100%;
 }
 
-body.native-app .chat-composer {
+body.native-app .chat-composer,
+body.web-app .chat-composer {
   padding-bottom: max(0.625rem, env(safe-area-inset-bottom, 0px));
 }
 
@@ -3461,7 +3520,12 @@ body.native-app .chat-conv-item:active {
 }
 
 .app-shell-bottom-nav .app-main-content {
-  padding-bottom: var(--tab-bar-h);
+  padding-bottom: var(--tab-bar-safe-h);
+}
+
+/* Chat ekranida tab bar yo'q — padding kerak emas */
+.app-shell-no-tabbar .app-main-content {
+  padding-bottom: 0 !important;
 }
 
 .liquid-bg-orbs {
@@ -3549,12 +3613,12 @@ body.native-app .chat-conv-item:active {
 .liquid-tab-bar {
   position: fixed;
   z-index: 40;
-  left: max(var(--app-safe-left), 0px);
-  right: max(var(--app-safe-right), 0px);
+  left: 0;
+  right: 0;
   bottom: 0;
-  padding: 0 0.5rem;
-  padding-bottom: max(0.5rem, var(--app-safe-bottom));
-  background: rgba(248, 249, 252, 0.78);
+  padding: 0.25rem 0.5rem;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  background: rgba(245, 247, 252, 0.88);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
   border-top: 0.5px solid rgba(255, 255, 255, 0.8);
@@ -3571,7 +3635,7 @@ body.native-app .chat-conv-item:active {
   justify-content: space-around;
   max-width: 480px;
   margin: 0 auto;
-  height: 54px;
+  height: 50px;
 }
 
 /* ─── Normal tab item ─── */
@@ -3582,9 +3646,9 @@ body.native-app .chat-conv-item:active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-height: 54px;
-  padding: 0.25rem 0.15rem 0.2rem;
+  gap: 2px;
+  min-height: 50px;
+  padding: 0.2rem 0.1rem 0.15rem;
   color: rgba(60, 60, 67, 0.42);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;

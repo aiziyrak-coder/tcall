@@ -237,8 +237,14 @@ export function PhoneShell({
   const bottomNav = useMobileBottomNav();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const shellClass = [
+    "app-shell",
+    bottomNav ? "app-shell-bottom-nav" : "",
+    bottomNav && hideTabBar ? "app-shell-no-tabbar" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className={`app-shell${bottomNav ? " app-shell-bottom-nav" : ""}`}>
+    <div className={shellClass}>
       <div className="liquid-bg-orbs" aria-hidden />
 
       {!bottomNav && (
