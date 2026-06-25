@@ -191,6 +191,11 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [tgStatus, setTgStatus] = useState<{ configured: boolean; linked: boolean; username: string | null } | null>(null);
   const [tgBusy, setTgBusy] = useState(false);
 
+  // Account deletion
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
   useEffect(() => {
     apiFetch("/api/user/settings")
       .then((r) => r.json())
@@ -431,6 +436,30 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
       /* ignore */
     } finally {
       setTgBusy(false);
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!deletePassword) {
+      setNotice({ type: "error", text: "Parolingizni kiriting" });
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      const r = await apiFetch("/api/user/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setNotice({ type: "error", text: d.error || "Xatolik" });
+        return;
+      }
+      window.location.href = "/";
+    } catch {
+      setNotice({ type: "error", text: "Tarmoq xatosi" });
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -1166,7 +1195,63 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         </div>
       </section>
 
+      <section className="settings-security-card">
+        <p className="settings-section-label">Huquqiy</p>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="settings-row block hover:opacity-70">
+          <span className="text-slate-700 text-sm">Maxfiylik siyosati</span>
+        </a>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" className="settings-row block hover:opacity-70">
+          <span className="text-slate-700 text-sm">Foydalanish shartlari</span>
+        </a>
+      </section>
+
       {renderLogoutBlock()}
+
+      <section className="settings-security-card border border-red-100">
+        <p className="settings-section-label text-red-600">Xavfli hudud</p>
+        {!deleteOpen ? (
+          <button
+            type="button"
+            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 font-medium text-sm flex items-center justify-center gap-2"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="w-4 h-4" /> Hisobni butunlay o‘chirish
+          </button>
+        ) : (
+          <div className="space-y-2.5">
+            <p className="text-xs text-slate-500">
+              Bu amal qaytarib bo‘lmaydi — barcha ma’lumotlaringiz (profil, suhbatlar, qo‘ng‘iroqlar) o‘chiriladi.
+              Tasdiqlash uchun parolingizni kiriting.
+            </p>
+            <input
+              type="password"
+              className="input-field-compact"
+              placeholder="Parol"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-medium text-sm disabled:opacity-50"
+                onClick={() => void deleteAccount()}
+                disabled={deleteBusy}
+              >
+                {deleteBusy ? "O‘chirilmoqda..." : "Ha, o‘chirish"}
+              </button>
+              <button
+                type="button"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-medium text-sm"
+                onClick={() => { setDeleteOpen(false); setDeletePassword(""); }}
+                disabled={deleteBusy}
+              >
+                Bekor qilish
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 
