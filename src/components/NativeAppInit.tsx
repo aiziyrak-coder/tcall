@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isNativeApp, initNativeApp, requestNativeNotificationPermission } from "@/lib/native-app";
+import { registerNativePush } from "@/lib/native-push";
 
 /** Native Capacitor ilova ishga tushirish — xatolik ilovani yopmasin */
 export function NativeAppInit() {
@@ -11,6 +12,7 @@ export function NativeAppInit() {
   useEffect(() => {
     let cancelled = false;
     let removeTap: (() => void) | undefined;
+    let removePush: (() => void) | undefined;
 
     async function boot() {
       try {
@@ -22,6 +24,16 @@ export function NativeAppInit() {
 
         if (cancelled) return;
         await requestNativeNotificationPermission();
+
+        // Push (FCM/APNs) ro'yxatga olish — yopiq ilovada qo'ng'iroq bildirishnomasi uchun
+        registerNativePush((roomId) => {
+          if (!cancelled) router.push(`/call/${roomId}`);
+        })
+          .then((cleanup) => {
+            if (cancelled) cleanup();
+            else removePush = cleanup;
+          })
+          .catch(() => {});
 
         const { LocalNotifications } = await import("@capacitor/local-notifications");
         const sub = await LocalNotifications.addListener(
@@ -46,6 +58,7 @@ export function NativeAppInit() {
     return () => {
       cancelled = true;
       removeTap?.();
+      removePush?.();
     };
   }, [router]);
 

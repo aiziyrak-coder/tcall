@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { sendFcmV1 } from "./fcm";
 
 export interface IncomingCallPush {
   roomId: string;
@@ -13,54 +14,15 @@ async function sendFcm(
     body: string;
     data: Record<string, string>;
     priority?: "high" | "normal";
+    isCall?: boolean;
   }
 ): Promise<"sent" | "invalid_token" | "error"> {
-  const serverKey = process.env.FCM_SERVER_KEY;
-  if (!serverKey) return "error";
-  try {
-    const res = await fetch("https://fcm.googleapis.com/fcm/send", {
-      method: "POST",
-      headers: {
-        Authorization: `key=${serverKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: token,
-        priority: payload.priority ?? "high",
-        content_available: true,
-        notification: {
-          title: payload.title,
-          body: payload.body,
-          sound: "default",
-          click_action: "FLUTTER_NOTIFICATION_CLICK",
-        },
-        data: payload.data,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.warn("FCM push failed:", text);
-      return "error";
-    }
-
-    // Yaroqsiz tokenlarni aniqlash
-    const json = await res.json().catch(() => ({}));
-    const firstResult = json.results?.[0];
-    if (
-      firstResult?.error === "NotRegistered" ||
-      firstResult?.error === "InvalidRegistration" ||
-      firstResult?.error === "MismatchSenderId"
-    ) {
-      return "invalid_token";
-    }
-
-    return "sent";
-  } catch (e) {
-    console.error("FCM push error:", e);
-    return "error";
-  }
+  return sendFcmV1(token, {
+    title: payload.title,
+    body: payload.body,
+    data: payload.data,
+    isCall: payload.isCall ?? payload.priority === "high",
+  });
 }
 
 /** Yaroqsiz FCM tokenlarni DB dan tozalash */
@@ -82,7 +44,7 @@ async function getTokens(userId: string) {
 
 async function sendToUser(
   userId: string,
-  payload: { title: string; body: string; data: Record<string, string>; priority?: "high" | "normal" }
+  payload: { title: string; body: string; data: Record<string, string>; priority?: "high" | "normal"; isCall?: boolean }
 ): Promise<{ sent: number }> {
   const tokens = await getTokens(userId);
   if (tokens.length === 0) return { sent: 0 };
@@ -102,6 +64,7 @@ export async function sendIncomingCallPush(userId: string, data: IncomingCallPus
     title: "Tcall — Kiruvchi qo'ng'iroq",
     body: `${data.callerName} · ${data.callerTcallId}`,
     priority: "high",
+    isCall: true,
     data: { type: "incoming_call", roomId: data.roomId, callerName: data.callerName, callerTcallId: data.callerTcallId },
   });
 }
