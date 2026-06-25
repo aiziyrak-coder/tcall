@@ -940,6 +940,12 @@ export function useCall({
       detachSocketRef.current?.();
       detachSocketRef.current = null;
 
+      // User-left timer tozalash (memory leak oldini olish)
+      if (userLeftTimerRef.current) {
+        clearTimeout(userLeftTimerRef.current);
+        userLeftTimerRef.current = null;
+      }
+
       const hadRemote = !!remoteStreamRef.current;
       const socket = socketRef.current;
       const host = serverIsHostRef.current || optsRef.current.isHost;

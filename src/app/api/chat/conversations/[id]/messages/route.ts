@@ -9,6 +9,7 @@ import {
 } from "@/lib/chat-service";
 import { isOwnChatMediaUrl } from "@/lib/chat-media-access";
 import { getUserLanguage } from "@/lib/chat-translate";
+import { guardUser } from "@/lib/user-guard";
 
 const sendSchema = z.object({
   text: z.string().max(2000).optional(),
@@ -25,6 +26,12 @@ export async function POST(
 ) {
   const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+
+  // Ban va Premium tekshiruvi
+  const guard = await guardUser(session.userId, "premium");
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.error, code: guard.code }, { status: guard.status });
+  }
 
   const limited = rateLimit(`chat:${session.userId}`, 30, 60_000);
   if (!limited.ok) {

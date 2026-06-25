@@ -257,6 +257,8 @@ model CallParticipant {
   leftAt   DateTime?
 
   @@unique([callId, userId])
+  @@index([userId, leftAt])
+  @@index([callId, leftAt])
 }
 
 model CallTranscript {
@@ -319,6 +321,7 @@ model ConversationMember {
   @@unique([conversationId, userId])
   @@index([userId])
   @@index([userId, pinnedAt])
+  @@index([conversationId, lastReadAt])
 }
 
 model ChatMessage {
@@ -343,8 +346,9 @@ model ChatMessage {
   translations MessageTranslation[]
   reactions    MessageReaction[]
 
-  @@index([conversationId, createdAt])
-  @@index([senderId])
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([senderId, createdAt])
+  @@index([conversationId, senderId])
 }
 
 model MessageReaction {

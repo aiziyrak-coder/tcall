@@ -6,8 +6,12 @@ import type { NextRequest } from "next/server";
 const ADMIN_COOKIE = "admin_session";
 
 function getAdminSecret() {
-  const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "admin-dev-secret";
-  return new TextEncoder().encode(secret + "-admin");
+  const secret = process.env.ADMIN_JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("ADMIN_JWT_SECRET muhit o'zgaruvchisi ishlab chiqarish rejimida talab qilinadi");
+  }
+  const fallback = (process.env.JWT_SECRET || "dev-admin-fallback") + "-admin-2026-tcall";
+  return new TextEncoder().encode(secret || fallback);
 }
 
 export interface AdminSession {
@@ -59,12 +63,23 @@ export { ADMIN_COOKIE };
 /** Server ishga tushganda admin@tcall.uz ni yaratish */
 export async function ensureDefaultAdmin() {
   const email = "admin@tcall.uz";
-  const password = "Aa.19980912";
+  // Paroli env yoki default (ishlab chiqarish uchun env o'rnatish kerak)
+  const password = process.env.DEFAULT_ADMIN_PASSWORD || "Aa.19980912";
   const existing = await prisma.adminUser.findUnique({ where: { email } });
-  if (existing) return;
+  if (existing) {
+    // Muhim: env da yangi parol bo'lsa, yangilab qo'yamiz
+    if (process.env.DEFAULT_ADMIN_PASSWORD) {
+      const newHash = await hashAdminPassword(password);
+      await prisma.adminUser.update({
+        where: { email },
+        data: { passwordHash: newHash },
+      });
+    }
+    return;
+  }
   const passwordHash = await hashAdminPassword(password);
   await prisma.adminUser.create({
-    data: { email, name: "Admin", passwordHash, role: "super_admin" },
+    data: { email, name: "Super Admin", passwordHash, role: "super_admin" },
   });
   console.log("[admin] Default admin yaratildi:", email);
 }

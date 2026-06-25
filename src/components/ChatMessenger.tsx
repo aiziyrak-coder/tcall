@@ -217,9 +217,15 @@ export function ChatMessenger({
     };
   }, [onThreadChange]);
 
-  // Komponent yopilganda typing holati tozalansin
+  // Komponent yopilganda typing holati va timer tozalansin
   useEffect(() => {
     return () => {
+      // Typing timer
+      if (typingEmitRef.current) {
+        clearTimeout(typingEmitRef.current);
+        typingEmitRef.current = null;
+      }
+      // Socket emit
       const socket = getSocket();
       if (socket?.connected && activeIdRef.current) {
         socket.emit("chat-typing-stop", { conversationId: activeIdRef.current });

@@ -14,9 +14,9 @@ async function sendFcm(
     data: Record<string, string>;
     priority?: "high" | "normal";
   }
-) {
+): Promise<"sent" | "invalid_token" | "error"> {
   const serverKey = process.env.FCM_SERVER_KEY;
-  if (!serverKey) return false;
+  if (!serverKey) return "error";
   try {
     const res = await fetch("https://fcm.googleapis.com/fcm/send", {
       method: "POST",
@@ -38,14 +38,38 @@ async function sendFcm(
       }),
       signal: AbortSignal.timeout(10_000),
     });
+
     if (!res.ok) {
-      console.warn("FCM push failed:", await res.text());
-      return false;
+      const text = await res.text();
+      console.warn("FCM push failed:", text);
+      return "error";
     }
-    return true;
+
+    // Yaroqsiz tokenlarni aniqlash
+    const json = await res.json().catch(() => ({}));
+    const firstResult = json.results?.[0];
+    if (
+      firstResult?.error === "NotRegistered" ||
+      firstResult?.error === "InvalidRegistration" ||
+      firstResult?.error === "MismatchSenderId"
+    ) {
+      return "invalid_token";
+    }
+
+    return "sent";
   } catch (e) {
     console.error("FCM push error:", e);
-    return false;
+    return "error";
+  }
+}
+
+/** Yaroqsiz FCM tokenlarni DB dan tozalash */
+async function cleanupTokens(invalidTokens: string[]) {
+  if (invalidTokens.length === 0) return;
+  try {
+    await prisma.deviceToken.deleteMany({ where: { token: { in: invalidTokens } } });
+  } catch {
+    /* ignore */
   }
 }
 
@@ -56,78 +80,64 @@ async function getTokens(userId: string) {
   });
 }
 
-/** FCM — kiruvchi qo'ng'iroq push */
-export async function sendIncomingCallPush(userId: string, data: IncomingCallPush) {
+async function sendToUser(
+  userId: string,
+  payload: { title: string; body: string; data: Record<string, string>; priority?: "high" | "normal" }
+): Promise<{ sent: number }> {
   const tokens = await getTokens(userId);
   if (tokens.length === 0) return { sent: 0 };
   let sent = 0;
+  const invalid: string[] = [];
   for (const { token, platform } of tokens) {
-    const ok = await sendFcm(token, {
-      title: "Tcall — Kiruvchi qo'ng'iroq",
-      body: `${data.callerName} · ${data.callerTcallId}`,
-      data: { type: "incoming_call", roomId: data.roomId, callerName: data.callerName, callerTcallId: data.callerTcallId, platform },
-    });
-    if (ok) sent++;
+    const result = await sendFcm(token, { ...payload, data: { ...payload.data, platform } });
+    if (result === "sent") sent++;
+    else if (result === "invalid_token") invalid.push(token);
   }
+  void cleanupTokens(invalid);
   return { sent };
 }
 
-/** FCM — yangi chat xabar push */
+export async function sendIncomingCallPush(userId: string, data: IncomingCallPush) {
+  return sendToUser(userId, {
+    title: "Tcall — Kiruvchi qo'ng'iroq",
+    body: `${data.callerName} · ${data.callerTcallId}`,
+    priority: "high",
+    data: { type: "incoming_call", roomId: data.roomId, callerName: data.callerName, callerTcallId: data.callerTcallId },
+  });
+}
+
 export async function sendChatPush(
   userId: string,
   data: { senderName: string; text: string; conversationId: string }
 ) {
-  const tokens = await getTokens(userId);
-  if (tokens.length === 0) return { sent: 0 };
-  let sent = 0;
-  for (const { token, platform } of tokens) {
-    const ok = await sendFcm(token, {
-      title: `Tcall — ${data.senderName}`,
-      body: data.text.slice(0, 100),
-      priority: "normal",
-      data: { type: "chat_message", conversationId: data.conversationId, senderName: data.senderName, platform },
-    });
-    if (ok) sent++;
-  }
-  return { sent };
+  return sendToUser(userId, {
+    title: `Tcall — ${data.senderName}`,
+    body: data.text.slice(0, 120),
+    priority: "normal",
+    data: { type: "chat_message", conversationId: data.conversationId, senderName: data.senderName },
+  });
 }
 
-/** FCM — do'stlik so'rovi push */
 export async function sendFriendRequestPush(
   userId: string,
   data: { senderName: string; senderTcallId: string }
 ) {
-  const tokens = await getTokens(userId);
-  if (tokens.length === 0) return { sent: 0 };
-  let sent = 0;
-  for (const { token, platform } of tokens) {
-    const ok = await sendFcm(token, {
-      title: "Tcall — Do'stlik so'rovi",
-      body: `${data.senderName} sizga do'stlik so'rovi yubordi`,
-      priority: "normal",
-      data: { type: "friend_request", senderName: data.senderName, senderTcallId: data.senderTcallId, platform },
-    });
-    if (ok) sent++;
-  }
-  return { sent };
+  return sendToUser(userId, {
+    title: "Tcall — Do'stlik so'rovi",
+    body: `${data.senderName} sizga do'stlik so'rovi yubordi`,
+    priority: "normal",
+    data: { type: "friend_request", senderName: data.senderName, senderTcallId: data.senderTcallId },
+  });
 }
 
-/** FCM — o'tkazib yuborilgan qo'ng'iroq push */
 export async function sendMissedCallPush(
   userId: string,
   data: { callerName: string; callerTcallId: string; roomId: string }
 ) {
-  const tokens = await getTokens(userId);
-  if (tokens.length === 0) return { sent: 0 };
-  let sent = 0;
-  for (const { token, platform } of tokens) {
-    const ok = await sendFcm(token, {
-      title: "Tcall — O'tkazib yuborilgan qo'ng'iroq",
-      body: `${data.callerName} · ${data.callerTcallId}`,
-      priority: "normal",
-      data: { type: "missed_call", callerName: data.callerName, callerTcallId: data.callerTcallId, roomId: data.roomId, platform },
-    });
-    if (ok) sent++;
-  }
-  return { sent };
+  return sendToUser(userId, {
+    title: "Tcall — O'tkazib yuborilgan qo'ng'iroq",
+    body: `${data.callerName} · ${data.callerTcallId}`,
+    priority: "normal",
+    data: { type: "missed_call", callerName: data.callerName, callerTcallId: data.callerTcallId, roomId: data.roomId },
+  });
 }

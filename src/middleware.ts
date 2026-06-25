@@ -25,7 +25,7 @@ function corsHeaders(origin: string | null) {
 
 async function verifySessionCookie(token: string): Promise<{ ok: true; email?: string } | { ok: false }> {
   const secret = getJwtSecret();
-  if (!secret) return process.env.NODE_ENV !== "production" ? { ok: true } : { ok: false };
+  if (!secret) return { ok: false }; // Always require JWT — no dev bypass
   try {
     const { payload } = await jwtVerify(token, secret);
     const email = typeof payload.email === "string" ? payload.email : undefined;

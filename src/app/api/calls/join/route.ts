@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { canJoinCall } from "@/lib/call-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { isValidRoomId } from "@/lib/utils";
+import { guardUser } from "@/lib/user-guard";
 
 const MAX_PARTICIPANTS = 2;
 
@@ -20,6 +21,12 @@ export async function POST(req: NextRequest) {
         { error: `Juda ko'p urinish. ${limited.retryAfterSec}s kuting` },
         { status: 429 }
       );
+    }
+
+    // Ban va Premium+ tekshiruvi
+    const guard = await guardUser(session.userId, "premium_plus");
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error, code: guard.code }, { status: guard.status });
     }
 
     const body = await req.json();

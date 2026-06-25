@@ -48,8 +48,11 @@ export async function DELETE(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "ID kerak" }, { status: 400 });
 
-  const admin = await prisma.adminUser.findUnique({ where: { id }, select: { email: true } });
-  if (admin?.email === "admin@tcall.uz") return NextResponse.json({ error: "Asosiy adminni o'chirib bo'lmaydi" }, { status: 400 });
+  const admin = await prisma.adminUser.findUnique({ where: { id }, select: { email: true, role: true } });
+  if (!admin) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
+  if (admin.email === "admin@tcall.uz" || admin.role === "super_admin") {
+    return NextResponse.json({ error: "Super adminni o'chirib bo'lmaydi" }, { status: 400 });
+  }
 
   await prisma.adminUser.delete({ where: { id } });
   return NextResponse.json({ ok: true });

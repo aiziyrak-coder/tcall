@@ -131,6 +131,18 @@ app.prepare().then(async () => {
       if (!token) return next(new Error("Unauthorized"));
       const session = await verifyToken(token);
       if (!session?.userId) return next(new Error("Unauthorized"));
+
+      // Ban tekshiruvi
+      const ban = await prisma.userBan.findFirst({
+        where: {
+          userId: session.userId,
+          active: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        select: { reason: true },
+      });
+      if (ban) return next(new Error(`Banned: ${ban.reason}`));
+
       socket.data.session = session;
       next();
     } catch {

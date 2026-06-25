@@ -153,7 +153,7 @@ function hasMirrorHalf(num: string): boolean {
 }
 
 // ──────────────────────────────────────────────
-//  Asosiy scoring va tasnif
+//  Asosiy scoring va tasnif (memoized)
 // ──────────────────────────────────────────────
 
 interface PatternResult {
@@ -162,8 +162,18 @@ interface PatternResult {
   pattern?: string;
 }
 
-/** Raqamni to'liq tahlil qilish — ball va tier qaytaradi */
+// O'zgarmas tahlil natijalarini keshlash
+const analysisCache = new Map<string, PatternResult>();
+
+function cache(num: string, r: PatternResult): PatternResult {
+  analysisCache.set(num, r);
+  return r;
+}
+
+/** Raqamni to'liq tahlil qilish — ball va tier qaytaradi (memoized) */
 function analyzeNumber(num: string): PatternResult {
+  if (analysisCache.has(num)) return analysisCache.get(num)!;
+
   const trailing = runLengthFromEnd(num);
   const leading  = runLengthFromStart(num);
   const internal = maxInternalRun(num);
@@ -171,126 +181,37 @@ function analyzeNumber(num: string): PatternResult {
 
   // ——— Barcha raqamlar bir xil: 111111111, 999999999
   if (trailing === len) {
-    return { score: 100, tier: "vip", pattern: `${num[0].repeat(len)}` };
+    return cache(num, { score: 100, tier: "vip", pattern: `${num[0].repeat(len)}` });
   }
 
   // ——— Ketma-ket barcha raqamlar: 123456789, 987654321
   const seq = sequenceRunLen(num);
-  if (seq.len === len) {
-    return { score: 98, tier: "vip", pattern: seq.dir === "asc" ? "123456789" : "987654321" };
-  }
+  if (seq.len === len) return cache(num, { score: 98, tier: "vip", pattern: seq.dir === "asc" ? "123456789" : "987654321" });
+  if (trailing === 8) return cache(num, { score: 95, tier: "platinum_premium_plus_plus", pattern: `trailing×8` });
+  if (leading  === 8) return cache(num, { score: 93, tier: "platinum_premium_plus", pattern: `leading×8` });
+  if (trailing === 7) return cache(num, { score: 88, tier: leading >= 3 ? "platinum_plus_plus" : "platinum", pattern: `trailing×7` });
+  if (leading  === 7) return cache(num, { score: 85, tier: "platinum_premium", pattern: `leading×7` });
+  if (isPalindrome(num)) return cache(num, { score: 82, tier: "platinum_plus", pattern: "palindrome" });
+  if (trailing === 6) return cache(num, { score: 78, tier: leading >= 3 ? "gold_plus_plus" : "gold", pattern: `trailing×6` });
+  if (leading  === 6) return cache(num, { score: 75, tier: "gold_plus", pattern: `leading×6` });
+  if (seq.len >= 7)   return cache(num, { score: 72, tier: "gold_plus", pattern: `seq×${seq.len}` });
 
-  // ——— 8 ta bir xil oxirida: X11111111
-  if (trailing === 8) {
-    return { score: 95, tier: "platinum_premium_plus_plus", pattern: `trailing×8` };
-  }
-
-  // ——— 8 ta bir xil boshida: 11111111X
-  if (leading === 8) {
-    return { score: 93, tier: "platinum_premium_plus", pattern: `leading×8` };
-  }
-
-  // ——— 7 ta bir xil oxirida
-  if (trailing === 7) {
-    const tier: VanityTier = leading >= 3 ? "platinum_plus_plus" : "platinum";
-    return { score: 88, tier, pattern: `trailing×7` };
-  }
-
-  // ——— 7 ta bir xil boshida
-  if (leading === 7) {
-    return { score: 85, tier: "platinum_premium", pattern: `leading×7` };
-  }
-
-  // ——— Palindrom 9 ta raqam: 123454321
-  if (isPalindrome(num)) {
-    return { score: 82, tier: "platinum_plus", pattern: "palindrome" };
-  }
-
-  // ——— 6 ta bir xil oxirida
-  if (trailing === 6) {
-    const tier: VanityTier = leading >= 3 ? "gold_plus_plus" : "gold";
-    return { score: 78, tier, pattern: `trailing×6` };
-  }
-
-  // ——— 6 ta bir xil boshida
-  if (leading === 6) {
-    return { score: 75, tier: "gold_plus", pattern: `leading×6` };
-  }
-
-  // ——— Ketma-ket 7+ ta raqam (masalan: 1234567XX)
-  if (seq.len >= 7) {
-    return { score: 72, tier: "gold_plus", pattern: `seq×${seq.len}` };
-  }
-
-  // ——— Takroriy 3 xonali blok: 123123123
   const repLen = repeatingSubstringLen(num);
-  if (repLen === 3) {
-    return { score: 70, tier: "gold", pattern: `repeat${num.slice(0, 3)}` };
-  }
+  if (repLen === 3) return cache(num, { score: 70, tier: "gold", pattern: `repeat${num.slice(0, 3)}` });
+  if (trailing === 5) return cache(num, { score: 62, tier: leading >= 3 ? "silver_plus_plus" : "silver", pattern: `trailing×5` });
+  if (leading  === 5) return cache(num, { score: 60, tier: "silver_plus", pattern: `leading×5` });
+  if (seq.len >= 6)   return cache(num, { score: 58, tier: "silver_plus", pattern: `seq×${seq.len}` });
+  if (isRepeatingPairs(num))  return cache(num, { score: 55, tier: "silver", pattern: "pairs" });
+  if (hasAlternatingPattern(num)) return cache(num, { score: 52, tier: "silver", pattern: "alternating" });
+  if (hasMirrorHalf(num)) return cache(num, { score: 48, tier: "silver", pattern: "mirror" });
+  if (repLen === 2)   return cache(num, { score: 45, tier: "bronze", pattern: `repeat${num.slice(0, 2)}` });
+  if (isRoundNumber(num)) return cache(num, { score: 42, tier: "bronze", pattern: "round" });
+  if (trailing >= 4)  return cache(num, { score: 38, tier: "bronze", pattern: `trailing×${trailing}` });
+  if (leading  >= 4)  return cache(num, { score: 35, tier: "bronze", pattern: `leading×${leading}` });
+  if (internal >= 5)  return cache(num, { score: 32, tier: "bronze", pattern: `run×${internal}` });
+  if (seq.len >= 5)   return cache(num, { score: 30, tier: "bronze", pattern: `seq×${seq.len}` });
 
-  // ——— 5 ta bir xil oxirida
-  if (trailing === 5) {
-    const tier: VanityTier = leading >= 3 ? "silver_plus_plus" : "silver";
-    return { score: 62, tier, pattern: `trailing×5` };
-  }
-
-  // ——— 5 ta bir xil boshida
-  if (leading === 5) {
-    return { score: 60, tier: "silver_plus", pattern: `leading×5` };
-  }
-
-  // ——— Ketma-ket 6 ta raqam
-  if (seq.len >= 6) {
-    return { score: 58, tier: "silver_plus", pattern: `seq×${seq.len}` };
-  }
-
-  // ——— Juft-juft takroriy: 112233445
-  if (isRepeatingPairs(num)) {
-    return { score: 55, tier: "silver", pattern: "pairs" };
-  }
-
-  // ——— Almashinuvchi: 121212121
-  if (hasAlternatingPattern(num)) {
-    return { score: 52, tier: "silver", pattern: "alternating" };
-  }
-
-  // ——— Mirror: ABCXCBA yoki boshqa
-  if (hasMirrorHalf(num)) {
-    return { score: 48, tier: "silver", pattern: "mirror" };
-  }
-
-  // ——— Takroriy 2 xonali blok: 121212123 (to'liq emas)
-  if (repLen === 2) {
-    return { score: 45, tier: "bronze", pattern: `repeat${num.slice(0, 2)}` };
-  }
-
-  // ——— Dumaloq raqam: 100000000, 500000000
-  if (isRoundNumber(num)) {
-    return { score: 42, tier: "bronze", pattern: "round" };
-  }
-
-  // ——— 4 ta bir xil oxirida
-  if (trailing >= 4) {
-    return { score: 38, tier: "bronze", pattern: `trailing×${trailing}` };
-  }
-
-  // ——— 4 ta bir xil boshida
-  if (leading >= 4) {
-    return { score: 35, tier: "bronze", pattern: `leading×${leading}` };
-  }
-
-  // ——— 5+ ta bir xil biror joyida (ichida)
-  if (internal >= 5) {
-    return { score: 32, tier: "bronze", pattern: `run×${internal}` };
-  }
-
-  // ——— Ketma-ket 5 ta
-  if (seq.len >= 5) {
-    return { score: 30, tier: "bronze", pattern: `seq×${seq.len}` };
-  }
-
-  // Oddiy raqam
-  return { score: 0, tier: "free", pattern: undefined };
+  return cache(num, { score: 0, tier: "free", pattern: undefined });
 }
 
 // ──────────────────────────────────────────────

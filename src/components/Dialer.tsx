@@ -81,6 +81,7 @@ export function Dialer({ userLanguage }: DialerProps) {
   useEffect(() => {
     if (digits.length !== 9) {
       lookupAbortRef.current?.abort();
+      lookupAbortRef.current = null;
       setLookupUser(null);
       setLookupLoading(false);
       setError("");
@@ -89,6 +90,14 @@ export function Dialer({ userLanguage }: DialerProps) {
     const timer = setTimeout(() => void refreshLookup(digits), 300);
     return () => clearTimeout(timer);
   }, [digits, refreshLookup]);
+
+  // Komponent yopilganda abort
+  useEffect(() => {
+    return () => {
+      lookupAbortRef.current?.abort();
+      lookupAbortRef.current = null;
+    };
+  }, []);
 
   const press = useCallback((key: string) => {
     void unlockAudio();

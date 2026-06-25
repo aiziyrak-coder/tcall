@@ -118,28 +118,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let roomId = generateRoomId();
-    let exists = await prisma.call.findUnique({ where: { roomId } });
-    while (exists) {
-      roomId = generateRoomId();
-      exists = await prisma.call.findUnique({ where: { roomId } });
+    // Room ID yaratish — race condition ni transaction ichida hal qilamiz
+    let call: Awaited<ReturnType<typeof prisma.call.create>>;
+    let attempts = 0;
+    while (true) {
+      try {
+        const roomId = generateRoomId();
+        call = await prisma.call.create({
+          data: {
+            roomId,
+            hostId: session.userId,
+            calleeTcallId: targetId,
+            callType: "dial",
+            status: "ringing",
+            participants: { create: { userId: session.userId } },
+          },
+        });
+        break;
+      } catch (e: unknown) {
+        const prismaErr = e as { code?: string };
+        if (prismaErr?.code === "P2002" && attempts < 5) {
+          attempts++;
+          continue;
+        }
+        throw e;
+      }
     }
 
-    const call = await prisma.call.create({
-      data: {
-        roomId,
-        hostId: session.userId,
-        calleeTcallId: targetId,
-        callType: "dial",
-        status: "ringing",
-        participants: { create: { userId: session.userId } },
-      },
-    });
-
-    const caller = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { name: true, language: true, tcallId: true },
-    });
+    // Caller ma'lumotlari session da allaqachon bor — qo'shimcha query shart emas
+    const caller = { name: session.name, language: session.language, tcallId: session.tcallId };
 
     const delivered = emitToUser(callee.id, "incoming-call", {
       roomId: call.roomId,
