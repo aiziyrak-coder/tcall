@@ -10,9 +10,24 @@ import { useCallContext } from "@/components/providers/CallProvider";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
 import { mapLookupUser } from "@/lib/user-profile";
 import { TcallLogo } from "@/components/TcallLogo";
+import { RecentsList } from "@/components/RecentsList";
+
+interface CallRecord {
+  id: string;
+  roomId: string;
+  status: string;
+  durationSec?: number | null;
+  calleeTcallId?: string | null;
+  createdAt: string;
+  host: { name: string; language: string; tcallId: string };
+  participants: { user: { name: string; language: string; tcallId: string } }[];
+}
 
 interface DialerProps {
   userLanguage: string;
+  userTcallId: string;
+  calls: CallRecord[];
+  onOpenChat?: (tcallId: string) => void;
 }
 
 const KEY_ROWS: { key: string; letters?: string }[][] = [
@@ -38,7 +53,7 @@ const KEY_ROWS: { key: string; letters?: string }[][] = [
   ],
 ];
 
-export function Dialer({ userLanguage }: DialerProps) {
+export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerProps) {
   const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [digits, setDigits] = useState("");
@@ -157,6 +172,18 @@ export function Dialer({ userLanguage }: DialerProps) {
 
   return (
     <div className="ios-keypad">
+      <div className="ios-keypad-recents">
+        <p className="ios-keypad-recents-title">{ui.recents}</p>
+        <RecentsList
+          userLanguage={userLanguage}
+          userTcallId={userTcallId}
+          calls={calls}
+          onOpenChat={onOpenChat}
+          compact
+        />
+      </div>
+
+      <div className="ios-keypad-dial">
       <div className="ios-keypad-display">
         {!lookupUser && !lookupLoading && digits.length !== 9 && (
           <p className="ios-keypad-hint">{ui.dialNumber}</p>
@@ -322,6 +349,7 @@ export function Dialer({ userLanguage }: DialerProps) {
         >
           <Phone className="w-8 h-8" />
         </button>
+      </div>
       </div>
     </div>
   );

@@ -11,7 +11,6 @@ import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import { Dialer } from "@/components/Dialer";
 import { ReconnectPill, HintPill } from "@/components/AppToast";
-import { RecentsList } from "@/components/RecentsList";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
@@ -156,7 +155,7 @@ function DashboardInner({
   }, [loadError, refresh]);
 
   useEffect(() => {
-    if (tab === "recents") setMissedCount(0);
+    if (tab === "keypad") setMissedCount(0);
   }, [tab, setMissedCount]);
 
   useEffect(() => {
@@ -254,7 +253,7 @@ function DashboardInner({
         userLanguage={user.language}
         activeTab={tab}
         onTabChange={setTab}
-        badges={{ recents: missedCount, messages: messageCount }}
+        badges={{ keypad: missedCount, messages: messageCount }}
         hideHeader={tab === "messages" && chatInThread}
         hideTabBar={tab === "messages" && chatInThread}
         contentClassName={tab === "messages" ? "ios-phone-content-chat" : undefined}
@@ -306,23 +305,15 @@ function DashboardInner({
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
-            <Dialer userLanguage={user.language} />
-          </div>
-        )}
-
-        {mountedTabs.has("recents") && (
-          <div className={tab === "recents" ? "app-tab-panel" : "hidden"}>
-            <div className="app-tab-scroll">
-              <RecentsList
-                userLanguage={user.language}
-                userTcallId={user.tcallId}
-                calls={calls}
-                onOpenChat={(tcallId) => {
-                  setTab("messages");
-                  setChatOpenTcallId(tcallId);
-                }}
-              />
-            </div>
+            <Dialer
+              userLanguage={user.language}
+              userTcallId={user.tcallId}
+              calls={calls}
+              onOpenChat={(tcallId) => {
+                setTab("messages");
+                setChatOpenTcallId(tcallId);
+              }}
+            />
           </div>
         )}
 

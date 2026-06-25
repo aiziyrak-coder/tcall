@@ -26,9 +26,10 @@ interface RecentsListProps {
   userTcallId: string;
   calls: CallRecord[];
   onOpenChat?: (tcallId: string) => void;
+  compact?: boolean;
 }
 
-export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: RecentsListProps) {
+export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, compact }: RecentsListProps) {
   const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [dialError, setDialError] = useState("");
@@ -46,9 +47,9 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: Re
 
   if (calls.length === 0) {
     return (
-      <div className="ios-empty-state">
-        <Phone className="w-12 h-12 text-slate-300 mb-3" />
-        <p>{ui.noCalls}</p>
+      <div className={compact ? "ios-empty-state ios-empty-state-compact" : "ios-empty-state"}>
+        <Phone className={compact ? "w-8 h-8 text-slate-300 mb-2" : "w-12 h-12 text-slate-300 mb-3"} />
+        <p className={compact ? "text-sm text-slate-400" : undefined}>{ui.noCalls}</p>
       </div>
     );
   }
@@ -56,7 +57,7 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: Re
   return (
     <>
       {dialError && <div className="ios-error-banner mb-3">{dialError}</div>}
-      <ul className="ios-list">
+      <ul className={compact ? "ios-list ios-list-compact" : "ios-list"}>
         {calls.map((call) => {
           const isOutgoing = call.host.tcallId === userTcallId;
           const partner =
@@ -83,8 +84,8 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: Re
               : date.toLocaleDateString([], { month: "short", day: "numeric" });
 
           return (
-            <li key={call.id} className="ios-list-item">
-              <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
+            <li key={call.id} className={compact ? "ios-list-item ios-list-item-compact" : "ios-list-item"}>
+              <Icon className={`${compact ? "w-4 h-4" : "w-5 h-5"} shrink-0 ${iconColor}`} />
               <button
                 type="button"
                 className="flex-1 min-w-0 text-left touch-manipulation"

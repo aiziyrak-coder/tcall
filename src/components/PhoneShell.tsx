@@ -33,7 +33,6 @@ interface PhoneShellProps {
 }
 
 const SIDEBAR_TABS: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText }[] = [
-  { id: "recents", icon: Clock, labelKey: "recents" },
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
   { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
@@ -52,7 +51,6 @@ type MobileBarItem =
   | { kind: "more"; icon: LucideIcon; labelKey: "moreTab" };
 
 const MOBILE_TABS: MobileBarItem[] = [
-  { kind: "tab", id: "recents", icon: Clock, labelKey: "recents" },
   { kind: "tab", id: "messages", icon: MessageSquare, labelKey: "messages" },
   { kind: "tab", id: "keypad", icon: Phone, labelKey: "keypad", center: true },
   { kind: "tab", id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },

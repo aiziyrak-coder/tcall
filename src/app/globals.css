@@ -629,8 +629,44 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .ios-keypad {
-  @apply flex flex-col items-center pb-4;
+  @apply flex flex-col items-center w-full min-h-0 flex-1;
   background: transparent;
+}
+
+.ios-keypad-recents {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 0.5rem 0.5rem;
+}
+
+.ios-keypad-recents-title {
+  @apply text-xs font-semibold uppercase tracking-wide text-slate-400 px-2 py-2 sticky top-0 z-10;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ios-keypad-dial {
+  @apply flex flex-col items-center w-full shrink-0;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.ios-list-compact {
+  @apply divide-y;
+}
+
+.ios-list-item-compact {
+  @apply py-2.5 gap-2.5;
+}
+
+.ios-empty-state-compact {
+  @apply py-8;
 }
 
 .ios-keypad-display {
@@ -1745,7 +1781,7 @@ body.tg-webapp .ios-tab-bar {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   padding-bottom: 0 !important;
 }
 
@@ -1753,8 +1789,12 @@ body.tg-webapp .ios-tab-bar {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding-bottom: 0.25rem;
+}
+
+.app-tab-keypad .ios-keypad-dial {
+  flex: 0 0 auto;
 }
 
 .app-tab-keypad .ios-keypad-grid {
