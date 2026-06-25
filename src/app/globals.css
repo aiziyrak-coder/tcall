@@ -84,8 +84,6 @@
     @apply antialiased;
     background: var(--bg-primary);
     color: var(--text-primary);
-    height: 100vh;
-    max-height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
     overflow: hidden;
@@ -520,7 +518,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: #fff;
+  background: var(--bg-secondary);
 }
 
 .app-main-header {
@@ -529,8 +527,8 @@
   padding-left: var(--app-h-pad);
   padding-right: var(--app-h-pad);
   padding-bottom: 0.75rem;
-  background: #fff;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--separator);
 }
 
 .app-main-content {
@@ -546,7 +544,7 @@
 /* Mobil brauzer + ilova — bir xil fon va header */
 @media (max-width: 1023px) {
   .app-shell {
-    background: #eff1f7;
+    background: var(--bg-primary);
   }
   .app-main {
     background: transparent;
@@ -3774,7 +3772,7 @@ body.native-app .chat-conv-item:active {
   grid-template-columns: unset;
   position: relative;
   isolation: isolate;
-  background: #eff1f7;
+  background: var(--bg-primary);
 }
 
 .app-shell-bottom-nav .app-sidebar {

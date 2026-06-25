@@ -11,6 +11,7 @@ import { NativeAppRouter } from "@/components/NativeAppRouter";
 import { WebAppInit } from "@/components/WebAppInit";
 import { AppSplash } from "@/components/AppSplash";
 import { AppLockGate } from "@/components/AppLockGate";
+import { ThemeInit } from "@/components/ThemeInit";
 
 function CallBridge({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -46,6 +47,7 @@ function CallBridge({ children }: { children: React.ReactNode }) {
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
+      <ThemeInit />
       <NativeAppInit />
       <WebAppInit />
       <NativeAppRouter />

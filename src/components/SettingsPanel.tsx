@@ -170,7 +170,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
-  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("light");
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: "",
     newPassword: "",
