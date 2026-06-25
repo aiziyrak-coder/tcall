@@ -1565,6 +1565,14 @@ body.tg-webapp .ios-tab-bar {
   @apply shrink-0 flex items-center gap-1.5;
 }
 
+@keyframes payWarnPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18); }
+}
+.payment-warning {
+  animation: payWarnPulse 1.8s ease-in-out infinite;
+}
+
 .header-icon-badge {
   position: absolute;
   top: -3px;

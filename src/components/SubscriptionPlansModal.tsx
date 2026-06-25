@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, CreditCard, Crown, Headset, Loader2, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, CreditCard, Crown, Headset, Loader2, X } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { copyToClipboard } from "@/lib/utils";
 import {
@@ -74,7 +74,7 @@ const COPY = {
     copy: "Nusxalash", copied: "Nusxalandi", waiting: "To'lov kutilmoqda — avtomatik tekshirilmoqda...",
     timeLeft: "Qolgan vaqt", expired: "Muddat tugadi. Qaytadan urinib ko'ring.", retry: "Qaytadan",
     successPaid: "To'lov qabul qilindi! Obuna yoqildi.",
-    exactNote: "Diqqat: summani tiyingacha aynan yuboring — aks holda avtomatik aniqlanmaydi.",
+    exactNote: "DIQQAT! Summani tiyingacha AYNAN ko'rsatilganidek yuboring. Aks holda obuna FAOLLASHMAYDI va pulingiz QAYTARILMAYDI!",
     notConfigured: "To'lov tizimi hozircha sozlanmoqda. Iltimos keyinroq urinib ko'ring yoki admin bilan bog'laning.",
     som: "so'm",
     contact: "Admin bilan bog'lanish", daysLeft: "{n} kun qoldi", expiresWord: "tugaydi",
@@ -91,7 +91,7 @@ const COPY = {
     copy: "Копировать", copied: "Скопировано", waiting: "Ожидание оплаты — проверяем автоматически...",
     timeLeft: "Осталось", expired: "Время истекло. Попробуйте снова.", retry: "Заново",
     successPaid: "Оплата принята! Подписка активирована.",
-    exactNote: "Важно: отправьте сумму точно до тийина — иначе авто-подтверждение не сработает.",
+    exactNote: "ВНИМАНИЕ! Отправьте сумму ТОЧНО до тийина, как указано. Иначе подписка НЕ активируется и деньги НЕ возвращаются!",
     notConfigured: "Платёжная система настраивается. Попробуйте позже или свяжитесь с админом.",
     som: "сум",
     contact: "Связаться с админом", daysLeft: "осталось {n} дн.", expiresWord: "истекает",
@@ -108,7 +108,7 @@ const COPY = {
     copy: "Copy", copied: "Copied", waiting: "Waiting for payment — checking automatically...",
     timeLeft: "Time left", expired: "Time expired. Please try again.", retry: "Retry",
     successPaid: "Payment received! Subscription activated.",
-    exactNote: "Important: send the exact amount down to the tiyin, otherwise auto-detection fails.",
+    exactNote: "WARNING! Send the EXACT amount down to the tiyin as shown. Otherwise the subscription will NOT activate and your money is NON-REFUNDABLE!",
     notConfigured: "Payment system is being set up. Please try later or contact admin.",
     som: "UZS",
     contact: "Contact support", daysLeft: "{n} days left", expiresWord: "expires",
@@ -398,7 +398,11 @@ export function SubscriptionPlansModal({
                   {copiedField === "amount" ? copy.copied : copy.copy}
                 </button>
               </div>
-              <p className="text-[11px] text-amber-700 mt-1">{copy.exactNote}</p>
+            </div>
+
+            <div className="payment-warning rounded-2xl border-2 border-red-500 bg-red-50 p-3.5 mb-3 flex items-start gap-2.5">
+              <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+              <p className="text-sm font-bold text-red-700 leading-snug">{copy.exactNote}</p>
             </div>
 
             {card.number && (
