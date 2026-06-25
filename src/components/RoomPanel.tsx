@@ -39,6 +39,7 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
   const [roomLink, setRoomLink] = useState("");
   const [roomId, setRoomId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState("");
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
 
   const loadRoomStatus = useCallback(async (id: string) => {
@@ -104,10 +105,14 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
 
   const copyLink = async () => {
     const text = roomLink || `${window.location.origin}/call/${roomId}`;
+    setCopyError("");
     const ok = await copyToClipboard(text);
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopyError(ui.copyFailed);
+      setTimeout(() => setCopyError(""), 2500);
     }
   };
 
@@ -200,10 +205,11 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
             <span className="room-link-text">{roomLink}</span>
           </div>
           <div className="room-action-stack">
-            <button type="button" onClick={copyLink} className="room-btn room-btn-secondary room-btn-block">
+            <button type="button" onClick={() => void copyLink()} className="room-btn room-btn-secondary room-btn-block">
               {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
               {copied ? ui.copied : ui.copyLinkShort}
             </button>
+            {copyError && <p className="text-xs text-red-500 text-center">{copyError}</p>}
             <button type="button" onClick={shareLink} className="room-btn room-btn-outline room-btn-block">
               <Share2 className="w-4 h-4" />
               {ui.shareLinkShort}

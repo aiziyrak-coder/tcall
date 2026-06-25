@@ -359,7 +359,12 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
                     <button
                       type="button"
                       className="ios-icon-btn w-10 h-10 text-red-400"
-                      onClick={() => apiFetch(`/api/contacts/${f.id}`, { method: "DELETE" }).then(() => load())}
+                      onClick={() =>
+                        void runAction(async () => {
+                          const r = await apiFetch(`/api/contacts/${f.id}`, { method: "DELETE" });
+                          if (!r.ok) throw new Error(ui.chatActionFailed);
+                        })
+                      }
                       title={ui.removeFriend}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -402,16 +407,20 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
                 type="button"
                 className="btn-secondary btn-compact shrink-0 px-3"
                 disabled={blockInput.length !== 9}
-                onClick={() => {
-                  void apiFetch("/api/blocks", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tcallId: blockInput }),
-                  }).then(() => {
+                onClick={() =>
+                  void runAction(async () => {
+                    const r = await apiFetch("/api/blocks", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ tcallId: blockInput }),
+                    });
+                    if (!r.ok) {
+                      const d = await r.json().catch(() => ({}));
+                      throw new Error((d as { error?: string }).error || ui.chatActionFailed);
+                    }
                     setBlockInput("");
-                    void load();
-                  });
-                }}
+                  })
+                }
               >
                 {ui.block}
               </button>
@@ -441,9 +450,10 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
                       type="button"
                       className="friends-action-btn friends-action-danger shrink-0"
                       onClick={() =>
-                        void apiFetch(`/api/blocks?tcallId=${b.blockedTcallId}`, { method: "DELETE" }).then(() =>
-                          load()
-                        )
+                        void runAction(async () => {
+                          const r = await apiFetch(`/api/blocks?tcallId=${b.blockedTcallId}`, { method: "DELETE" });
+                          if (!r.ok) throw new Error(ui.chatActionFailed);
+                        })
                       }
                     >
                       <ShieldOff className="w-3.5 h-3.5" /> {ui.unblock}

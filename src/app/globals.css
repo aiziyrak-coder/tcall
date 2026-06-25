@@ -2086,6 +2086,13 @@ body.has-mini-call .chat-app-thread .chat-composer {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
+.chat-composer-mic-recording {
+  color: #fff;
+  background: #ef4444;
+  border-color: #dc2626;
+  animation: voicePulse 1s ease-in-out infinite;
+}
+
 .chat-composer-send-btn {
   @apply flex items-center justify-center touch-manipulation active:scale-95 disabled:opacity-40 text-white;
   width: 2.75rem;

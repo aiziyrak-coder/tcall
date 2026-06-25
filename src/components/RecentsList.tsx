@@ -88,7 +88,10 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat }: Re
               <button
                 type="button"
                 className="flex-1 min-w-0 text-left touch-manipulation"
-                onClick={() => partner?.tcallId && setProfileTcallId(partner.tcallId)}
+                onClick={() => {
+                  if (partner?.tcallId) setProfileTcallId(partner.tcallId);
+                  else setDetailRoomId(call.roomId);
+                }}
               >
                 <p className="font-medium truncate">{partner?.name || ui.unknown}</p>
                 <p className="text-xs text-slate-500">

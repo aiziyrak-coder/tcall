@@ -47,9 +47,12 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
 
   const runAction = async (fn: () => Promise<void>) => {
     setActionLoading(true);
+    setError("");
     try {
       await fn();
       await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : ui.chatActionFailed);
     } finally {
       setActionLoading(false);
     }
@@ -138,6 +141,21 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
                   body: JSON.stringify({ requesterTcallId: user.tcallId, accept: false }),
                 });
               })
+            }
+            onRemoveFriend={
+              user.isFriend
+                ? () =>
+                    runAction(async () => {
+                      const listRes = await apiFetch("/api/contacts");
+                      const listData = await listRes.json();
+                      const contact = (listData.contacts || []).find(
+                        (c: { tcallId: string; id: string }) => c.tcallId === user.tcallId
+                      );
+                      if (!contact?.id) throw new Error(ui.chatActionFailed);
+                      const del = await apiFetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
+                      if (!del.ok) throw new Error(ui.chatActionFailed);
+                    })
+                : undefined
             }
           />
         )}

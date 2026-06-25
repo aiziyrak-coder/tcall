@@ -25,9 +25,7 @@ const KEYPAD: { digit: string; letters?: string }[] = [
   { digit: "7", letters: "PQRS" },
   { digit: "8", letters: "TUV" },
   { digit: "9", letters: "WXYZ" },
-  { digit: "*" },
   { digit: "0", letters: "+" },
-  { digit: "#" },
 ];
 
 export function Dialer({ userLanguage }: DialerProps) {
@@ -75,7 +73,6 @@ export function Dialer({ userLanguage }: DialerProps) {
       setError("");
       return;
     }
-    if (key === "*" || key === "#") return;
     if (digits.length >= 9) return;
     if (digits.length === 0 && key === "0") {
       setError(ui.dialInvalidFirstDigit);
@@ -201,6 +198,21 @@ export function Dialer({ userLanguage }: DialerProps) {
                   });
                 })
               }
+              onRemoveFriend={
+                lookupUser.isFriend
+                  ? () =>
+                      runAction(async () => {
+                        const listRes = await apiFetch("/api/contacts");
+                        const listData = await listRes.json();
+                        const contact = (listData.contacts || []).find(
+                          (c: { tcallId: string; id: string }) => c.tcallId === lookupUser.tcallId
+                        );
+                        if (!contact?.id) throw new Error(ui.chatActionFailed);
+                        const del = await apiFetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
+                        if (!del.ok) throw new Error(ui.chatActionFailed);
+                      })
+                  : undefined
+              }
             />
           </div>
         )}
@@ -212,7 +224,6 @@ export function Dialer({ userLanguage }: DialerProps) {
             key={digit}
             onClick={() => press(digit)}
             className="ios-key"
-            disabled={digit === "*" || digit === "#"}
           >
             <span className="ios-key-digit">{digit}</span>
             {letters && <span className="ios-key-letters">{letters}</span>}

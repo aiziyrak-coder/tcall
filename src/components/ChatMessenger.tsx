@@ -42,6 +42,7 @@ import {
   isTextInputFocused,
   shouldDismissOnPointerTarget,
 } from "@/lib/dismiss-keyboard";
+import { startVoiceRecord, stopVoiceRecord, type VoiceRecordSession } from "@/lib/chat-voice-record";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -138,7 +139,10 @@ export function ChatMessenger({
   const [showRenameGroup, setShowRenameGroup] = useState(false);
   const [showPartnerProfile, setShowPartnerProfile] = useState(false);
   const [groupAvatarUploading, setGroupAvatarUploading] = useState(false);
+  const [recordingVoice, setRecordingVoice] = useState(false);
   const groupAvatarRef = useRef<HTMLInputElement>(null);
+  const voiceSessionRef = useRef<VoiceRecordSession | null>(null);
+  const voiceRecordStartedRef = useRef(0);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -631,7 +635,15 @@ export function ChatMessenger({
       .split(/[\s,;]+/)
       .map((s) => s.replace(/\D/g, ""))
       .filter((s) => s.length === 9);
-    if (!groupName.trim() || ids.length === 0) return;
+    if (!groupName.trim()) {
+      setActionError(ui.chatGroupNameRequired);
+      return;
+    }
+    if (ids.length === 0) {
+      setActionError(ui.chatMembersRequired);
+      return;
+    }
+    setActionError("");
     const r = await apiFetch("/api/chat/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -718,6 +730,35 @@ export function ChatMessenger({
     }
   };
 
+  const beginVoiceRecord = async () => {
+    if (!activeId || uploading || sending || voiceSessionRef.current) return;
+    try {
+      const session = await startVoiceRecord();
+      voiceSessionRef.current = session;
+      voiceRecordStartedRef.current = Date.now();
+      setRecordingVoice(true);
+      setUploadError("");
+    } catch {
+      setUploadError(ui.chatMicDenied);
+    }
+  };
+
+  const finishVoiceRecord = async () => {
+    const session = voiceSessionRef.current;
+    voiceSessionRef.current = null;
+    setRecordingVoice(false);
+    if (!session) return;
+    const elapsed = Date.now() - voiceRecordStartedRef.current;
+    try {
+      const file = await stopVoiceRecord(session);
+      if (file && file.size > 400 && elapsed > 400) {
+        await uploadAndSend(file);
+      }
+    } catch {
+      setUploadError(ui.chatUploadFailed);
+    }
+  };
+
   const leaveChat = async (purgeGroup = false) => {
     if (!activeId) return;
     setActionError("");
@@ -740,7 +781,10 @@ export function ChatMessenger({
       .split(/[\s,;]+/)
       .map((s) => s.replace(/\D/g, ""))
       .filter((s) => s.length === 9);
-    if (ids.length === 0) return;
+    if (ids.length === 0) {
+      setActionError(ui.chatMembersRequired);
+      return;
+    }
     setActionError("");
     const r = await apiFetch(`/api/chat/conversations/${activeId}/members`, {
       method: "POST",
@@ -800,7 +844,10 @@ export function ChatMessenger({
           <button
             type="button"
             className="chat-thread-avatar-btn touch-manipulation shrink-0"
-            onClick={() => !isGroup && partner?.tcallId && setShowPartnerProfile(true)}
+            onClick={() => {
+              if (isGroup) void refreshAndOpenMembers();
+              else if (partner?.tcallId) setShowPartnerProfile(true);
+            }}
           >
             {isGroup ? (
               <GroupAvatar
@@ -928,6 +975,7 @@ export function ChatMessenger({
         <div className="chat-composer">
           {uploadError && <div className="chat-upload-error">{uploadError}</div>}
           {uploading && <div className="chat-upload-status">{ui.chatUploading}</div>}
+          {recordingVoice && <div className="chat-upload-status">{ui.chatHoldToRecord}</div>}
           {showEmoji && (
             <div className="chat-emoji-panel">
               {EMOJIS.map((e) => (
@@ -1053,9 +1101,18 @@ export function ChatMessenger({
             ) : (
               <button
                 type="button"
-                className="chat-composer-mic-btn"
+                className={`chat-composer-mic-btn ${recordingVoice ? "chat-composer-mic-recording" : ""}`}
                 aria-label={ui.chatVoiceHint}
-                onClick={() => inputRef.current?.focus()}
+                disabled={uploading || sending}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  void beginVoiceRecord();
+                }}
+                onPointerUp={() => void finishVoiceRecord()}
+                onPointerLeave={() => {
+                  if (recordingVoice) void finishVoiceRecord();
+                }}
+                onPointerCancel={() => void finishVoiceRecord()}
               >
                 <Mic className="w-5 h-5" />
               </button>
@@ -1096,6 +1153,10 @@ export function ChatMessenger({
             tcallId={partner.tcallId}
             ui={ui}
             onClose={() => setShowPartnerProfile(false)}
+            onOpenChat={() => {
+              dismissKeyboard();
+              setShowPartnerProfile(false);
+            }}
           />
         )}
 
@@ -1112,6 +1173,7 @@ export function ChatMessenger({
                 value={addMemberIds}
                 onChange={(e) => setAddMemberIds(e.target.value)}
               />
+              {actionError && <div className="ios-error-banner mb-3">{actionError}</div>}
               <button type="button" className="btn-primary btn-compact w-full" onClick={() => void addMembersToGroup()}>
                 {ui.chatAddMembers}
               </button>
@@ -1187,13 +1249,17 @@ export function ChatMessenger({
     <div className="chat-app chat-app-list">
       <div className="chat-list-view">
       <div className="chat-list-actions">
-        <button type="button" className="chat-action-btn" onClick={() => setShowNewChat(true)}>
+        <button type="button" className="chat-action-btn" onClick={() => { setActionError(""); setShowNewChat(true); }}>
           <Plus className="w-4 h-4" /> {ui.newChat}
         </button>
-        <button type="button" className="chat-action-btn" onClick={() => setShowNewGroup(true)}>
+        <button type="button" className="chat-action-btn" onClick={() => { setActionError(""); setShowNewGroup(true); }}>
           <Users className="w-4 h-4" /> {ui.newGroup}
         </button>
       </div>
+
+      {actionError && (
+        <div className="ios-error-banner mb-3">{actionError}</div>
+      )}
 
       <div className="chat-list-search">
         <Search className="w-4 h-4 text-slate-400 shrink-0" />
@@ -1282,6 +1348,7 @@ export function ChatMessenger({
               onChange={(e) => setNewTcallId(e.target.value.replace(/\D/g, "").slice(0, 9))}
               inputMode="numeric"
             />
+            {actionError && <div className="ios-error-banner mb-3">{actionError}</div>}
             <button
               type="button"
               className="btn-primary btn-compact w-full"
@@ -1313,6 +1380,7 @@ export function ChatMessenger({
               value={groupMembers}
               onChange={(e) => setGroupMembers(e.target.value)}
             />
+            {actionError && <div className="ios-error-banner mb-3">{actionError}</div>}
             <button type="button" className="btn-primary btn-compact w-full" onClick={() => void createGroup()}>
               {ui.createGroup}
             </button>

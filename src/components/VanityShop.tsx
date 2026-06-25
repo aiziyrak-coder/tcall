@@ -376,14 +376,23 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
               blocked ||
               !!requesting ||
               customDigits.replace(/\D/g, "").length !== 9 ||
-              !customCheck?.available ||
-              customCheck?.tier === "free"
+              !customCheck?.available
             }
-            onClick={() => submitRequest({ number: customDigits.replace(/\D/g, "") })}
+            onClick={() => {
+              if (customCheck?.tier === "free") {
+                setError(ui.vanityFreeNumber);
+                return;
+              }
+              void submitRequest({ number: customDigits.replace(/\D/g, "") });
+            }}
             className="btn-primary w-full mt-4 flex items-center justify-center gap-2"
           >
             <Phone className="w-4 h-4" />
-            {requesting === customDigits.replace(/\D/g, "") ? "..." : ui.buy}
+            {requesting === customDigits.replace(/\D/g, "")
+              ? "..."
+              : customCheck?.tier === "free"
+                ? ui.tier_free
+                : ui.buy}
           </button>
         </div>
       )}

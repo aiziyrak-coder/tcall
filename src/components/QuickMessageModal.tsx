@@ -32,20 +32,25 @@ export function QuickMessageModal({
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
 
   const send = async (text: string) => {
     if (!text.trim()) return;
     setSending(true);
+    setError("");
     try {
       const res = await apiFetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientTcallId, message: text.trim() }),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { error?: string }).error || ui.chatActionFailed);
       setSent(true);
       onSent?.();
       setTimeout(onClose, 1200);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : ui.chatActionFailed);
     } finally {
       setSending(false);
     }
@@ -85,6 +90,7 @@ export function QuickMessageModal({
               onChange={(e) => setMessage(e.target.value)}
               maxLength={2000}
             />
+            {error && <div className="ios-error-banner mt-3">{error}</div>}
             <button
               type="button"
               onClick={() => void send(message)}

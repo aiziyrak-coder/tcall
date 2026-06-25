@@ -125,6 +125,8 @@ function DashboardInner({
   const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
   const [chatOpenTcallId, setChatOpenTcallId] = useState<string | null>(null);
   const [chatInThread, setChatInThread] = useState(false);
+  const [copyError, setCopyError] = useState("");
+  const [notifHint, setNotifHint] = useState("");
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -198,11 +200,32 @@ function DashboardInner({
 
   const copyId = async () => {
     if (!user.tcallId) return;
+    setCopyError("");
     const ok = await copyToClipboard(user.tcallId);
     if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopyError(ui.copyFailed);
+      setTimeout(() => setCopyError(""), 2500);
     }
+  };
+
+  const handleNotifications = async () => {
+    setNotifHint("");
+    if (typeof Notification !== "undefined") {
+      if (Notification.permission === "granted") {
+        setNotifHint(ui.notificationsEnabled);
+        return;
+      }
+      if (Notification.permission === "denied") {
+        setNotifHint(ui.notificationsBlocked);
+        return;
+      }
+    }
+    const ok = await enableNotifications();
+    setNotifHint(ok ? ui.notificationsEnabled : ui.notificationsBlocked);
+    setTimeout(() => setNotifHint(""), 3000);
   };
 
   useEffect(() => {
@@ -252,7 +275,11 @@ function DashboardInner({
                 <button onClick={() => setShowSettings(true)} className="ios-icon-btn" title={ui.settings}>
                   <Settings className="w-5 h-5" />
                 </button>
-                <button onClick={() => enableNotifications()} className="ios-icon-btn" title={ui.enableNotifications}>
+                <button
+                  onClick={() => void handleNotifications()}
+                  className="ios-icon-btn"
+                  title={notificationsEnabled ? ui.notificationsEnabled : ui.enableNotifications}
+                >
                   {notificationsEnabled ? (
                     <Bell className="w-5 h-5 text-green-600" />
                   ) : (
@@ -275,15 +302,21 @@ function DashboardInner({
             <span>{ui.reconnecting}</span>
           </div>
         )}
+        {notifHint && (
+          <div className="ios-reconnect-banner shrink-0 text-green-700 border-green-200 bg-green-50">
+            <span>{notifHint}</span>
+          </div>
+        )}
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
-            <button onClick={copyId} className="ios-my-number shrink-0">
+            <button onClick={() => void copyId()} className="ios-my-number shrink-0">
               <span className="text-xs text-slate-500">{ui.yourNumber}</span>
               <span className="font-mono text-lg font-semibold text-brand-600 tracking-wider flex items-center gap-2">
                 {user.tcallId ? formatTcallId(user.tcallId) : "..."}
                 {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
               </span>
+              {copyError && <span className="text-xs text-red-500 mt-1">{copyError}</span>}
             </button>
             <SpeedDial userLanguage={user.language} favorites={friends} />
             <Dialer userLanguage={user.language} />

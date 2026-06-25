@@ -41,6 +41,27 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const resendCode = async () => {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const res = await apiFetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Xatolik");
+      setCode("");
+      setMessage(data.message || "Kod qayta yuborildi.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -148,13 +169,11 @@ export default function ForgotPasswordPage() {
                 </button>
                 <button
                   type="button"
-                  className="w-full text-sm text-brand-600 touch-manipulation"
-                  onClick={() => {
-                    setStep("email");
-                    setCode("");
-                  }}
+                  className="w-full text-sm text-brand-600 touch-manipulation disabled:opacity-50"
+                  disabled={loading || !email}
+                  onClick={() => void resendCode()}
                 >
-                  Kodni qayta yuborish
+                  {loading ? "..." : "Kodni qayta yuborish"}
                 </button>
               </form>
             )}
