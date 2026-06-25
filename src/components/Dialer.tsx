@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Phone, Delete } from "lucide-react";
+import { Phone, Delete, Clock, Grid3X3 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -31,6 +31,8 @@ interface DialerProps {
   isActive?: boolean;
 }
 
+type DialerSubPage = "keypad" | "recents";
+
 const KEY_ROWS: { key: string; letters?: string }[][] = [
   [
     { key: "1" },
@@ -57,6 +59,7 @@ const KEY_ROWS: { key: string; letters?: string }[][] = [
 export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive = true }: DialerProps) {
   const ui = useUI(userLanguage);
   const { dial } = useCallContext();
+  const [subPage, setSubPage] = useState<DialerSubPage>("keypad");
   const [digits, setDigits] = useState("");
   const [lookupUser, setLookupUser] = useState<UserProfileData | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -68,7 +71,6 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
   const lookupAbortRef = useRef<AbortController | null>(null);
 
   const refreshLookup = useCallback(async (id: string) => {
-    // Oldingi so'rovni bekor qilamiz — stale result muammosini oldini olamiz
     lookupAbortRef.current?.abort();
     const ctrl = new AbortController();
     lookupAbortRef.current = ctrl;
@@ -115,7 +117,6 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
     return () => clearTimeout(timer);
   }, [digits, refreshLookup]);
 
-  // Komponent yopilganda abort
   useEffect(() => {
     return () => {
       lookupAbortRef.current?.abort();
@@ -158,7 +159,7 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
   }, [digits, dial, blocked, ui.genericError]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || subPage !== "keypad") return;
     const onKey = (e: KeyboardEvent) => {
       const tag = (document.activeElement?.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -168,7 +169,7 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [press, handleCall, isActive]);
+  }, [press, handleCall, isActive, subPage]);
 
   const runAction = async (fn: () => Promise<void>) => {
     setActionLoading(true);
@@ -181,192 +182,229 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
   };
 
   return (
-    <div className="ios-keypad">
-      <div className="ios-keypad-recents">
-        <p className="ios-keypad-recents-title">{ui.recents}</p>
-        <RecentsList
-          userLanguage={userLanguage}
-          userTcallId={userTcallId}
-          calls={calls}
-          onOpenChat={onOpenChat}
-          compact
-        />
-      </div>
+    <div className="dialer-screen">
+      <div className="dialer-panels">
+        <section
+          className={`dialer-panel dialer-panel-keypad${subPage === "keypad" ? " dialer-panel-active" : ""}`}
+          aria-hidden={subPage !== "keypad"}
+        >
+          <div className="ios-keypad ios-keypad-standalone">
+            <div className="ios-keypad-display ios-keypad-display-scroll">
+              {!lookupUser && !lookupLoading && digits.length !== 9 && (
+                <p className="ios-keypad-hint">{ui.dialNumber}</p>
+              )}
+              {!lookupUser && !lookupLoading && lookupSettled && digits.length === 9 && (
+                <p className="ios-keypad-error">{ui.numberNotFound}</p>
+              )}
+              {lookupLoading && digits.length === 9 && (
+                <div className="py-2 flex justify-center">
+                  <TcallLogo size="xs" animate />
+                </div>
+              )}
+              <div className="ios-keypad-number-row">
+                <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
+                {digits.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => press("del")}
+                    className="ios-keypad-backspace"
+                    aria-label={ui.deleteDigit}
+                  >
+                    <Delete className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+              {error && <p className="ios-keypad-error mt-1">{error}</p>}
 
-      <div className="ios-keypad-dial">
-      <div className="ios-keypad-display ios-keypad-display-scroll">
-        {!lookupUser && !lookupLoading && digits.length !== 9 && (
-          <p className="ios-keypad-hint">{ui.dialNumber}</p>
-        )}
-        {!lookupUser && !lookupLoading && lookupSettled && digits.length === 9 && (
-          <p className="ios-keypad-error">{ui.numberNotFound}</p>
-        )}
-        {lookupLoading && digits.length === 9 && (
-          <div className="py-2 flex justify-center"><TcallLogo size="xs" animate /></div>
-        )}
-        <div className="ios-keypad-number-row">
-          <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
-          {digits.length > 0 && (
-            <button
-              type="button"
-              onClick={() => press("del")}
-              className="ios-keypad-backspace"
-              aria-label={ui.deleteDigit}
-            >
-              <Delete className="w-5 h-5" />
-            </button>
-          )}
-        </div>
-        {error && <p className="ios-keypad-error mt-1">{error}</p>}
-
-        {lookupUser && (
-          <div className="mt-3 text-left dialer-profile-wrap">
-            <UserProfileCard
-              ui={ui}
-              user={lookupUser}
-              loading={actionLoading}
-              onCall={() => void handleCall()}
-              onMessage={() => {
-                window.dispatchEvent(
-                  new CustomEvent("tcall:open-chat", { detail: { tcallId: lookupUser.tcallId } })
-                );
-              }}
-              onSendFriendRequest={() =>
-                runAction(async () => {
-                  const r = await apiFetch("/api/friend-requests", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tcallId: lookupUser.tcallId, name: lookupUser.name }),
-                  });
-                  if (!r.ok) {
-                    const d = await r.json().catch(() => ({}));
-                    throw new Error((d as { error?: string }).error || ui.chatActionFailed);
-                  }
-                })
-              }
-              onAcceptFriendRequest={() =>
-                runAction(async () => {
-                  await apiFetch("/api/friend-requests", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ senderTcallId: lookupUser.tcallId, accept: true }),
-                  });
-                })
-              }
-              onCancelFriendRequest={() =>
-                runAction(async () => {
-                  await apiFetch(`/api/friend-requests?tcallId=${lookupUser.tcallId}`, { method: "DELETE" });
-                })
-              }
-              onBlock={() =>
-                runAction(async () => {
-                  await apiFetch("/api/blocks", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tcallId: lookupUser.tcallId }),
-                  });
-                })
-              }
-              onUnblock={() =>
-                runAction(async () => {
-                  await apiFetch(`/api/blocks?tcallId=${lookupUser.tcallId}`, { method: "DELETE" });
-                })
-              }
-              onRequestUnblock={() =>
-                runAction(async () => {
-                  await apiFetch("/api/blocks/unblock-request", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tcallId: lookupUser.tcallId }),
-                  });
-                })
-              }
-              onAcceptUnblock={() =>
-                runAction(async () => {
-                  await apiFetch("/api/blocks/unblock-request", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ requesterTcallId: lookupUser.tcallId, accept: true }),
-                  });
-                })
-              }
-              onRejectUnblock={() =>
-                runAction(async () => {
-                  await apiFetch("/api/blocks/unblock-request", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ requesterTcallId: lookupUser.tcallId, accept: false }),
-                  });
-                })
-              }
-              onRemoveFriend={
-                lookupUser.isFriend
-                  ? () =>
+              {lookupUser && (
+                <div className="mt-3 text-left dialer-profile-wrap">
+                  <UserProfileCard
+                    ui={ui}
+                    user={lookupUser}
+                    loading={actionLoading}
+                    onCall={() => void handleCall()}
+                    onMessage={() => {
+                      window.dispatchEvent(
+                        new CustomEvent("tcall:open-chat", { detail: { tcallId: lookupUser.tcallId } })
+                      );
+                    }}
+                    onSendFriendRequest={() =>
                       runAction(async () => {
-                        const listRes = await apiFetch("/api/contacts");
-                        const listData = await listRes.json();
-                        const contact = (listData.contacts || []).find(
-                          (c: { tcallId: string; id: string }) => c.tcallId === lookupUser.tcallId
-                        );
-                        if (!contact?.id) throw new Error(ui.chatActionFailed);
-                        const del = await apiFetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
-                        if (!del.ok) throw new Error(ui.chatActionFailed);
+                        const r = await apiFetch("/api/friend-requests", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tcallId: lookupUser.tcallId, name: lookupUser.name }),
+                        });
+                        if (!r.ok) {
+                          const d = await r.json().catch(() => ({}));
+                          throw new Error((d as { error?: string }).error || ui.chatActionFailed);
+                        }
                       })
-                  : undefined
-              }
+                    }
+                    onAcceptFriendRequest={() =>
+                      runAction(async () => {
+                        await apiFetch("/api/friend-requests", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ senderTcallId: lookupUser.tcallId, accept: true }),
+                        });
+                      })
+                    }
+                    onCancelFriendRequest={() =>
+                      runAction(async () => {
+                        await apiFetch(`/api/friend-requests?tcallId=${lookupUser.tcallId}`, { method: "DELETE" });
+                      })
+                    }
+                    onBlock={() =>
+                      runAction(async () => {
+                        await apiFetch("/api/blocks", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tcallId: lookupUser.tcallId }),
+                        });
+                      })
+                    }
+                    onUnblock={() =>
+                      runAction(async () => {
+                        await apiFetch(`/api/blocks?tcallId=${lookupUser.tcallId}`, { method: "DELETE" });
+                      })
+                    }
+                    onRequestUnblock={() =>
+                      runAction(async () => {
+                        await apiFetch("/api/blocks/unblock-request", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tcallId: lookupUser.tcallId }),
+                        });
+                      })
+                    }
+                    onAcceptUnblock={() =>
+                      runAction(async () => {
+                        await apiFetch("/api/blocks/unblock-request", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ requesterTcallId: lookupUser.tcallId, accept: true }),
+                        });
+                      })
+                    }
+                    onRejectUnblock={() =>
+                      runAction(async () => {
+                        await apiFetch("/api/blocks/unblock-request", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ requesterTcallId: lookupUser.tcallId, accept: false }),
+                        });
+                      })
+                    }
+                    onRemoveFriend={
+                      lookupUser.isFriend
+                        ? () =>
+                            runAction(async () => {
+                              const listRes = await apiFetch("/api/contacts");
+                              const listData = await listRes.json();
+                              const contact = (listData.contacts || []).find(
+                                (c: { tcallId: string; id: string }) => c.tcallId === lookupUser.tcallId
+                              );
+                              if (!contact?.id) throw new Error(ui.chatActionFailed);
+                              const del = await apiFetch(`/api/contacts/${contact.id}`, { method: "DELETE" });
+                              if (!del.ok) throw new Error(ui.chatActionFailed);
+                            })
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="ios-keypad-grid">
+              {KEY_ROWS.flatMap((row, rowIdx) =>
+                row.map(({ key, letters }) => {
+                  if (key === "") {
+                    return <div key={`spacer-${rowIdx}`} className="ios-key-spacer" aria-hidden />;
+                  }
+                  if (key === "del") {
+                    return (
+                      <button
+                        key="del"
+                        type="button"
+                        onClick={() => press("del")}
+                        className="ios-key ios-key-delete-btn"
+                        aria-label={ui.deleteDigit}
+                        disabled={!digits.length}
+                      >
+                        <Delete className="w-6 h-6" />
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => press(key)}
+                      className="ios-key"
+                      aria-label={key}
+                    >
+                      <span className="ios-key-digit">{key}</span>
+                      {letters && <span className="ios-key-letters">{letters}</span>}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="ios-keypad-bottom">
+              <button
+                type="button"
+                onClick={() => void handleCall()}
+                disabled={digits.length !== 9 || calling || !!blocked}
+                className="ios-call-green-btn"
+                aria-label={ui.startCall}
+              >
+                <Phone className="w-8 h-8" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className={`dialer-panel dialer-panel-recents${subPage === "recents" ? " dialer-panel-active" : ""}`}
+          aria-hidden={subPage !== "recents"}
+        >
+          <div className="dialer-recents-head">
+            <h2 className="dialer-recents-title">{ui.recents}</h2>
+          </div>
+          <div className="dialer-recents-body">
+            <RecentsList
+              userLanguage={userLanguage}
+              userTcallId={userTcallId}
+              calls={calls}
+              onOpenChat={onOpenChat}
+              showToolbar
             />
           </div>
-        )}
+        </section>
       </div>
 
-      <div className="ios-keypad-grid">
-        {KEY_ROWS.flatMap((row, rowIdx) =>
-          row.map(({ key, letters }) => {
-            if (key === "") {
-              return <div key={`spacer-${rowIdx}`} className="ios-key-spacer" aria-hidden />;
-            }
-            if (key === "del") {
-              return (
-                <button
-                  key="del"
-                  type="button"
-                  onClick={() => press("del")}
-                  className="ios-key ios-key-delete-btn"
-                  aria-label={ui.deleteDigit}
-                  disabled={!digits.length}
-                >
-                  <Delete className="w-6 h-6" />
-                </button>
-              );
-            }
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => press(key)}
-                className="ios-key"
-                aria-label={key}
-              >
-                <span className="ios-key-digit">{key}</span>
-                {letters && <span className="ios-key-letters">{letters}</span>}
-              </button>
-            );
-          })
-        )}
-      </div>
-
-      <div className="ios-keypad-bottom">
+      <nav className="dialer-subnav" aria-label={ui.dialer}>
         <button
           type="button"
-          onClick={() => void handleCall()}
-          disabled={digits.length !== 9 || calling || !!blocked}
-          className="ios-call-green-btn"
-          aria-label={ui.startCall}
+          className={`dialer-subnav-btn${subPage === "keypad" ? " dialer-subnav-btn-active" : ""}`}
+          onClick={() => setSubPage("keypad")}
+          aria-current={subPage === "keypad" ? "page" : undefined}
         >
-          <Phone className="w-8 h-8" />
+          <Grid3X3 className="w-5 h-5" strokeWidth={subPage === "keypad" ? 2.4 : 1.8} />
+          <span>{ui.keypad}</span>
         </button>
-      </div>
-      </div>
+        <button
+          type="button"
+          className={`dialer-subnav-btn${subPage === "recents" ? " dialer-subnav-btn-active" : ""}`}
+          onClick={() => setSubPage("recents")}
+          aria-current={subPage === "recents" ? "page" : undefined}
+        >
+          <Clock className="w-5 h-5" strokeWidth={subPage === "recents" ? 2.4 : 1.8} />
+          <span>{ui.recents}</span>
+        </button>
+      </nav>
     </div>
   );
 }

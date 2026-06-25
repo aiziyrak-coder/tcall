@@ -30,9 +30,17 @@ interface RecentsListProps {
   calls: CallRecord[];
   onOpenChat?: (tcallId: string) => void;
   compact?: boolean;
+  showToolbar?: boolean;
 }
 
-export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, compact }: RecentsListProps) {
+export function RecentsList({
+  userLanguage,
+  userTcallId,
+  calls,
+  onOpenChat,
+  compact,
+  showToolbar = false,
+}: RecentsListProps) {
   const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [dialError, setDialError] = useState("");
@@ -82,18 +90,27 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
     }
   };
 
-  if (calls.length === 0) {
+  if (calls.length === 0 && !showToolbar && !compact) {
     return (
-      <div className={compact ? "ios-empty-state ios-empty-state-compact" : "ios-empty-state"}>
-        <Phone className={compact ? "w-8 h-8 text-slate-300 mb-2" : "w-12 h-12 text-slate-300 mb-3"} />
-        <p className={compact ? "text-sm text-slate-400" : undefined}>{ui.noCalls}</p>
+      <div className="ios-empty-state">
+        <Phone className="w-12 h-12 text-slate-300 mb-3" />
+        <p>{ui.noCalls}</p>
+      </div>
+    );
+  }
+
+  if (calls.length === 0 && compact) {
+    return (
+      <div className="ios-empty-state ios-empty-state-compact">
+        <Phone className="w-8 h-8 text-slate-300 mb-2" />
+        <p className="text-sm text-slate-400">{ui.noCalls}</p>
       </div>
     );
   }
 
   return (
     <>
-      {compact && (
+      {(compact || showToolbar) && (
         <div className="recents-toolbar">
           <div className="recents-filter-chips">
             {filterChips.map((chip) => (
@@ -120,7 +137,12 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
         </div>
       )}
 
-      {filteredCalls.length === 0 ? (
+      {calls.length === 0 ? (
+        <div className="ios-empty-state">
+          <Phone className="w-10 h-10 text-slate-300 mb-2" />
+          <p className="text-sm text-slate-400">{ui.noCalls}</p>
+        </div>
+      ) : filteredCalls.length === 0 ? (
         <div className="ios-empty-state ios-empty-state-compact">
           <p className="text-sm text-slate-400">{ui.chatSearchNoResults}</p>
         </div>

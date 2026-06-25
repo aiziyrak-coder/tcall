@@ -31,8 +31,8 @@ interface PhoneShellProps {
 
 const NAV_TABS: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText }[] = [
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
-  { id: "keypad", icon: Phone, labelKey: "keypad" },
   { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
+  { id: "keypad", icon: Phone, labelKey: "keypad" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
   { id: "interpreter", icon: Languages, labelKey: "interpreterTab" },
 ];
@@ -80,7 +80,7 @@ function SidebarNav({
               key={id}
               type="button"
               onClick={() => onTabChange(id)}
-              className={`app-sidebar-item ${active ? "app-sidebar-item-active" : ""}`}
+              className={`app-sidebar-item${id === "keypad" ? " app-sidebar-item-keypad" : ""} ${active ? "app-sidebar-item-active" : ""}`}
               title={ui[labelKey] as string}
               aria-label={ui[labelKey] as string}
               aria-current={active ? "page" : undefined}

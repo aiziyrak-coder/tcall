@@ -469,6 +469,29 @@
   background: rgba(0, 122, 255, 0.08);
 }
 
+.app-sidebar-item-keypad .app-sidebar-icon-wrap {
+  background: linear-gradient(145deg, #34c759 0%, #28a745 100%);
+  color: #fff;
+  border-radius: 9999px;
+  width: 2.5rem;
+  height: 2.5rem;
+  box-shadow: 0 4px 14px rgba(52, 199, 89, 0.35);
+}
+
+.app-sidebar-item-keypad.app-sidebar-item-active .app-sidebar-icon-wrap {
+  box-shadow: 0 4px 16px rgba(52, 199, 89, 0.45);
+}
+
+.app-sidebar-item-keypad .app-sidebar-icon-wrap svg {
+  color: #fff;
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar-item-keypad {
+    margin: 0.2rem 0;
+  }
+}
+
 .app-sidebar-icon-wrap {
   position: relative;
   display: flex;
@@ -1798,20 +1821,115 @@ body.tg-webapp .ios-tab-bar {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   padding-bottom: 0 !important;
 }
 
-.app-tab-keypad .ios-keypad {
+/* ─── Dialer: alohida ichki sahifalar (terish / so'nggilar) ─── */
+.dialer-screen {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.dialer-panels {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dialer-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.dialer-panel-active {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.dialer-panel-keypad {
+  justify-content: flex-end;
+}
+
+.ios-keypad-standalone {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  padding-bottom: 0.25rem;
+}
+
+.dialer-recents-head {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.dialer-recents-title {
+  @apply text-lg font-semibold text-slate-900;
+  letter-spacing: -0.02em;
+}
+
+.dialer-recents-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 0.25rem 0.5rem;
+}
+
+.dialer-subnav {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  padding: 0.35rem 0.5rem 0.25rem;
+  border-top: 1px solid var(--separator);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dialer-subnav-btn {
+  @apply flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-slate-500 touch-manipulation;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dialer-subnav-btn-active {
+  @apply text-brand-600;
+  background: rgba(0, 122, 255, 0.1);
+}
+
+.dialer-subnav-btn:active {
+  @apply bg-slate-100;
+}
+
+.app-tab-keypad .ios-keypad-standalone {
   flex: 1;
   min-height: 0;
   overflow: hidden;
   justify-content: flex-end;
   padding-bottom: 0.25rem;
-}
-
-.app-tab-keypad .ios-keypad-dial {
-  flex: 0 0 auto;
 }
 
 .app-tab-keypad .ios-keypad-grid {
