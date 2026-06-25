@@ -355,6 +355,14 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     if (typeof Notification === "undefined") return;
     const permission = await Notification.requestPermission();
     setNotifPermission(permission);
+    if (permission === "granted") {
+      try {
+        const { ensureWebPushSubscription } = await import("@/lib/web-push-client");
+        void ensureWebPushSubscription({ requestPermission: false });
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   const loadPinStatus = async () => {

@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { sendFcmV1 } from "./fcm";
+import { sendWebPushToUser } from "./webpush";
 
 export interface IncomingCallPush {
   roomId: string;
@@ -46,6 +47,18 @@ async function sendToUser(
   userId: string,
   payload: { title: string; body: string; data: Record<string, string>; priority?: "high" | "normal"; isCall?: boolean }
 ): Promise<{ sent: number }> {
+  const isCall = payload.isCall ?? payload.priority === "high";
+
+  // Browser / desktop notifications (Chrome, Edge, Firefox) — works when the tab is closed.
+  void sendWebPushToUser(userId, {
+    title: payload.title,
+    body: payload.body,
+    data: payload.data,
+    isCall,
+    tag: payload.data.type,
+  });
+
+  // Native mobile (FCM)
   const tokens = await getTokens(userId);
   if (tokens.length === 0) return { sent: 0 };
   let sent = 0;
