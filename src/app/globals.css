@@ -1854,6 +1854,7 @@ body.has-mini-call .chat-app-thread .chat-composer {
 
 .chat-thread-header {
   @apply shrink-0 flex items-center gap-2.5 py-2.5 border-b border-black/[0.06];
+  touch-action: pan-y;
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(16px);
   padding-top: max(0.625rem, var(--app-safe-top));
@@ -1886,6 +1887,7 @@ body.has-mini-call .chat-app-thread .chat-composer {
 
 .chat-messages {
   @apply flex-1 overflow-y-auto overscroll-contain py-3 min-h-0 flex flex-col gap-3;
+  touch-action: pan-y;
   padding-left: max(0.625rem, var(--app-safe-left));
   padding-right: max(0.625rem, var(--app-safe-right));
   -webkit-overflow-scrolling: touch;
@@ -1987,6 +1989,7 @@ body.has-mini-call .chat-app-thread .chat-composer {
 
 .chat-messages-wrap {
   @apply relative flex-1 min-h-0 flex flex-col;
+  touch-action: pan-y;
 }
 
 .chat-load-older {

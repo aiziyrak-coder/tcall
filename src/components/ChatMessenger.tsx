@@ -36,6 +36,12 @@ import { TcallLogo } from "@/components/TcallLogo";
 import { applyReadStatusAfterPeerRead } from "@/lib/chat-read-status";
 import { peerStatusLabel } from "@/lib/format-last-seen";
 import { formatChatDateLabel, sameChatDay } from "@/lib/chat-date";
+import {
+  bindSwipeDownDismiss,
+  dismissKeyboard,
+  isTextInputFocused,
+  shouldDismissOnPointerTarget,
+} from "@/lib/dismiss-keyboard";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -136,6 +142,8 @@ export function ChatMessenger({
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const messagesWrapRef = useRef<HTMLDivElement>(null);
+  const threadHeaderRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const attachWrapRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef<string | null>(null);
@@ -171,6 +179,25 @@ export function ChatMessenger({
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [showAttachMenu]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    const cleanups: Array<() => void> = [];
+    if (messagesWrapRef.current) {
+      cleanups.push(bindSwipeDownDismiss(messagesWrapRef.current));
+    }
+    if (threadHeaderRef.current) {
+      cleanups.push(bindSwipeDownDismiss(threadHeaderRef.current));
+    }
+    return () => cleanups.forEach((fn) => fn());
+  }, [activeId]);
+
+  const handleMessagesPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!shouldDismissOnPointerTarget(e.target)) return;
+    if (isTextInputFocused()) dismissKeyboard();
+    setShowEmoji(false);
+    setShowAttachMenu(false);
+  }, []);
 
   const activeConv = conversations.find((c) => c.id === activeId);
 
@@ -482,6 +509,7 @@ export function ChatMessenger({
   const handleMessagesScroll = useCallback(() => {
     const el = messagesRef.current;
     if (!el) return;
+    if (isTextInputFocused()) dismissKeyboard();
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
     atBottomRef.current = dist < 80;
     setShowScrollDown(dist > 120);
@@ -765,7 +793,7 @@ export function ChatMessenger({
     return (
       <div className="chat-app chat-app-thread">
         <div className="chat-thread">
-        <div className="chat-thread-header">
+        <div className="chat-thread-header" ref={threadHeaderRef}>
           <button type="button" onClick={closeThread} className="ios-icon-btn shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -851,7 +879,11 @@ export function ChatMessenger({
 
         {actionError && <div className="chat-upload-error mx-5 mt-2">{actionError}</div>}
 
-        <div className="chat-messages-wrap">
+        <div
+          className="chat-messages-wrap"
+          ref={messagesWrapRef}
+          onPointerDown={handleMessagesPointerDown}
+        >
         <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
           {loadingOlder && (
             <div className="chat-load-older">

@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { KeyboardResize } from "@capacitor/keyboard";
 
 const PRODUCTION_URL = process.env.TCALL_APP_URL || "https://tcall.uz";
 
@@ -42,7 +43,7 @@ const config: CapacitorConfig = {
       iconColor: "#007AFF",
     },
     Keyboard: {
-      resize: "none",
+      resize: KeyboardResize.None,
     },
   },
 };
