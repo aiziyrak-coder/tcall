@@ -1,4 +1,5 @@
 import type { Socket } from "socket.io-client";
+import { SOCKET_WAIT_MS } from "@/lib/socket-client";
 
 type ConnectListener = (connected: boolean) => void;
 
@@ -23,7 +24,7 @@ export function notifySocketConnect(connected: boolean) {
   connectListeners.forEach((fn) => fn(connected));
 }
 
-export function waitForSharedSocket(timeoutMs = 15000): Promise<Socket> {
+export function waitForSharedSocket(timeoutMs = SOCKET_WAIT_MS): Promise<Socket> {
   return new Promise((resolve, reject) => {
     if (socketInstance?.connected) {
       resolve(socketInstance);

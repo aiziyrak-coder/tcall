@@ -4,6 +4,7 @@ import {
   isAppHost,
   isLocalHost,
 } from "@/lib/domains";
+import { fetchWithRetry } from "@/lib/network-resilience";
 
 /** Frontend URL (public site) */
 export function getAppUrl(): string {
@@ -35,7 +36,7 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   ) {
     headers.set("X-Tcall-Native", "1");
   }
-  return fetch(apiUrl(path), { ...init, headers, credentials: "include" });
+  return fetchWithRetry(apiUrl(path), { ...init, headers, credentials: "include" });
 }
 
 /** API javobini xavfsiz JSON ga aylantirish — HTML xato sahifalarini ushlaydi */

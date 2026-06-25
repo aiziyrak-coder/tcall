@@ -8,18 +8,20 @@ export function getIceServers(): RTCIceServer[] {
     { urls: "stun:stun4.l.google.com:19302" },
     {
       urls: [
-        "turn:openrelay.metered.ca:80",
-        "turn:openrelay.metered.ca:443",
         "turn:openrelay.metered.ca:443?transport=tcp",
+        "turn:openrelay.metered.ca:80?transport=tcp",
+        "turn:openrelay.metered.ca:443",
+        "turn:openrelay.metered.ca:80",
       ],
       username: "openrelayproject",
       credential: "openrelayproject",
     },
     {
       urls: [
-        "turn:global.relay.metered.ca:80",
-        "turn:global.relay.metered.ca:443",
         "turn:global.relay.metered.ca:443?transport=tcp",
+        "turn:global.relay.metered.ca:80?transport=tcp",
+        "turn:global.relay.metered.ca:443",
+        "turn:global.relay.metered.ca:80",
       ],
       username: "openrelayproject",
       credential: "openrelayproject",
@@ -38,11 +40,12 @@ export function getIceServers(): RTCIceServer[] {
   return servers;
 }
 
-export function getPeerConnectionConfig(): RTCConfiguration {
+export function getPeerConnectionConfig(opts?: { preferRelay?: boolean }): RTCConfiguration {
   return {
     iceServers: getIceServers(),
-    iceCandidatePoolSize: 8,
+    iceCandidatePoolSize: 10,
     bundlePolicy: "max-compat",
     rtcpMuxPolicy: "require",
+    iceTransportPolicy: opts?.preferRelay ? "relay" : "all",
   };
 }

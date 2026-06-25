@@ -20,6 +20,10 @@ export function MiniCallBar() {
   const status =
     call.callStatus === "active"
       ? formatDuration(call.callDuration)
+      : !call.socketConnected
+        ? ui.reconnecting
+      : call.connectionSlow
+        ? ui.connectingSlow
       : call.callStatus === "ringing"
         ? ui.ringing
         : ui.connecting;

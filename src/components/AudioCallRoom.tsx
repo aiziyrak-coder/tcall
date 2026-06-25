@@ -87,7 +87,9 @@ export function AudioCallRoom() {
   const latestOwn = call.translations.filter((t) => t.speaker === user.name).slice(-1)[0];
 
   const statusLabel =
-    !call.socketConnected ? ui.socketOffline
+    !call.socketConnected ? ui.reconnecting
+    : call.connectionSlow && (call.callStatus === "connecting" || call.callStatus === "waiting" || call.callStatus === "ringing")
+      ? ui.connectingSlow
     : call.callStatus === "active" ? formatDuration(call.callDuration)
     : call.callStatus === "ringing" ? ui.ringing
     : call.callStatus === "waiting" ? ui.waiting
@@ -137,7 +139,7 @@ export function AudioCallRoom() {
 
       {call.callStatus === "connecting" && call.partner && (
         <p className="relative z-10 text-xs text-brand-600 mt-2 px-6 text-center">
-          Ovoz uchun ekranga bir marta bosing
+          {call.connectionSlow ? ui.weakSignalHint : "Ovoz uchun ekranga bir marta bosing"}
         </p>
       )}
 

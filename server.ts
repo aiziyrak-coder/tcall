@@ -111,8 +111,8 @@ app.prepare().then(async () => {
       credentials: true,
     },
     path: "/socket.io",
-    pingInterval: 10000,
-    pingTimeout: 20000,
+    pingInterval: 25000,
+    pingTimeout: 70000,
     transports: ["websocket", "polling"],
   });
 

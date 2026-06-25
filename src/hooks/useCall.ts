@@ -47,8 +47,9 @@ interface UseCallOptions {
   enabled: boolean;
 }
 
-const OFFER_RETRY_MS = 8000;
-const MAX_OFFER_RETRIES = 3;
+const OFFER_RETRY_MS = 12_000;
+const MAX_OFFER_RETRIES = 8;
+const RELAY_FALLBACK_AFTER = 3;
 
 export function useCall({
   roomId,
@@ -68,6 +69,7 @@ export function useCall({
   const [callError, setCallError] = useState<CallError>(null);
   const [isListening, setIsListening] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [connectionSlow, setConnectionSlow] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [micStatus, setMicStatus] = useState<MicStatus>("pending");
@@ -92,6 +94,8 @@ export function useCall({
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const audioQueueRef = useRef<TranslationAudioQueue | null>(null);
   const offerRetryRef = useRef(0);
+  const relayFallbackRef = useRef(false);
+  const slowHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offerRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -124,6 +128,28 @@ export function useCall({
     translationModeRef.current = translationModeState;
     socketRef.current?.emit("update-translation-mode", { mode: translationModeState });
   }, [translationModeState]);
+
+  const clearSlowHint = useCallback(() => {
+    if (slowHintTimerRef.current) {
+      clearTimeout(slowHintTimerRef.current);
+      slowHintTimerRef.current = null;
+    }
+    setConnectionSlow(false);
+  }, []);
+
+  const startSlowHint = useCallback(() => {
+    if (slowHintTimerRef.current) return;
+    slowHintTimerRef.current = setTimeout(() => {
+      slowHintTimerRef.current = null;
+      if (
+        callStatusRef.current === "connecting" ||
+        callStatusRef.current === "ringing" ||
+        callStatusRef.current === "waiting"
+      ) {
+        setConnectionSlow(true);
+      }
+    }, 8000);
+  }, []);
 
   const flushIceQueue = useCallback(async (pc: RTCPeerConnection) => {
     while (iceQueueRef.current.length > 0) {
@@ -337,14 +363,17 @@ export function useCall({
       setCallStatus("active");
       startTimer();
       clearOfferRetry();
+      clearSlowHint();
       playRemoteAudioRef.current();
     },
-    [clearOfferRetry, startTimer]
+    [clearOfferRetry, clearSlowHint, startTimer]
   );
 
   const createPeerConnection = useCallback(
     (stream: MediaStream, socket: Socket) => {
-      const pc = new RTCPeerConnection(getPeerConnectionConfig());
+      const pc = new RTCPeerConnection(
+        getPeerConnectionConfig({ preferRelay: relayFallbackRef.current })
+      );
 
       pc.onicecandidate = (event) => {
         if (event.candidate && remoteIdRef.current) {
@@ -360,8 +389,9 @@ export function useCall({
           setCallStatus("active");
           startTimer();
           clearOfferRetry();
+          clearSlowHint();
           if (streamRef.current && !recorderRef.current) startRecording(streamRef.current);
-        } else if (state === "failed") {
+        } else if (state === "failed" || state === "disconnected") {
           scheduleReofferRef.current();
         }
       };
@@ -370,11 +400,18 @@ export function useCall({
         const ice = pc.iceConnectionState;
         if (ice === "connected" || ice === "completed") {
           setCallStatus("active");
+          clearSlowHint();
           if (streamRef.current && !recorderRef.current && !isMutedRef.current) {
             startRecording(streamRef.current);
           }
         } else if (ice === "failed") {
           scheduleReofferRef.current();
+        } else if (ice === "disconnected") {
+          setTimeout(() => {
+            if (pcRef.current?.iceConnectionState === "disconnected") {
+              scheduleReofferRef.current();
+            }
+          }, 4000);
         }
       };
 
@@ -384,7 +421,7 @@ export function useCall({
       }
       return pc;
     },
-    [attachRemoteTrack, clearOfferRetry, startTimer, startRecording]
+    [attachRemoteTrack, clearOfferRetry, clearSlowHint, startTimer, startRecording]
   );
 
   const scheduleReofferRef = useRef<() => void>(() => {});
@@ -438,6 +475,9 @@ export function useCall({
       setCallStatus("error");
       return;
     }
+    if (offerRetryRef.current >= RELAY_FALLBACK_AFTER && !relayFallbackRef.current) {
+      relayFallbackRef.current = true;
+    }
     const other = otherParticipantRef.current;
     const stream = streamRef.current;
     const socket = socketRef.current;
@@ -446,6 +486,7 @@ export function useCall({
     offerRetryRef.current += 1;
     resetPeerConnection();
     setCallStatus("connecting");
+    startSlowHint();
 
     setTimeout(() => {
       const s = streamRef.current;
@@ -458,8 +499,8 @@ export function useCall({
       } else {
         sock.emit("request-reoffer", { targetId: peer.socketId });
       }
-    }, 1200);
-  }, [resetPeerConnection, sendOffer]);
+    }, 2000);
+  }, [resetPeerConnection, sendOffer, startSlowHint]);
 
   scheduleReofferRef.current = scheduleReoffer;
 
@@ -595,6 +636,7 @@ export function useCall({
     sessionActiveRef.current = true;
     intentionalEndRef.current = false;
     offerRetryRef.current = 0;
+    relayFallbackRef.current = false;
     sessionStartedRef.current = false;
     serverIsHostRef.current = isHost;
 
@@ -622,6 +664,7 @@ export function useCall({
         streamRef.current = stream;
         setMicStatus("granted");
         setCallStatus("connecting");
+        startSlowHint();
 
         const socket = await waitForSharedSocket();
         if (!mounted) return;
@@ -644,10 +687,13 @@ export function useCall({
           joinRoom();
         };
 
-        const onDisconnect = () => setSocketConnected(false);
+        const onDisconnect = () => {
+          setSocketConnected(false);
+          startSlowHint();
+        };
         const onConnectError = () => {
           setSocketConnected(false);
-          setCallError("room_error");
+          startSlowHint();
         };
 
         const onRoomUsers = (users: RoomParticipant[]) => {
@@ -790,6 +836,8 @@ export function useCall({
         socket.on("call-cancelled", onCallCancelled);
         socket.on("user-left", onUserLeft);
 
+        socket.io.on("reconnect", onConnect);
+
         setSocketConnected(socket.connected);
         joinRoom();
 
@@ -810,6 +858,7 @@ export function useCall({
           socket.off("call-timeout", onCallTimeout);
           socket.off("call-cancelled", onCallCancelled);
           socket.off("user-left", onUserLeft);
+          socket.io.off("reconnect", onConnect);
         };
       } catch (err) {
         console.error("Call session error:", err);
@@ -903,6 +952,7 @@ export function useCall({
 
         sessionActiveRef.current = false;
         sessionStartedRef.current = false;
+        clearSlowHint();
         audioQueueRef.current = null;
         wakeLockRef.current?.release().catch(() => {});
         remoteAudioCtxRef.current?.close().catch(() => {});
@@ -1021,6 +1071,7 @@ export function useCall({
     callError,
     isListening,
     socketConnected,
+    connectionSlow,
     isSpeaking,
     callDuration,
     micStatus,

@@ -33,6 +33,7 @@ import {
   notifySocketConnect,
   setSharedCallSocket,
 } from "@/lib/call-socket";
+import { SOCKET_CLIENT_OPTIONS } from "@/lib/socket-client";
 import { IncomingCallModal } from "@/components/IncomingCallModal";
 import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 import { ActiveCallEngine } from "@/components/active-call/ActiveCallEngine";
@@ -308,18 +309,42 @@ export function CallProvider({ user, children }: CallProviderProps) {
       });
     }, 150);
 
-    const onVisible = () => {
+    const reconnectSocket = () => {
       const s = socketRef.current;
-      if (document.visibilityState === "visible" && s && !s.connected) {
-        s.connect();
+      if (s && !s.connected) {
+        try {
+          s.connect();
+        } catch {
+          /* ignore */
+        }
       }
     };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reconnectSocket();
+    };
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", reconnectSocket);
+
+    let networkListener: { remove: () => Promise<void> } | null = null;
+    void import("@capacitor/network")
+      .then(({ Network }) =>
+        Network.addListener("networkStatusChange", (status) => {
+          if (status.connected) reconnectSocket();
+        })
+      )
+      .then((handle) => {
+        if (!cancelled) networkListener = handle;
+        else void handle.remove();
+      })
+      .catch(() => {});
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", reconnectSocket);
+      void networkListener?.remove();
       clearRingTimeout();
       stopRingtone();
       stopRingback();
