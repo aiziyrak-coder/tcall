@@ -15,7 +15,12 @@ export function telegramConfigured(): boolean {
 }
 
 export function getBotUsername(): string {
-  return process.env.TELEGRAM_BOT_USERNAME || "";
+  return (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, "");
+}
+
+/** Escape user-provided text for Telegram HTML parse_mode. */
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 async function sendMessage(chatId: string | number, text: string): Promise<boolean> {

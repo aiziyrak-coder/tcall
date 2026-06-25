@@ -1,6 +1,26 @@
 import { prisma } from "./prisma";
 import { sendFcmV1 } from "./fcm";
 import { sendWebPushToUser } from "./webpush";
+import { notifyUserTelegram, escapeHtml } from "./telegram";
+
+const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://tcall.uz";
+
+function telegramText(payload: {
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  isCall?: boolean;
+}): string {
+  const head = `<b>${escapeHtml(payload.title)}</b>`;
+  const body = payload.body ? `\n${escapeHtml(payload.body)}` : "";
+  let link = "";
+  if (payload.isCall && payload.data.roomId) {
+    link = `\n\n📲 Javob berish: ${APP_URL}/call/${payload.data.roomId}`;
+  } else if (payload.data.type === "chat_message") {
+    link = `\n\n💬 Ochish: ${APP_URL}/dashboard`;
+  }
+  return head + body + link;
+}
 
 export interface IncomingCallPush {
   roomId: string;
@@ -57,6 +77,16 @@ async function sendToUser(
     isCall,
     tag: payload.data.type,
   });
+
+  // Telegram notification (works on any device with Telegram, no app rebuild needed).
+  void prisma.user
+    .findUnique({ where: { id: userId }, select: { telegramChatId: true } })
+    .then((u) => {
+      if (u?.telegramChatId) {
+        void notifyUserTelegram(u.telegramChatId, telegramText({ ...payload, isCall }));
+      }
+    })
+    .catch(() => {});
 
   // Native mobile (FCM)
   const tokens = await getTokens(userId);

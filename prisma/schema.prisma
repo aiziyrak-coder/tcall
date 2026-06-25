@@ -20,6 +20,8 @@ model User {
   avatar          String?
   telegramUsername String?
   telegramChatId  String?
+  telegramLinkCode String? @unique
+  telegramLinkExpires DateTime?
   age             Int?
   city            String?
   country         String?

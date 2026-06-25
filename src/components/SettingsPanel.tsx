@@ -187,6 +187,10 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [pinFace, setPinFace] = useState<{ image: string; descriptor: number[] | null } | null>(null);
   const [faceMode, setFaceMode] = useState<null | "enroll" | "update">(null);
 
+  // Telegram notifications linking
+  const [tgStatus, setTgStatus] = useState<{ configured: boolean; linked: boolean; username: string | null } | null>(null);
+  const [tgBusy, setTgBusy] = useState(false);
+
   useEffect(() => {
     apiFetch("/api/user/settings")
       .then((r) => r.json())
@@ -377,8 +381,62 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     }
   };
 
+  const loadTelegramStatus = async () => {
+    try {
+      const r = await apiFetch("/api/user/telegram");
+      if (!r.ok) return;
+      setTgStatus(await r.json());
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const connectTelegram = async () => {
+    setTgBusy(true);
+    setNotice(null);
+    try {
+      const r = await apiFetch("/api/user/telegram", { method: "POST" });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.url) {
+        setNotice({ type: "error", text: d.error || "Telegram hali sozlanmagan" });
+        return;
+      }
+      window.open(d.url, "_blank");
+      setNotice({ type: "success", text: "Telegram ochildi — 'Start' tugmasini bosing. So'ng bu yerga qayting." });
+      // Poll for the link to complete
+      let tries = 0;
+      const poll = setInterval(async () => {
+        tries++;
+        await loadTelegramStatus();
+        const cur = await apiFetch("/api/user/telegram").then((x) => x.json()).catch(() => null);
+        if ((cur && cur.linked) || tries > 20) {
+          clearInterval(poll);
+          if (cur && cur.linked) setNotice({ type: "success", text: "Telegram ulandi ✓" });
+        }
+      }, 3000);
+    } catch {
+      setNotice({ type: "error", text: "Tarmoq xatosi" });
+    } finally {
+      setTgBusy(false);
+    }
+  };
+
+  const disconnectTelegram = async () => {
+    setTgBusy(true);
+    try {
+      await apiFetch("/api/user/telegram", { method: "DELETE" });
+      await loadTelegramStatus();
+      setNotice({ type: "success", text: "Telegram uzildi" });
+    } catch {
+      /* ignore */
+    } finally {
+      setTgBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (section === "applock" && !pinStatus) void loadPinStatus();
+    if (section === "notifications" && !tgStatus) void loadTelegramStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
 
@@ -872,6 +930,47 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
                 ? ui.settingsNotificationsUnsupported
                 : ui.settingsNotificationsAsk}
         </p>
+      </section>
+
+      <section className="settings-security-card">
+        <div className="flex items-center gap-2 mb-2">
+          <Send className="w-4 h-4 text-sky-500" />
+          <p className="font-semibold text-slate-900">Telegram bildirishnomalari</p>
+          {tgStatus?.linked && (
+            <span className="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+              Ulangan
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed mb-3">
+          Telegramingizni ulang — qo‘ng‘iroq va xabarlar haqida <b>ilova yopiq bo‘lsa ham</b> Telegramga bildirishnoma keladi.
+          Hech narsa o‘tkazib yubormaysiz.
+        </p>
+
+        {tgStatus && !tgStatus.configured ? (
+          <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+            Telegram bot hozircha sozlanmoqda. Tez orada faollashtiriladi.
+          </p>
+        ) : tgStatus?.linked ? (
+          <button
+            type="button"
+            className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 font-medium text-sm disabled:opacity-50"
+            onClick={() => void disconnectTelegram()}
+            disabled={tgBusy}
+          >
+            Telegramni uzish
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-sky-500 text-white font-medium text-sm disabled:opacity-50"
+            onClick={() => void connectTelegram()}
+            disabled={tgBusy || !tgStatus}
+          >
+            <Send className="w-4 h-4" />
+            {tgBusy ? "..." : "Telegramni ulash"}
+          </button>
+        )}
       </section>
     </div>
   );
