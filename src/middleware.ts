@@ -45,31 +45,41 @@ async function verifyAdminCookie(token: string): Promise<boolean> {
   }
 }
 
+function securityHeaders(response: NextResponse) {
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api")) {
     const origin = request.headers.get("origin");
     if (request.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+      return securityHeaders(new NextResponse(null, { status: 204, headers: corsHeaders(origin) }));
     }
     const response = NextResponse.next();
     Object.entries(corsHeaders(origin)).forEach(([k, v]) => response.headers.set(k, v));
-    response.headers.set("X-Content-Type-Options", "nosniff");
-    return response;
+    return securityHeaders(response);
   }
 
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
-  if (!isProtected) return NextResponse.next();
+  if (!isProtected) return securityHeaders(NextResponse.next());
 
   // Admin panel — alohida cookie bilan himoyalangan
   if (pathname.startsWith("/admin")) {
-    if (pathname === "/admin/login") return NextResponse.next();
+    if (pathname === "/admin/login") return securityHeaders(NextResponse.next());
     const adminToken = request.cookies.get("admin_session")?.value;
     if (!adminToken || !(await verifyAdminCookie(adminToken))) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return securityHeaders(NextResponse.redirect(new URL("/admin/login", request.url)));
     }
-    return NextResponse.next();
+    return securityHeaders(NextResponse.next());
   }
 
   const token = request.cookies.get("session")?.value;
@@ -77,14 +87,21 @@ export async function middleware(request: NextRequest) {
   if (!session.ok) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    const res = NextResponse.redirect(loginUrl);
+    const res = securityHeaders(NextResponse.redirect(loginUrl));
     if (token) res.cookies.delete("session");
     return res;
   }
 
-  return NextResponse.next();
+  return securityHeaders(NextResponse.next());
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/dashboard/:path*", "/call/:path*", "/admin/:path*", "/admin/login"],
+  matcher: [
+    "/api/:path*",
+    "/dashboard/:path*",
+    "/call/:path*",
+    "/admin/:path*",
+    "/admin/login",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)",
+  ],
 };

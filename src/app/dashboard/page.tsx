@@ -21,6 +21,10 @@ import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { LiveInterpreter } from "@/components/LiveInterpreter";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
 import { isNativeApp } from "@/lib/native-app";
+import { AppSplash } from "@/components/AppSplash";
+import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 interface CallRecord {
   id: string;
@@ -47,7 +51,7 @@ export default function DashboardPage() {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
-  if (loading && !user) return null;
+  if (loading && !user) return <AppSplash />;
   if (!user) return null;
 
   return (
@@ -250,8 +254,23 @@ function DashboardInner({
       ? "Support"
       : "Qo'llab-quvvatlash";
 
+  const { pulling, distance, refreshing } = usePullToRefresh({
+    onRefresh: refresh,
+    enabled: tab !== "messages" || !chatInThread,
+  });
+
   return (
     <>
+      <NetworkStatusBanner userLanguage={user.language} />
+      {(pulling || refreshing) && (
+        <div
+          className="pull-refresh-indicator"
+          style={{ transform: `translateY(${Math.min(distance, 48)}px)` }}
+          aria-hidden
+        >
+          {refreshing ? "..." : ui.pullToRefresh}
+        </div>
+      )}
       <PhoneShell
         userLanguage={user.language}
         activeTab={tab}
@@ -305,7 +324,7 @@ function DashboardInner({
       >
         <ReconnectPill visible={!socketConnected} label={ui.reconnecting} />
         <HintPill message={notifHint || null} />
-        <ErrorToast message={loadError || null} />
+        <ErrorToast message={loadError || null} onRetry={() => refresh()} retryLabel={ui.retry} />
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
@@ -377,6 +396,8 @@ function DashboardInner({
           </div>
         )}
       </PhoneShell>
+
+      <InstallPrompt userLanguage={user.language} />
 
       {showSettings && (
         <SettingsPanel

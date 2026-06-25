@@ -19,6 +19,7 @@ import {
   Trash2,
   Users,
   X,
+  Pin,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
@@ -33,6 +34,8 @@ import { ChatThreadMenuSheet } from "@/components/ChatThreadMenuSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { GroupAvatar, UserAvatar } from "@/components/UserAvatar";
 import { TcallLogo } from "@/components/TcallLogo";
+import { ChatConvSkeleton } from "@/components/Skeleton";
+import { ReportModal } from "@/components/ReportModal";
 import { applyReadStatusAfterPeerRead } from "@/lib/chat-read-status";
 import { peerStatusLabel } from "@/lib/format-last-seen";
 import { formatChatDateLabel, sameChatDay } from "@/lib/chat-date";
@@ -121,6 +124,12 @@ export function ChatMessenger({
   const [peerPresence, setPeerPresence] = useState<PeerPresence | null>(null);
   const [peerTyping, setPeerTyping] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [messageSearchMode, setMessageSearchMode] = useState(false);
+  const [messageSearchResults, setMessageSearchResults] = useState<
+    { id: string; conversationId: string; conversationName: string | null; text: string | null; createdAt: string }[]
+  >([]);
+  const [messageSearchLoading, setMessageSearchLoading] = useState(false);
+  const [showReportChat, setShowReportChat] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [conversationType, setConversationType] = useState<string>("direct");
   const [loading, setLoading] = useState(true);
@@ -286,6 +295,35 @@ export function ChatMessenger({
     onUnreadChange?.();
     setLoading(false);
   }, [onUnreadChange]);
+
+  const togglePin = useCallback(async (conversationId: string, pinned: boolean) => {
+    await apiFetch("/api/chat/pin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, pinned }),
+    });
+    await loadConversations();
+  }, [loadConversations]);
+
+  useEffect(() => {
+    if (!messageSearchMode) {
+      setMessageSearchResults([]);
+      return;
+    }
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setMessageSearchResults([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      setMessageSearchLoading(true);
+      void apiFetch(`/api/chat/search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d) => setMessageSearchResults(d.results || []))
+        .finally(() => setMessageSearchLoading(false));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [messageSearchMode, searchQuery]);
 
   const refreshAndOpenMembers = useCallback(async () => {
     setShowManage(false);
@@ -1276,12 +1314,13 @@ export function ChatMessenger({
         </div>
         </div>
 
-        {showManage && (
+        {showManage && activeConv && (
           <ChatThreadMenuSheet
             ui={ui}
             isGroup={isGroup}
             canManageGroup={canManageGroup}
             isOwner={myRole === "owner"}
+            isPinned={!!activeConv.pinnedAt}
             onClose={() => setShowManage(false)}
             onViewMembers={() => void refreshAndOpenMembers()}
             onAddMembers={() => setShowAddMembers(true)}
@@ -1289,6 +1328,8 @@ export function ChatMessenger({
               setEditGroupName(activeConv.title);
               setShowRenameGroup(true);
             }}
+            onTogglePin={() => void togglePin(activeConv.id, !activeConv.pinnedAt)}
+            onReport={() => setShowReportChat(true)}
             onLeave={() => {
               if (typeof window !== "undefined" && window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
                 void leaveChat(false);
@@ -1300,6 +1341,16 @@ export function ChatMessenger({
             onViewProfile={
               !isGroup && partner?.tcallId ? () => setShowPartnerProfile(true) : undefined
             }
+          />
+        )}
+
+        {showReportChat && activeId && (
+          <ReportModal
+            ui={ui}
+            type="chat"
+            targetId={activeId}
+            targetLabel={activeConv?.title}
+            onClose={() => setShowReportChat(false)}
           />
         )}
 
@@ -1421,13 +1472,52 @@ export function ChatMessenger({
         <input
           type="search"
           className="chat-list-search-input"
-          placeholder={ui.chatSearchPlaceholder}
+          placeholder={messageSearchMode ? ui.chatSearchPlaceholder : ui.search}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <button
+          type="button"
+          className={`chat-search-mode-btn${messageSearchMode ? " chat-search-mode-btn-active" : ""}`}
+          onClick={() => {
+            setMessageSearchMode((v) => !v);
+            setSearchQuery("");
+            setMessageSearchResults([]);
+          }}
+          title={ui.chatSearch}
+        >
+          {ui.chatSearch}
+        </button>
       </div>
 
-      {conversations.length === 0 ? (
+      {loading ? (
+        <ChatConvSkeleton />
+      ) : messageSearchMode ? (
+        messageSearchLoading ? (
+          <ChatConvSkeleton count={4} />
+        ) : messageSearchResults.length === 0 ? (
+          <div className="ios-empty-state">
+            <p>{searchQuery.trim().length < 2 ? ui.chatSearchPlaceholder : ui.chatSearchNoResults}</p>
+          </div>
+        ) : (
+          <ul className="chat-conv-list">
+            {messageSearchResults.map((hit) => (
+              <li key={hit.id}>
+                <button
+                  type="button"
+                  className="chat-conv-item"
+                  onClick={() => void openConversation(hit.conversationId)}
+                >
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-semibold truncate">{hit.conversationName || ui.messages}</p>
+                    <p className="text-sm text-slate-500 truncate">{hit.text}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : conversations.length === 0 ? (
         <div className="ios-empty-state">
           <MessageSquare className="w-10 h-10 text-slate-300 mb-2" />
           <p>{ui.noMessages}</p>
@@ -1445,6 +1535,7 @@ export function ChatMessenger({
             .map((c) => (
             <li key={c.id}>
               <button type="button" className="chat-conv-item" onClick={() => void openConversation(c.id)}>
+                {c.pinnedAt && <Pin className="w-3 h-3 text-brand-500 shrink-0 absolute left-1 top-1" aria-hidden />}
                 {c.type === "group" ? (
                   <GroupAvatar
                     conversationId={c.id}

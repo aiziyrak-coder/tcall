@@ -8,6 +8,8 @@ import {
   Users,
   User,
   X,
+  Pin,
+  Flag,
 } from "lucide-react";
 
 interface ChatThreadMenuSheetProps {
@@ -15,6 +17,7 @@ interface ChatThreadMenuSheetProps {
   isGroup: boolean;
   canManageGroup: boolean;
   isOwner: boolean;
+  isPinned?: boolean;
   onClose: () => void;
   onViewMembers: () => void;
   onAddMembers: () => void;
@@ -22,6 +25,8 @@ interface ChatThreadMenuSheetProps {
   onLeave: () => void;
   onDeleteGroup: () => void;
   onViewProfile?: () => void;
+  onTogglePin?: () => void;
+  onReport?: () => void;
 }
 
 export function ChatThreadMenuSheet({
@@ -36,6 +41,9 @@ export function ChatThreadMenuSheet({
   onLeave,
   onDeleteGroup,
   onViewProfile,
+  onTogglePin,
+  onReport,
+  isPinned,
 }: ChatThreadMenuSheetProps) {
   const item = (label: string, icon: React.ReactNode, action: () => void, danger = false) => (
     <button
@@ -65,6 +73,12 @@ export function ChatThreadMenuSheet({
         </div>
 
         <div className="chat-menu-sheet-list">
+          {onTogglePin &&
+            item(
+              isPinned ? ui.chatUnpinConversation : ui.chatPinConversation,
+              <Pin className="w-5 h-5" />,
+              onTogglePin
+            )}
           {!isGroup && onViewProfile && item(ui.viewProfile, <User className="w-5 h-5" />, onViewProfile)}
           {isGroup && item(ui.chatViewMembers, <Users className="w-5 h-5" />, onViewMembers)}
           {isGroup && canManageGroup && item(ui.chatAddMembers, <UserPlus className="w-5 h-5" />, onAddMembers)}
@@ -80,6 +94,7 @@ export function ChatThreadMenuSheet({
             onDeleteGroup,
             true
           )}
+          {onReport && item(ui.reportUser, <Flag className="w-5 h-5" />, onReport, true)}
         </div>
       </div>
     </div>

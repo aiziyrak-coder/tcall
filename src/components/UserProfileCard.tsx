@@ -40,6 +40,7 @@ interface UserProfileCardProps {
   onRequestUnblock?: () => void;
   onAcceptUnblock?: () => void;
   onRejectUnblock?: () => void;
+  onReport?: () => void;
   loading?: boolean;
   /** @deprecated — removed from card, kept for backward compat */
   onAddFriend?: () => void;
@@ -68,6 +69,7 @@ export function UserProfileCard({
   onRequestUnblock,
   onAcceptUnblock,
   onRejectUnblock,
+  onReport,
   loading,
 }: UserProfileCardProps) {
   const lang = user.language ? getLanguage(user.language) : null;
@@ -222,6 +224,12 @@ export function UserProfileCard({
         {!user.blockedByYou && !user.blockedYou && onBlock && (
           <button type="button" className="user-profile-link-btn user-profile-link-danger" onClick={onBlock} disabled={loading}>
             <Shield className="w-3.5 h-3.5" /> {ui.block}
+          </button>
+        )}
+
+        {onReport && (
+          <button type="button" className="user-profile-link-btn user-profile-link-danger" onClick={onReport} disabled={loading}>
+            {ui.reportUser}
           </button>
         )}
 

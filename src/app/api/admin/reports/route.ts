@@ -34,9 +34,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getAdminSession(req);
+  if (!session) return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+
   try {
     const body = createSchema.parse(await req.json());
-    const report = await prisma.contentReport.create({ data: { ...body, status: "pending" } });
+    const report = await prisma.contentReport.create({
+      data: { ...body, status: "pending", reportedBy: body.reportedBy || session.email },
+    });
     return NextResponse.json({ ok: true, report });
   } catch (e) {
     if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors[0].message }, { status: 400 });

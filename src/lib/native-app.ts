@@ -145,7 +145,7 @@ function setupNativeTouchPolish() {
     "click",
     (e) => {
       const el = (e.target as HTMLElement).closest(
-        "button:not(:disabled), .app-sidebar-item, .liquid-tab-item, .ios-key, .btn-primary, .btn-secondary, .room-btn, .ios-call-green-btn, .phone-control-btn, .ios-room-action-btn"
+        "button:not(:disabled), .app-sidebar-item, .liquid-tab-item, .ios-key, .btn-primary, .btn-secondary, .room-btn, .ios-call-green-btn, .phone-control-btn, .ios-room-action-btn, .chat-conv-item, .recents-filter-chip"
       );
       if (!el) return;
 

@@ -68,9 +68,11 @@ export function HintPill({ message }: HintPillProps) {
 interface ErrorToastProps {
   message: string | null;
   type?: "error" | "warn";
+  onRetry?: () => void;
+  retryLabel?: string;
 }
 
-export function ErrorToast({ message, type = "error" }: ErrorToastProps) {
+export function ErrorToast({ message, type = "error", onRetry, retryLabel }: ErrorToastProps) {
   const [visible, setVisible] = useState(!!message);
   const [text, setText] = useState(message);
 
@@ -90,7 +92,12 @@ export function ErrorToast({ message, type = "error" }: ErrorToastProps) {
       className={`app-error-toast ${type === "warn" ? "app-error-toast-warn" : ""} ${visible ? "app-error-toast-in" : "app-error-toast-out"}`}
       role="alert"
     >
-      {text}
+      <span className="flex-1">{text}</span>
+      {onRetry && retryLabel && (
+        <button type="button" className="app-error-toast-retry" onClick={onRetry}>
+          {retryLabel}
+        </button>
+      )}
     </div>
   );
 }

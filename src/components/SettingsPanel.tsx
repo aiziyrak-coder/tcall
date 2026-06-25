@@ -24,6 +24,7 @@ import {
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { FaceCapture } from "@/components/FaceCapture";
 import { InviteModal } from "@/components/InviteModal";
+import { getStoredTheme, setTheme, type ThemeMode } from "@/lib/theme";
 import { setCachedPinEnabled } from "@/lib/app-lock";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
 import { LANGUAGES } from "@/lib/languages";
@@ -169,6 +170,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: "",
     newPassword: "",
@@ -200,6 +202,10 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
 
   // Invite friends
   const [inviteOpen, setInviteOpen] = useState(false);
+
+  useEffect(() => {
+    setThemeMode(getStoredTheme());
+  }, []);
 
   useEffect(() => {
     apiFetch("/api/user/settings")
@@ -902,6 +908,23 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
 
   const renderPreferences = () => (
     <div className="settings-grid">
+      <label className="settings-field">
+        <span className="settings-label">{ui.themeLabel}</span>
+        <select
+          className="input-field-compact"
+          value={themeMode}
+          onChange={(e) => {
+            const mode = e.target.value as ThemeMode;
+            setThemeMode(mode);
+            setTheme(mode);
+          }}
+        >
+          <option value="system">{ui.themeSystem}</option>
+          <option value="light">{ui.themeLight}</option>
+          <option value="dark">{ui.themeDark}</option>
+        </select>
+      </label>
+
       <label className="settings-field">
         <span className="settings-label">{ui.language}</span>
         <select className="input-field-compact" value={form.language} onChange={(e) => setField("language", e.target.value)}>

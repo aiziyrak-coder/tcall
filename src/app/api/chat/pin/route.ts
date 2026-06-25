@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   conversationId: z.string().min(1),
@@ -11,6 +12,11 @@ const schema = z.object({
 export async function PATCH(req: NextRequest) {
   const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+
+  const limited = rateLimit(`chat-pin:${session.userId}`, 30, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json({ error: "Juda ko'p so'rov" }, { status: 429 });
+  }
 
   try {
     const { conversationId, pinned } = schema.parse(await req.json());

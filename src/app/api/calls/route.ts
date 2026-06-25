@@ -51,6 +51,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
   }
 
+  const limited = rateLimit(`calls-list:${session.userId}`, 60, 60_000);
+  if (!limited.ok) {
+    return NextResponse.json(
+      { error: `Juda ko'p so'rov. ${limited.retryAfterSec}s kuting` },
+      { status: 429 }
+    );
+  }
+
   const calls = await prisma.call.findMany({
     where: {
       OR: [{ hostId: session.userId }, { participants: { some: { userId: session.userId } } }],

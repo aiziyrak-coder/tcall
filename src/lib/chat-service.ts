@@ -567,10 +567,18 @@ export async function getConversationsForUser(userId: string, userLang: string) 
         updatedAt: conv.updatedAt.toISOString(),
         peerOnline,
         peerLastSeenAt,
+        pinnedAt: m.pinnedAt?.toISOString() ?? null,
       };
     })
   )
   ).filter((c): c is NonNullable<typeof c> => c !== null);
+
+  conversations.sort((a, b) => {
+    const ap = a.pinnedAt ? 1 : 0;
+    const bp = b.pinnedAt ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
 
   return { conversations, unreadTotal };
 }

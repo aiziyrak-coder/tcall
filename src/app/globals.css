@@ -2213,7 +2213,7 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .chat-conv-item {
-  @apply w-full flex items-center gap-3.5 py-3.5 px-4 rounded-2xl touch-manipulation active:scale-[0.99] text-left;
+  @apply relative w-full flex items-center gap-3.5 py-3.5 px-4 rounded-2xl touch-manipulation active:scale-[0.99] text-left;
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.07);
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
@@ -4379,4 +4379,148 @@ body.tg-webapp .liquid-tab-bar {
 .chat-conv-pinned {
   @apply text-brand-500 shrink-0;
   font-size: 0.7rem;
+}
+
+/* ===== Dark theme ===== */
+[data-theme="dark"] {
+  --bg-primary: #000000;
+  --bg-secondary: #1c1c1e;
+  --bg-elevated: #2c2c2e;
+  --text-primary: #f2f2f7;
+  --text-secondary: rgba(235, 235, 245, 0.6);
+  --text-tertiary: rgba(235, 235, 245, 0.4);
+  --separator: rgba(84, 84, 88, 0.65);
+  --key-bg: #2c2c2e;
+  --key-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --call-bg: linear-gradient(180deg, #0a0a0c 0%, #121214 50%, #1c1c1e 100%);
+}
+
+[data-theme="dark"] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .liquid-header,
+[data-theme="dark"] .app-sidebar,
+[data-theme="dark"] .liquid-tab-bar,
+[data-theme="dark"] .ios-modal-panel,
+[data-theme="dark"] .settings-panel {
+  background: rgba(28, 28, 30, 0.92);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .ios-keypad-recents-title {
+  background: rgba(28, 28, 30, 0.95);
+}
+
+/* ===== Skeleton loaders ===== */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  display: block;
+  border-radius: 0.5rem;
+  background: linear-gradient(90deg, rgba(0,0,0,0.06) 25%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.06) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+[data-theme="dark"] .skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+}
+
+.skeleton-avatar { width: 2.5rem; height: 2.5rem; border-radius: 9999px; }
+.skeleton-icon { width: 1.25rem; height: 1.25rem; border-radius: 0.25rem; }
+.skeleton-line { height: 0.65rem; border-radius: 0.25rem; }
+.skeleton-line-md { width: 55%; }
+.skeleton-line-sm { width: 35%; }
+.skeleton-conv-item { @apply flex items-center gap-3 py-3 px-2; }
+.skeleton-list-item { @apply pointer-events-none; }
+
+/* ===== Recents toolbar ===== */
+.recents-toolbar { @apply space-y-2 mb-2 px-1; }
+.recents-filter-chips { @apply flex flex-wrap gap-1.5; }
+.recents-filter-chip {
+  @apply text-[11px] font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 touch-manipulation;
+}
+.recents-filter-chip-active {
+  @apply bg-brand-600 text-white;
+}
+.recents-search-row {
+  @apply flex items-center gap-2 rounded-xl bg-slate-100/80 px-2.5 py-1.5;
+}
+.recents-search-input {
+  @apply flex-1 bg-transparent text-sm outline-none min-w-0;
+}
+
+[data-theme="dark"] .recents-filter-chip { background: #2c2c2e; color: #ebebf5; }
+[data-theme="dark"] .recents-search-row { background: #2c2c2e; }
+
+/* ===== Report modal ===== */
+.report-modal { max-width: 22rem; }
+.report-reason-grid { @apply flex flex-wrap gap-1.5; }
+.report-reason-chip {
+  @apply text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 touch-manipulation;
+}
+.report-reason-chip-active {
+  @apply border-brand-500 bg-brand-50 text-brand-700;
+}
+
+/* ===== Network / pull refresh / install ===== */
+.network-offline-banner {
+  @apply fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 py-1.5 text-xs font-medium text-white;
+  background: #ff3b30;
+  padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
+}
+
+.pull-refresh-indicator {
+  @apply fixed left-1/2 -translate-x-1/2 z-[150] text-[11px] font-medium text-slate-500 px-3 py-1 rounded-full;
+  top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 2.5rem));
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(8px);
+}
+
+.install-prompt {
+  @apply fixed left-3 right-3 z-[180];
+  bottom: calc(var(--tab-bar-safe-h, 72px) + 0.5rem);
+}
+
+.install-prompt-body {
+  @apply flex items-center gap-2 p-3 rounded-2xl shadow-lg border border-black/5;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+}
+
+.chat-search-mode-btn {
+  @apply text-[10px] font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0;
+}
+.chat-search-mode-btn-active {
+  @apply bg-brand-600 text-white;
+}
+
+.app-error-toast {
+  @apply flex items-center gap-2;
+}
+.app-error-toast-retry {
+  @apply text-xs font-semibold underline shrink-0 opacity-90;
+}
+
+.app-error-page {
+  @apply min-h-[100dvh] flex flex-col items-center justify-center gap-4 p-6 text-center;
+}
+.app-error-page-body { @apply bg-[var(--bg-primary)] text-[var(--text-primary)] min-h-screen; }
+.app-error-page-title { @apply text-xl font-bold; }
+.app-error-page-text { @apply text-sm text-slate-500 max-w-sm; }
+.app-error-page-actions { @apply flex flex-col gap-2 w-full max-w-xs; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

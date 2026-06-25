@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { UserProfileCard, type UserProfileData } from "@/components/UserProfileCard";
+import { ReportModal } from "@/components/ReportModal";
 import { TcallLogo } from "@/components/TcallLogo";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { mapLookupUser } from "@/lib/user-profile";
@@ -21,6 +22,7 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showReport, setShowReport] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -172,6 +174,17 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
                     })
                 : undefined
             }
+            onReport={() => setShowReport(true)}
+          />
+        )}
+
+        {showReport && (
+          <ReportModal
+            ui={ui}
+            type="profile"
+            targetId={tcallId}
+            targetLabel={user?.name}
+            onClose={() => setShowReport(false)}
           />
         )}
       </div>

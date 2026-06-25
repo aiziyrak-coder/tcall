@@ -43,7 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${inter.className} overflow-hidden`}>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var L=((navigator.language||"en").split("-")[0]||"en").toLowerCase();var RTL={ar:1,he:1,fa:1,ur:1,ps:1};var de=document.documentElement;de.lang=L;de.dir=RTL[L]?"rtl":"ltr";}catch(e){}try{var c=window.Capacitor;if(c&&c.isNativePlatform&&c.isNativePlatform()){var b=document.body,p=c.getPlatform&&c.getPlatform();b.classList.add("native-app");if(p)b.classList.add("native-"+p);return;}document.documentElement.classList.add("web-app");document.body.classList.add("web-app");document.documentElement.style.setProperty("--app-vh",window.innerHeight*0.01+"px");}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("tcall:theme");var m=t==="light"||t==="dark"?t:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.dataset.theme=m;document.documentElement.style.colorScheme=m;}catch(e){}try{var L=((navigator.language||"en").split("-")[0]||"en").toLowerCase();var RTL={ar:1,he:1,fa:1,ur:1,ps:1};var de=document.documentElement;de.lang=L;de.dir=RTL[L]?"rtl":"ltr";}catch(e){}try{var c=window.Capacitor;if(c&&c.isNativePlatform&&c.isNativePlatform()){var b=document.body,p=c.getPlatform&&c.getPlatform();b.classList.add("native-app");if(p)b.classList.add("native-"+p);return;}document.documentElement.classList.add("web-app");document.body.classList.add("web-app");document.documentElement.style.setProperty("--app-vh",window.innerHeight*0.01+"px");}catch(e){}})();`,
           }}
         />
         <ClientProviders>{children}</ClientProviders>

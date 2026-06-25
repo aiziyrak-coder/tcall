@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info, User } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, Info, User, Search } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -9,6 +9,9 @@ import { formatDuration } from "@/lib/status";
 import { useCallContext, DialError } from "@/components/providers/CallProvider";
 import { CallDetailModal } from "@/components/CallDetailModal";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { ReportModal } from "@/components/ReportModal";
+
+type RecentsFilter = "all" | "missed" | "incoming" | "outgoing";
 
 interface CallRecord {
   id: string;
@@ -35,6 +38,40 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
   const [dialError, setDialError] = useState("");
   const [detailRoomId, setDetailRoomId] = useState<string | null>(null);
   const [profileTcallId, setProfileTcallId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<RecentsFilter>("all");
+  const [search, setSearch] = useState("");
+  const [reportTarget, setReportTarget] = useState<{ id: string; label: string } | null>(null);
+
+  const filteredCalls = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return calls.filter((call) => {
+      const isOutgoing = call.host.tcallId === userTcallId;
+      const isMissed =
+        call.status === "missed" &&
+        !isOutgoing &&
+        call.calleeTcallId === userTcallId;
+      const isIncoming = !isOutgoing;
+
+      if (filter === "missed" && !isMissed) return false;
+      if (filter === "incoming" && !isIncoming) return false;
+      if (filter === "outgoing" && !isOutgoing) return false;
+
+      if (!q) return true;
+      const partner =
+        call.host.tcallId !== userTcallId
+          ? call.host
+          : call.participants.find((p) => p.user.tcallId !== userTcallId)?.user;
+      const hay = `${partner?.name || ""} ${partner?.tcallId || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [calls, filter, search, userTcallId]);
+
+  const filterChips: { id: RecentsFilter; label: string }[] = [
+    { id: "all", label: ui.recentsFilterAll },
+    { id: "missed", label: ui.recentsFilterMissed },
+    { id: "incoming", label: ui.recentsFilterIncoming },
+    { id: "outgoing", label: ui.recentsFilterOutgoing },
+  ];
 
   const handleDial = async (tcallId: string) => {
     setDialError("");
@@ -56,9 +93,42 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
 
   return (
     <>
+      {compact && (
+        <div className="recents-toolbar">
+          <div className="recents-filter-chips">
+            {filterChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                className={`recents-filter-chip${filter === chip.id ? " recents-filter-chip-active" : ""}`}
+                onClick={() => setFilter(chip.id)}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+          <div className="recents-search-row">
+            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <input
+              type="search"
+              className="recents-search-input"
+              placeholder={ui.recentsSearchPlaceholder}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {filteredCalls.length === 0 ? (
+        <div className="ios-empty-state ios-empty-state-compact">
+          <p className="text-sm text-slate-400">{ui.chatSearchNoResults}</p>
+        </div>
+      ) : (
+      <>
       {dialError && <div className="ios-error-banner mb-3">{dialError}</div>}
       <ul className={compact ? "ios-list ios-list-compact" : "ios-list"}>
-        {calls.map((call) => {
+        {filteredCalls.map((call) => {
           const isOutgoing = call.host.tcallId === userTcallId;
           const partner =
             call.host.tcallId !== userTcallId
@@ -123,6 +193,21 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
                   </button>
                   {partner?.tcallId && (
                     <button
+                      type="button"
+                      onClick={() =>
+                        setReportTarget({
+                          id: partner.tcallId,
+                          label: partner.name || formatTcallId(partner.tcallId),
+                        })
+                      }
+                      className="ios-icon-btn w-8 h-8 text-red-400"
+                      aria-label={ui.reportUser}
+                    >
+                      <span className="text-[10px] font-bold">!</span>
+                    </button>
+                  )}
+                  {partner?.tcallId && (
+                    <button
                       onClick={() => void handleDial(partner.tcallId)}
                       className="ios-mini-call-btn"
                       aria-label={ui.startCall}
@@ -136,6 +221,8 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
           );
         })}
       </ul>
+      </>
+      )}
 
       {detailRoomId && (
         <CallDetailModal
@@ -152,6 +239,16 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
           ui={ui}
           onClose={() => setProfileTcallId(null)}
           onOpenChat={onOpenChat}
+        />
+      )}
+
+      {reportTarget && (
+        <ReportModal
+          ui={ui}
+          type="profile"
+          targetId={reportTarget.id}
+          targetLabel={reportTarget.label}
+          onClose={() => setReportTarget(null)}
         />
       )}
     </>
