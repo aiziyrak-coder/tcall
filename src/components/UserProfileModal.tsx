@@ -92,13 +92,28 @@ export function UserProfileModal({ tcallId, ui, onClose, onOpenChat }: UserProfi
               onOpenChat?.(user.tcallId);
               onClose();
             }}
-            onAddFriend={() =>
+            onSendFriendRequest={() =>
               runAction(async () => {
-                await apiFetch("/api/contacts", {
+                const r = await apiFetch("/api/friend-requests", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ name: user.name, tcallId: user.tcallId }),
+                  body: JSON.stringify({ tcallId: user.tcallId, name: user.name }),
                 });
+                if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error((d as { error?: string }).error || ui.chatActionFailed); }
+              })
+            }
+            onAcceptFriendRequest={() =>
+              runAction(async () => {
+                await apiFetch("/api/friend-requests", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ senderTcallId: user.tcallId, accept: true }),
+                });
+              })
+            }
+            onCancelFriendRequest={() =>
+              runAction(async () => {
+                await apiFetch(`/api/friend-requests?tcallId=${user.tcallId}`, { method: "DELETE" });
               })
             }
             onBlock={() =>

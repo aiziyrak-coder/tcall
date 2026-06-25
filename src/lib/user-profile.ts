@@ -23,6 +23,8 @@ export interface UserProfileFields {
   isFriend?: boolean;
   unblockRequestPending?: boolean;
   unblockRequestFromThem?: boolean;
+  friendRequestSent?: boolean;
+  friendRequestReceived?: boolean;
 }
 
 export const PUBLIC_LOOKUP_SELECT = {
@@ -124,6 +126,8 @@ export function mapLookupUser(u: Record<string, unknown>): UserProfileFields & {
     isFriend: u.isFriend as boolean | undefined,
     unblockRequestPending: u.unblockRequestPending as boolean | undefined,
     unblockRequestFromThem: u.unblockRequestFromThem as boolean | undefined,
+    friendRequestSent: u.friendRequestSent as boolean | undefined,
+    friendRequestReceived: u.friendRequestReceived as boolean | undefined,
   };
 }
 

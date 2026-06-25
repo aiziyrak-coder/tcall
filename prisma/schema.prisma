@@ -41,6 +41,8 @@ model User {
   blocks            BlockedUser[]     @relation("Blocker")
   unblockRequestsSent     UnblockRequest[] @relation("UnblockRequestsSent")
   unblockRequestsReceived UnblockRequest[] @relation("UnblockRequestsReceived")
+  friendRequestsSent     FriendRequest[] @relation("FriendRequestsSent")
+  friendRequestsReceived FriendRequest[] @relation("FriendRequestsReceived")
   quickMessagesSent QuickMessage[]    @relation("MessageSender")
   conversationsCreated Conversation[] @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
@@ -88,6 +90,21 @@ model Contact {
 
   @@unique([ownerId, tcallId])
   @@index([ownerId])
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("FriendRequestsSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("FriendRequestsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
 }
 
 model BlockedUser {

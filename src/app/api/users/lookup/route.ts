@@ -51,15 +51,24 @@ export async function GET(req: NextRequest) {
       where: { ownerId: session.userId, tcallId },
     }));
 
-    const unblockRequest = await prisma.unblockRequest.findUnique({
-      where: { requesterId_blockerId: { requesterId: session.userId, blockerId: user.id } },
-      select: { status: true },
-    });
-
-    const incomingUnblock = await prisma.unblockRequest.findUnique({
-      where: { requesterId_blockerId: { requesterId: user.id, blockerId: session.userId } },
-      select: { status: true },
-    });
+    const [unblockRequest, incomingUnblock, outgoingFriendReq, incomingFriendReq] = await Promise.all([
+      prisma.unblockRequest.findUnique({
+        where: { requesterId_blockerId: { requesterId: session.userId, blockerId: user.id } },
+        select: { status: true },
+      }),
+      prisma.unblockRequest.findUnique({
+        where: { requesterId_blockerId: { requesterId: user.id, blockerId: session.userId } },
+        select: { status: true },
+      }),
+      prisma.friendRequest.findUnique({
+        where: { senderId_receiverId: { senderId: session.userId, receiverId: user.id } },
+        select: { status: true },
+      }),
+      prisma.friendRequest.findUnique({
+        where: { senderId_receiverId: { senderId: user.id, receiverId: session.userId } },
+        select: { status: true },
+      }),
+    ]);
 
     const profile = redactLookupProfile(user, isFriend);
 
@@ -74,6 +83,8 @@ export async function GET(req: NextRequest) {
         isFriend,
         unblockRequestPending: unblockRequest?.status === "pending",
         unblockRequestFromThem: incomingUnblock?.status === "pending",
+        friendRequestSent: outgoingFriendReq?.status === "pending",
+        friendRequestReceived: incomingFriendReq?.status === "pending",
       },
     });
   } catch (e) {

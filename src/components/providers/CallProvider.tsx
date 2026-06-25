@@ -307,6 +307,24 @@ export function CallProvider({ user, children }: CallProviderProps) {
           window.dispatchEvent(new CustomEvent("tcall:chat-message-deleted", { detail: data }));
         }
       });
+
+      socket.on("friend-request", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:friend-request", { detail: data }));
+        }
+      });
+
+      socket.on("friend-accepted", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:friend-accepted", { detail: data }));
+        }
+      });
+
+      socket.on("friend-rejected", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:friend-rejected", { detail: data }));
+        }
+      });
     }, 150);
 
     const reconnectSocket = () => {

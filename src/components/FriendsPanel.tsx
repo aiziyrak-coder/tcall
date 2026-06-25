@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Phone,
   MessageSquare,
@@ -13,6 +13,8 @@ import {
   User,
   Check,
   X,
+  UserPlus,
+  Clock,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
@@ -40,6 +42,11 @@ interface IncomingUnblock {
   requester: { name: string; tcallId: string; language: string };
 }
 
+interface IncomingFriendReq {
+  id: string;
+  sender: { id: string; name: string; tcallId: string; language: string };
+}
+
 interface FriendsPanelProps {
   userLanguage: string;
   onOpenChat: (tcallId: string) => void;
@@ -51,6 +58,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [blocks, setBlocks] = useState<BlockItem[]>([]);
   const [incomingUnblocks, setIncomingUnblocks] = useState<IncomingUnblock[]>([]);
+  const [incomingFriendReqs, setIncomingFriendReqs] = useState<IncomingFriendReq[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchId, setSearchId] = useState("");
   const [searching, setSearching] = useState(false);
@@ -61,25 +69,51 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
   const [showBlacklist, setShowBlacklist] = useState(false);
   const [blockInput, setBlockInput] = useState("");
   const [profileModalId, setProfileModalId] = useState<string | null>(null);
+  const [friendReqHint, setFriendReqHint] = useState("");
 
   const load = useCallback(async () => {
-    const [friendsRes, blocksRes, unblockRes] = await Promise.all([
+    const [friendsRes, blocksRes, unblockRes, friendReqRes] = await Promise.all([
       apiFetch("/api/contacts"),
       apiFetch("/api/blocks"),
       apiFetch("/api/blocks/unblock-request"),
+      apiFetch("/api/friend-requests"),
     ]);
-    const friendsData = await friendsRes.json();
-    const blocksData = await blocksRes.json();
-    const unblockData = await unblockRes.json();
+    const [friendsData, blocksData, unblockData, friendReqData] = await Promise.all([
+      friendsRes.json(),
+      blocksRes.json(),
+      unblockRes.json(),
+      friendReqRes.json(),
+    ]);
     setFriends(friendsData.contacts || []);
     setBlocks(blocksData.blocks || []);
     setIncomingUnblocks(unblockData.incoming || []);
+    setIncomingFriendReqs(friendReqData.incoming || []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Real-time: yangi do'stlik so'rovi kelganda
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    const onReq = () => { void loadRef.current(); };
+    const onAcc = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { friend?: { name?: string } } | undefined;
+      const name = detail?.friend?.name || ui.friendRequestAccepted as string;
+      setFriendReqHint(`${name} — ${ui.friendRequestAccepted as string}`);
+      setTimeout(() => setFriendReqHint(""), 4000);
+      void loadRef.current();
+    };
+    window.addEventListener("tcall:friend-request", onReq);
+    window.addEventListener("tcall:friend-accepted", onAcc);
+    return () => {
+      window.removeEventListener("tcall:friend-request", onReq);
+      window.removeEventListener("tcall:friend-accepted", onAcc);
+    };
+  }, [ui]);
 
   useEffect(() => {
     const digits = searchId.replace(/\D/g, "");
@@ -102,14 +136,8 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
     try {
       const res = await apiFetch(`/api/users/lookup?tcallId=${digits}`);
       const data = await res.json();
-      if (!res.ok) {
-        setSearchError(data.error || ui.userNotFound);
-        return;
-      }
-      if (!data.found) {
-        setSearchError(ui.userNotFound);
-        return;
-      }
+      if (!res.ok) { setSearchError(data.error || ui.userNotFound); return; }
+      if (!data.found) { setSearchError(ui.userNotFound); return; }
       setSearchResult(mapLookupUser(data.user));
     } catch {
       setSearchError(ui.loadError);
@@ -125,31 +153,21 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
       await fn();
       await load();
       if (refreshDigits && refreshDigits.length === 9) await runSearch();
-    } catch {
-      setActionError(ui.chatActionFailed);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : ui.chatActionFailed);
     } finally {
       setActionLoading(false);
     }
   };
 
   const handleCall = async (tcallId: string, blocked: boolean) => {
-    if (blocked) {
-      setActionError(ui.blockedCantCall);
-      return;
-    }
+    if (blocked) { setActionError(ui.blockedCantCall); return; }
     setActionError("");
-    try {
-      await dial(tcallId);
-    } catch {
-      setActionError(ui.dialError);
-    }
+    try { await dial(tcallId); } catch { setActionError(ui.dialError); }
   };
 
   const handleMessage = (tcallId: string, blocked: boolean) => {
-    if (blocked) {
-      setActionError(ui.blockedCantMessage);
-      return;
-    }
+    if (blocked) { setActionError(ui.blockedCantMessage); return; }
     onOpenChat(tcallId);
   };
 
@@ -171,33 +189,98 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
     await load();
   };
 
+  const handleAcceptFriendReq = async (senderTcallId: string) => {
+    await apiFetch("/api/friend-requests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderTcallId, accept: true }),
+    });
+    await load();
+  };
+
+  const handleRejectFriendReq = async (senderTcallId: string) => {
+    await apiFetch("/api/friend-requests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderTcallId, accept: false }),
+    });
+    await load();
+  };
+
   const isBlocked = (u: UserProfileData) => !!(u.blockedYou || u.blockedByYou);
 
   if (loading) {
-    return (
-      <div className="ios-empty-state">
-        <TcallLogo size="sm" animate />
-      </div>
-    );
+    return <div className="ios-empty-state"><TcallLogo size="sm" animate /></div>;
   }
+
+  const totalBadge = incomingFriendReqs.length + incomingUnblocks.length;
 
   return (
     <div className="friends-panel">
       {actionError && <div className="ios-error-banner mb-3">{actionError}</div>}
 
+      {friendReqHint && (
+        <div className="friends-hint-banner mb-3">
+          <Check className="w-4 h-4 text-green-600 shrink-0" />
+          <span>{friendReqHint}</span>
+        </div>
+      )}
+
+      {/* Kiruvchi do'stlik so'rovlari */}
+      {incomingFriendReqs.length > 0 && (
+        <section className="friends-section">
+          <h3 className="friends-section-title">
+            <UserPlus className="w-4 h-4 text-brand-600" />
+            {ui.incomingFriendRequests}
+            <span className="friends-section-badge">{incomingFriendReqs.length}</span>
+          </h3>
+          <ul className="ios-list">
+            {incomingFriendReqs.map((req) => (
+              <li key={req.id} className="ios-list-item friends-unblock-item">
+                <UserAvatar name={req.sender.name} size="md" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{req.sender.name}</p>
+                  <p className="text-xs font-mono text-slate-500">{formatTcallId(req.sender.tcallId)}</p>
+                  <p className="text-xs text-brand-600 mt-0.5 font-medium">{ui.incomingFriendRequests}</p>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    className="friends-action-btn friends-action-call"
+                    onClick={() => void handleAcceptFriendReq(req.sender.tcallId)}
+                    title={ui.acceptFriend}
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="friends-action-btn friends-action-danger"
+                    onClick={() => void handleRejectFriendReq(req.sender.tcallId)}
+                    title={ui.rejectFriend}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Kiruvchi unblock so'rovlari */}
       {incomingUnblocks.length > 0 && (
         <section className="friends-section">
           <h3 className="friends-section-title">{ui.incomingUnblockRequests}</h3>
           <ul className="ios-list">
             {incomingUnblocks.map((req) => (
-                <li key={req.id} className="ios-list-item friends-unblock-item">
+              <li key={req.id} className="ios-list-item friends-unblock-item">
                 <UserAvatar name={req.requester.name} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{req.requester.name}</p>
                   <p className="text-xs font-mono text-slate-500">{formatTcallId(req.requester.tcallId)}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{ui.unblockRequestIncoming}</p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1.5 shrink-0">
                   <button
                     type="button"
                     className="friends-action-btn friends-action-call px-2"
@@ -219,6 +302,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
         </section>
       )}
 
+      {/* Qidirish */}
       <section className="friends-section">
         <h3 className="friends-section-title">
           <Search className="w-4 h-4" /> {ui.searchUser}
@@ -250,13 +334,37 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
             loading={actionLoading}
             onCall={() => void handleCall(searchResult.tcallId, isBlocked(searchResult))}
             onMessage={() => handleMessage(searchResult.tcallId, isBlocked(searchResult))}
-            onAddFriend={() =>
+            onSendFriendRequest={() =>
               runAction(async () => {
-                await apiFetch("/api/contacts", {
+                const r = await apiFetch("/api/friend-requests", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ name: searchResult.name, tcallId: searchResult.tcallId }),
+                  body: JSON.stringify({ tcallId: searchResult.tcallId, name: searchResult.name }),
                 });
+                if (!r.ok) {
+                  const d = await r.json().catch(() => ({}));
+                  throw new Error((d as { error?: string }).error || ui.chatActionFailed);
+                }
+              }, searchResult.tcallId)
+            }
+            onAcceptFriendRequest={() =>
+              runAction(async () => {
+                await apiFetch("/api/friend-requests", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ senderTcallId: searchResult.tcallId, accept: true }),
+                });
+              }, searchResult.tcallId)
+            }
+            onCancelFriendRequest={() =>
+              runAction(async () => {
+                await apiFetch(`/api/friend-requests?tcallId=${searchResult.tcallId}`, { method: "DELETE" });
+              }, searchResult.tcallId)
+            }
+            onRemoveFriend={() =>
+              runAction(async () => {
+                const friend = friends.find((f) => f.tcallId === searchResult.tcallId);
+                if (friend) await apiFetch(`/api/contacts/${friend.id}`, { method: "DELETE" });
               }, searchResult.tcallId)
             }
             onBlock={() =>
@@ -304,6 +412,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
         )}
       </section>
 
+      {/* Do'stlar ro'yxati */}
       <section className="friends-section">
         <h3 className="friends-section-title">{ui.friends}</h3>
         {friends.length === 0 ? (
@@ -314,57 +423,30 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
               const blocked = blocks.some((b) => b.blockedTcallId === f.tcallId);
               return (
                 <li key={f.id} className="ios-list-item ios-contact-item">
-                  <button
-                    type="button"
-                    className="touch-manipulation shrink-0"
-                    onClick={() => setProfileModalId(f.tcallId)}
-                  >
+                  <button type="button" className="touch-manipulation shrink-0" onClick={() => setProfileModalId(f.tcallId)}>
                     <UserAvatar name={f.name} size="md" />
                   </button>
-                  <button
-                    type="button"
-                    className="flex-1 min-w-0 text-left touch-manipulation"
-                    onClick={() => setProfileModalId(f.tcallId)}
-                  >
+                  <button type="button" className="flex-1 min-w-0 text-left touch-manipulation" onClick={() => setProfileModalId(f.tcallId)}>
                     <p className="font-medium truncate">{f.name}</p>
                     <p className="text-xs text-slate-500 font-mono">{formatTcallId(f.tcallId)}</p>
                   </button>
                   <div className="friends-row-actions">
-                    <button
-                      type="button"
-                      className="ios-icon-btn w-10 h-10 text-slate-500"
-                      onClick={() => setProfileModalId(f.tcallId)}
-                      title={ui.viewProfile}
-                    >
+                    <button type="button" className="ios-icon-btn w-10 h-10 text-slate-500" onClick={() => setProfileModalId(f.tcallId)} title={ui.viewProfile}>
                       <User className="w-4 h-4" />
                     </button>
-                    <button
-                      type="button"
-                      className="ios-icon-btn w-10 h-10 text-brand-600"
-                      disabled={blocked}
-                      onClick={() => handleMessage(f.tcallId, blocked)}
-                      title="SMS"
-                    >
+                    <button type="button" className="ios-icon-btn w-10 h-10 text-brand-600" disabled={blocked} onClick={() => handleMessage(f.tcallId, blocked)} title="SMS">
                       <MessageSquare className="w-4 h-4" />
                     </button>
-                    <button
-                      type="button"
-                      className="ios-mini-call-btn"
-                      disabled={blocked}
-                      onClick={() => void handleCall(f.tcallId, blocked)}
-                      title={ui.call}
-                    >
+                    <button type="button" className="ios-mini-call-btn" disabled={blocked} onClick={() => void handleCall(f.tcallId, blocked)} title={ui.call}>
                       <Phone className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       className="ios-icon-btn w-10 h-10 text-red-400"
-                      onClick={() =>
-                        void runAction(async () => {
-                          const r = await apiFetch(`/api/contacts/${f.id}`, { method: "DELETE" });
-                          if (!r.ok) throw new Error(ui.chatActionFailed);
-                        })
-                      }
+                      onClick={() => void runAction(async () => {
+                        const r = await apiFetch(`/api/contacts/${f.id}`, { method: "DELETE" });
+                        if (!r.ok) throw new Error(ui.chatActionFailed);
+                      })}
                       title={ui.removeFriend}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -377,18 +459,13 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
         )}
       </section>
 
+      {/* Qora ro'yxat */}
       <section className="friends-section">
-        <button
-          type="button"
-          className="friends-blacklist-toggle"
-          onClick={() => setShowBlacklist((v) => !v)}
-        >
+        <button type="button" className="friends-blacklist-toggle" onClick={() => setShowBlacklist((v) => !v)}>
           <Shield className="w-4 h-4 text-red-500" />
           <span className="flex-1 text-left">
             {ui.blacklist}
-            {blocks.length > 0 && (
-              <span className="friends-blacklist-count">{blocks.length}</span>
-            )}
+            {blocks.length > 0 && <span className="friends-blacklist-count">{blocks.length}</span>}
           </span>
           {showBlacklist ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -407,20 +484,15 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
                 type="button"
                 className="btn-secondary btn-compact shrink-0 px-3"
                 disabled={blockInput.length !== 9}
-                onClick={() =>
-                  void runAction(async () => {
-                    const r = await apiFetch("/api/blocks", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ tcallId: blockInput }),
-                    });
-                    if (!r.ok) {
-                      const d = await r.json().catch(() => ({}));
-                      throw new Error((d as { error?: string }).error || ui.chatActionFailed);
-                    }
-                    setBlockInput("");
-                  })
-                }
+                onClick={() => void runAction(async () => {
+                  const r = await apiFetch("/api/blocks", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ tcallId: blockInput }),
+                  });
+                  if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error((d as { error?: string }).error || ui.chatActionFailed); }
+                  setBlockInput("");
+                })}
               >
                 {ui.block}
               </button>
@@ -431,30 +503,20 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
               <ul className="ios-list">
                 {blocks.map((b) => (
                   <li key={b.blockedTcallId} className="ios-list-item friends-block-item">
-                    <button
-                      type="button"
-                      className="ios-contact-avatar bg-red-100 text-red-600 touch-manipulation"
-                      onClick={() => setProfileModalId(b.blockedTcallId)}
-                    >
+                    <button type="button" className="ios-contact-avatar bg-red-100 text-red-600 touch-manipulation" onClick={() => setProfileModalId(b.blockedTcallId)}>
                       {(b.name || "?")[0]?.toUpperCase()}
                     </button>
-                    <button
-                      type="button"
-                      className="flex-1 min-w-0 text-left touch-manipulation"
-                      onClick={() => setProfileModalId(b.blockedTcallId)}
-                    >
+                    <button type="button" className="flex-1 min-w-0 text-left touch-manipulation" onClick={() => setProfileModalId(b.blockedTcallId)}>
                       <p className="font-medium truncate">{b.name || ui.unknownUser}</p>
                       <p className="text-xs font-mono text-slate-500">{formatTcallId(b.blockedTcallId)}</p>
                     </button>
                     <button
                       type="button"
                       className="friends-action-btn friends-action-danger shrink-0"
-                      onClick={() =>
-                        void runAction(async () => {
-                          const r = await apiFetch(`/api/blocks?tcallId=${b.blockedTcallId}`, { method: "DELETE" });
-                          if (!r.ok) throw new Error(ui.chatActionFailed);
-                        })
-                      }
+                      onClick={() => void runAction(async () => {
+                        const r = await apiFetch(`/api/blocks?tcallId=${b.blockedTcallId}`, { method: "DELETE" });
+                        if (!r.ok) throw new Error(ui.chatActionFailed);
+                      })}
                     >
                       <ShieldOff className="w-3.5 h-3.5" /> {ui.unblock}
                     </button>
@@ -470,10 +532,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
         <UserProfileModal
           tcallId={profileModalId}
           ui={ui}
-          onClose={() => {
-            setProfileModalId(null);
-            void load();
-          }}
+          onClose={() => { setProfileModalId(null); void load(); }}
           onOpenChat={onOpenChat}
         />
       )}

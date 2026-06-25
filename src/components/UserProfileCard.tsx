@@ -9,6 +9,8 @@ import {
   HandHelping,
   Check,
   X,
+  Clock,
+  UserMinus,
 } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage } from "@/lib/languages";
@@ -26,7 +28,12 @@ interface UserProfileCardProps {
   user: UserProfileData;
   onCall?: () => void;
   onMessage?: () => void;
-  onAddFriend?: () => void;
+  /** Yangi: do'stlik so'rovi yuborish */
+  onSendFriendRequest?: () => void;
+  /** Yangi: kelgan so'rovni qabul qilish */
+  onAcceptFriendRequest?: () => void;
+  /** Yangi: yuborilgan so'rovni bekor qilish */
+  onCancelFriendRequest?: () => void;
   onRemoveFriend?: () => void;
   onBlock?: () => void;
   onUnblock?: () => void;
@@ -34,6 +41,8 @@ interface UserProfileCardProps {
   onAcceptUnblock?: () => void;
   onRejectUnblock?: () => void;
   loading?: boolean;
+  /** @deprecated — removed from card, kept for backward compat */
+  onAddFriend?: () => void;
 }
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
@@ -50,7 +59,9 @@ export function UserProfileCard({
   user,
   onCall,
   onMessage,
-  onAddFriend,
+  onSendFriendRequest,
+  onAcceptFriendRequest,
+  onCancelFriendRequest,
   onRemoveFriend,
   onBlock,
   onUnblock,
@@ -101,6 +112,11 @@ export function UserProfileCard({
           {user.bio && <p className="user-profile-bio">{user.bio}</p>}
           {user.blockedYou && <p className="user-profile-warn">{ui.blockedYou}</p>}
           {user.blockedByYou && <p className="user-profile-warn">{ui.blocked}</p>}
+          {user.isFriend && (
+            <p className="user-profile-friend-badge">
+              <Check className="w-3 h-3" /> {ui.friends}
+            </p>
+          )}
         </div>
       </div>
 
@@ -117,6 +133,7 @@ export function UserProfileCard({
         <p className="text-xs text-slate-400 py-1">{ui.profileNoDetails}</p>
       )}
 
+      {/* Kiruvchi unblock so'rovi */}
       {user.unblockRequestFromThem && (
         <div className="user-profile-unblock-banner">
           <p className="text-sm font-medium">{ui.unblockRequestIncoming}</p>
@@ -126,6 +143,21 @@ export function UserProfileCard({
             </button>
             <button type="button" className="friends-action-btn friends-action-danger flex-1" onClick={onRejectUnblock}>
               <X className="w-4 h-4" /> {ui.rejectUnblock}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Kiruvchi do'stlik so'rovi */}
+      {user.friendRequestReceived && !user.isFriend && (
+        <div className="user-profile-friend-req-banner">
+          <p className="text-sm font-semibold text-brand-700">{ui.incomingFriendRequests}</p>
+          <div className="flex gap-2 mt-2">
+            <button type="button" className="friends-action-btn friends-action-call flex-1" onClick={onAcceptFriendRequest} disabled={loading}>
+              <Check className="w-4 h-4" /> {ui.acceptFriend}
+            </button>
+            <button type="button" className="friends-action-btn friends-action-danger flex-1" onClick={onCancelFriendRequest} disabled={loading}>
+              <X className="w-4 h-4" /> {ui.rejectFriend}
             </button>
           </div>
         </div>
@@ -151,26 +183,49 @@ export function UserProfileCard({
       </div>
 
       <div className="user-profile-secondary">
-        {!user.isFriend && !blocked && onAddFriend && (
-          <button type="button" className="user-profile-link-btn" onClick={onAddFriend} disabled={loading}>
+        {/* Do'st emas, so'rov yo'q, bloklangan emas */}
+        {!user.isFriend && !blocked && !user.friendRequestSent && !user.friendRequestReceived && onSendFriendRequest && (
+          <button type="button" className="user-profile-link-btn" onClick={onSendFriendRequest} disabled={loading}>
             <UserPlus className="w-3.5 h-3.5" /> {ui.addFriend}
           </button>
         )}
+
+        {/* So'rov yuborilgan, kutilmoqda */}
+        {!user.isFriend && user.friendRequestSent && (
+          <div className="user-profile-pending-row">
+            <span className="user-profile-pending-text">
+              <Clock className="w-3.5 h-3.5" /> {ui.friendRequestPending}
+            </span>
+            {onCancelFriendRequest && (
+              <button type="button" className="user-profile-link-btn-sm user-profile-link-danger" onClick={onCancelFriendRequest} disabled={loading}>
+                {ui.cancelFriendRequest}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Do'st — o'chirish */}
         {user.isFriend && onRemoveFriend && (
           <button type="button" className="user-profile-link-btn" onClick={onRemoveFriend} disabled={loading}>
-            {ui.removeFriend}
+            <UserMinus className="w-3.5 h-3.5" /> {ui.removeFriend}
           </button>
         )}
+
+        {/* Bloklangan — unblock */}
         {user.blockedByYou && onUnblock && (
           <button type="button" className="user-profile-link-btn" onClick={onUnblock} disabled={loading}>
             <ShieldOff className="w-3.5 h-3.5" /> {ui.unblock}
           </button>
         )}
+
+        {/* Bloklash */}
         {!user.blockedByYou && !user.blockedYou && onBlock && (
           <button type="button" className="user-profile-link-btn user-profile-link-danger" onClick={onBlock} disabled={loading}>
             <Shield className="w-3.5 h-3.5" /> {ui.block}
           </button>
         )}
+
+        {/* Sizi bloklaganlar uchun unblock so'rovi */}
         {user.blockedYou && !user.unblockRequestPending && onRequestUnblock && (
           <button type="button" className="user-profile-link-btn" onClick={onRequestUnblock} disabled={loading}>
             <HandHelping className="w-3.5 h-3.5" /> {ui.requestUnblock}
