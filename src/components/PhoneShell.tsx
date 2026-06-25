@@ -190,7 +190,7 @@ function BottomTabBar({
               >
                 <span className="liquid-tab-center-ring" aria-hidden />
                 <span className="liquid-tab-center-btn">
-                  <Icon className="w-7 h-7 text-white" strokeWidth={2.2} />
+                  <Icon className="w-[26px] h-[26px] text-white drop-shadow-sm" strokeWidth={2.0} />
                 </span>
                 <span className="liquid-tab-label liquid-tab-label-center">{ui[labelKey] as string}</span>
               </button>

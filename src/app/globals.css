@@ -3088,26 +3088,25 @@ body.native-app .chat-conv-item:active {
 }
 
 /* ===== iOS 27 Liquid Glass — mobil pastki tab bar ===== */
-@keyframes liquidBgShift {
-  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
-  50% { transform: translate3d(-2%, 1.5%, 0) scale(1.03); opacity: 0.92; }
-  100% { transform: translate3d(1.5%, -1%, 0) scale(1.01); opacity: 1; }
-}
-
 @keyframes liquidOrbFloat {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(4%, -3%) scale(1.06); }
-  66% { transform: translate(-3%, 2%) scale(0.96); }
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(2.5%, -2%) scale(1.04); }
+  100% { transform: translate(-1.5%, 1.5%) scale(0.98); }
 }
 
 @keyframes liquidTabIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes liquidShimmer {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+@keyframes centerBtnBreath {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@keyframes centerBtnGlow {
+  0%, 100% { box-shadow: 0 8px 22px rgba(0, 113, 227, 0.38), 0 2px 0 rgba(255,255,255,0.22) inset; }
+  50% { box-shadow: 0 10px 28px rgba(0, 113, 227, 0.52), 0 2px 0 rgba(255,255,255,0.22) inset; }
 }
 
 .app-shell-bottom-nav {
@@ -3116,7 +3115,7 @@ body.native-app .chat-conv-item:active {
   grid-template-columns: unset;
   position: relative;
   isolation: isolate;
-  background: #eef0f8;
+  background: #eff1f7;
 }
 
 .app-shell-bottom-nav .app-sidebar {
@@ -3158,24 +3157,25 @@ body.native-app .chat-conv-item:active {
 }
 
 .liquid-bg-orbs::before {
-  width: 55vw;
-  height: 55vw;
-  max-width: 420px;
-  max-height: 420px;
-  top: -8%;
-  left: -12%;
-  background: radial-gradient(circle, rgba(0, 122, 255, 0.28) 0%, rgba(0, 122, 255, 0) 70%);
+  width: 60vw;
+  height: 60vw;
+  max-width: 440px;
+  max-height: 440px;
+  top: -10%;
+  left: -15%;
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.22) 0%, rgba(0, 122, 255, 0) 68%);
 }
 
 .liquid-bg-orbs::after {
-  width: 48vw;
-  height: 48vw;
-  max-width: 380px;
-  max-height: 380px;
-  bottom: 12%;
-  right: -10%;
-  background: radial-gradient(circle, rgba(88, 86, 214, 0.22) 0%, rgba(88, 86, 214, 0) 68%);
-  animation-delay: -6s;
+  width: 50vw;
+  height: 50vw;
+  max-width: 400px;
+  max-height: 400px;
+  bottom: 15%;
+  right: -12%;
+  background: radial-gradient(circle, rgba(88, 86, 214, 0.17) 0%, rgba(88, 86, 214, 0) 66%);
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
 }
 
 .app-shell-bottom-nav .liquid-bg-orbs {
@@ -3220,33 +3220,36 @@ body.native-app .chat-conv-item:active {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* ─── Tab bar shell ─── */
 .liquid-tab-bar {
   position: fixed;
   z-index: 40;
   left: max(var(--app-safe-left), 0px);
   right: max(var(--app-safe-right), 0px);
   bottom: 0;
-  padding: 0.35rem 0.75rem;
-  padding-bottom: max(0.45rem, var(--app-safe-bottom));
-  background: var(--liquid-glass);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  border-top: 0.5px solid rgba(255, 255, 255, 0.75);
+  padding: 0 0.5rem;
+  padding-bottom: max(0.5rem, var(--app-safe-bottom));
+  background: rgba(248, 249, 252, 0.78);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.8);
   box-shadow:
-    0 -10px 40px rgba(0, 0, 0, 0.07),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  animation: liquidTabIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+    0 -1px 0 rgba(0, 0, 0, 0.06),
+    0 -8px 32px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  animation: liquidTabIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .liquid-tab-bar-inner {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-around;
-  gap: 0.15rem;
-  max-width: 520px;
+  max-width: 480px;
   margin: 0 auto;
+  height: 54px;
 }
 
+/* ─── Normal tab item ─── */
 .liquid-tab-item {
   position: relative;
   flex: 1;
@@ -3254,129 +3257,169 @@ body.native-app .chat-conv-item:active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.15rem;
-  min-height: 52px;
-  padding: 0.35rem 0.2rem 0.2rem;
-  color: var(--text-tertiary);
+  gap: 3px;
+  min-height: 54px;
+  padding: 0.25rem 0.15rem 0.2rem;
+  color: rgba(60, 60, 67, 0.42);
   touch-action: manipulation;
-  transition: color 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.liquid-tab-pill {
+/* Active indicator dot */
+.liquid-tab-item-active {
+  color: #007aff;
+}
+
+/* Subtle top dot for active state */
+.liquid-tab-item::before {
+  content: "";
   position: absolute;
-  inset: 2px 4px 14px;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.2), rgba(88, 86, 214, 0.12));
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 20px;
+  height: 2.5px;
+  border-radius: 99px;
+  background: #007aff;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
   opacity: 0;
-  transform: scale(0.82);
-  transition:
-    opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
 }
 
-.liquid-tab-item-active {
-  color: var(--ios-blue);
+.liquid-tab-item-active::before {
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
 }
 
-.liquid-tab-item-active .liquid-tab-pill {
-  opacity: 1;
-  transform: scale(1);
+/* No dot on center button */
+.liquid-tab-item-center::before {
+  display: none;
 }
+
+.liquid-tab-pill { display: none; }
 
 .liquid-tab-icon-wrap {
   position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
 }
 
 .liquid-tab-label {
-  position: relative;
-  z-index: 1;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .liquid-tab-badge {
   position: absolute;
-  top: -4px;
-  right: -8px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  top: -3px;
+  right: -7px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3.5px;
   border-radius: 9999px;
-  background: linear-gradient(180deg, #ff6259 0%, #ff3b30 100%);
+  background: #ff3b30;
   color: #fff;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(255, 59, 48, 0.35);
+  box-shadow: 0 1px 4px rgba(255, 59, 48, 0.4);
 }
 
+.liquid-tab-item:not(.liquid-tab-item-center):active {
+  transform: scale(0.88);
+  opacity: 0.7;
+}
+
+/* ─── Center call button ─── */
 .liquid-tab-item-center {
-  margin-top: -14px;
-  min-height: 64px;
+  flex: 1.15;
+  min-height: 54px;
+  padding: 0;
+  gap: 4px;
+  position: relative;
+  /* sit slightly above line */
+  transform: translateY(-7px);
+  transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+.liquid-tab-item-center:active {
+  transform: translateY(-7px) scale(0.91) !important;
+}
+
+/* glow halo */
 .liquid-tab-center-ring {
   position: absolute;
-  top: 0;
-  width: 58px;
-  height: 58px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(0, 122, 255, 0.25), rgba(52, 199, 89, 0.18));
-  filter: blur(2px);
-  animation: liquidOrbFloat 4s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.22) 30%, transparent 70%);
+  filter: blur(5px);
+  animation: centerBtnBreath 3.6s ease-in-out infinite;
+  pointer-events: none;
 }
 
+/* main button */
 .liquid-tab-center-btn {
   position: relative;
   z-index: 1;
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, #34c759 0%, #007aff 52%, #5856d6 100%);
-  background-size: 200% 200%;
-  animation: liquidShimmer 6s ease infinite;
-  box-shadow:
-    0 10px 28px rgba(0, 122, 255, 0.38),
-    0 2px 0 rgba(255, 255, 255, 0.35) inset;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  /* Clean Apple iOS blue, top-lit */
+  background: linear-gradient(165deg,
+    #1a90ff 0%,
+    #007aff 40%,
+    #0062cc 100%
+  );
+  animation: centerBtnGlow 4s ease-in-out infinite;
+  /* Inner highlight rim */
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  outline: none;
+  transition:
+    transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.24s ease;
+}
+
+/* Specular shine — pseudo-element */
+.liquid-tab-center-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.08) 45%,
+    transparent 55%
+  );
+  pointer-events: none;
 }
 
 .liquid-tab-item-center.liquid-tab-item-active .liquid-tab-center-btn {
-  transform: scale(1.04);
-  box-shadow:
-    0 12px 32px rgba(0, 122, 255, 0.45),
-    0 0 0 3px rgba(0, 122, 255, 0.15);
+  filter: brightness(1.06) saturate(1.1);
 }
 
 .liquid-tab-label-center {
-  margin-top: 0.15rem;
-  color: var(--ios-blue);
+  font-size: 9.5px;
   font-weight: 700;
-}
-
-.liquid-tab-item:active {
-  transform: scale(0.94);
-}
-
-.liquid-tab-item-center:active .liquid-tab-center-btn {
-  transform: scale(0.94);
+  color: #007aff;
+  letter-spacing: 0;
 }
 
 .liquid-more-overlay {
@@ -3523,8 +3566,17 @@ body.native-app .app-shell-bottom-nav .ios-keypad {
 }
 
 body.native-app .liquid-tab-bar {
-  background: rgba(255, 255, 255, 0.62);
-  backdrop-filter: blur(28px) saturate(200%);
+  background: rgba(245, 247, 252, 0.82);
+  backdrop-filter: blur(36px) saturate(190%);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+}
+
+body.native-app .liquid-tab-item-center .liquid-tab-center-btn {
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.24) inset,
+    0 1px 0 rgba(255,255,255,0.28) inset,
+    0 10px 26px rgba(0, 113, 227, 0.44),
+    0 3px 8px rgba(0, 0, 0, 0.12);
 }
 
 body.tg-webapp .liquid-tab-bar {
@@ -3538,5 +3590,8 @@ body.tg-webapp .liquid-tab-bar {
   .liquid-tab-center-btn,
   .liquid-tab-bar {
     animation: none !important;
+  }
+  .liquid-tab-item::before {
+    transition: none !important;
   }
 }
