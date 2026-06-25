@@ -255,6 +255,7 @@ function DashboardInner({
         onTabChange={setTab}
         badges={{ recents: missedCount, messages: messageCount }}
         hideHeader={tab === "messages" && chatInThread}
+        hideTabBar={tab === "messages" && chatInThread}
         contentClassName={tab === "messages" ? "ios-phone-content-chat" : undefined}
         header={
           <PhoneHeader

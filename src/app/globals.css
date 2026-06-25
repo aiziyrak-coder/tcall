@@ -28,6 +28,11 @@
   --app-safe-left: max(env(safe-area-inset-left, 0px), var(--tg-content-safe-left));
   --app-safe-right: max(env(safe-area-inset-right, 0px), var(--tg-content-safe-right));
   --sidebar-w: 4.5rem;
+  --tab-bar-h: calc(78px + env(safe-area-inset-bottom, 0px));
+  --liquid-glass: rgba(255, 255, 255, 0.58);
+  --liquid-glass-strong: rgba(255, 255, 255, 0.78);
+  --liquid-border: rgba(255, 255, 255, 0.72);
+  --liquid-shadow: 0 8px 32px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 @media (min-width: 768px) {
@@ -77,7 +82,11 @@
 
 @layer components {
   .glass {
-    @apply bg-white border border-black/10 shadow-sm;
+    background: var(--liquid-glass-strong);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--liquid-border);
+    box-shadow: var(--liquid-shadow);
   }
   .btn-primary {
     @apply bg-brand-600 hover:bg-brand-500 active:bg-brand-700 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg shadow-brand-600/20 active:scale-[0.97] min-h-[48px] touch-manipulation;
@@ -1652,14 +1661,29 @@ body.tg-webapp .ios-tab-bar {
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .mini-call-bar {
     left: calc(var(--sidebar-w) + max(var(--app-safe-left), 0px));
   }
 }
 
+@media (max-width: 1023px) {
+  .mini-call-bar {
+    left: max(var(--app-safe-left), 0px);
+    right: max(var(--app-safe-right), 0px);
+  }
+}
+
 body.has-mini-call .app-main-content {
   padding-bottom: 4.75rem;
+}
+
+body.has-mini-call .app-shell-bottom-nav .app-main-content {
+  padding-bottom: 4.75rem;
+}
+
+body.has-mini-call .liquid-tab-bar {
+  display: none;
 }
 
 body.has-mini-call .chat-app-thread .chat-composer {
@@ -2674,7 +2698,7 @@ body.native-app select:focus:not(:focus-visible) {
 }
 
 body.native-app .app-shell {
-  background: linear-gradient(165deg, #f5f6fa 0%, #f2f2f7 45%, #eef0f5 100%);
+  background: linear-gradient(165deg, #eef1f9 0%, #e8ecf6 45%, #e3e8f2 100%);
 }
 
 body.native-app .app-sidebar {
@@ -2844,10 +2868,16 @@ body.native-app .auth-app-scroll {
   padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
 }
 
-body.native-app .auth-input,
-body.native-app .auth-input-wrap .input-field {
-  font-size: 16px;
-  -webkit-text-size-adjust: 100%;
+body.native-app .auth-app-card {
+  background: var(--liquid-glass-strong);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: var(--liquid-shadow);
+}
+
+body.native-app .auth-app-shell {
+  background: #e8ecf6;
 }
 
 body.native-app .ios-tab-bar {
@@ -3055,4 +3085,458 @@ body.native-app .chat-composer-emoji-btn:active {
 
 body.native-app .chat-conv-item:active {
   transform: scale(0.995);
+}
+
+/* ===== iOS 27 Liquid Glass — mobil pastki tab bar ===== */
+@keyframes liquidBgShift {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+  50% { transform: translate3d(-2%, 1.5%, 0) scale(1.03); opacity: 0.92; }
+  100% { transform: translate3d(1.5%, -1%, 0) scale(1.01); opacity: 1; }
+}
+
+@keyframes liquidOrbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -3%) scale(1.06); }
+  66% { transform: translate(-3%, 2%) scale(0.96); }
+}
+
+@keyframes liquidTabIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes liquidShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.app-shell-bottom-nav {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: unset;
+  position: relative;
+  isolation: isolate;
+  background: #eef0f8;
+}
+
+.app-shell-bottom-nav .app-sidebar {
+  display: none;
+}
+
+.app-shell-bottom-nav .app-main {
+  flex: 1;
+  min-height: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app-shell-bottom-nav .app-main-header {
+  background: transparent;
+  border-bottom: none;
+  padding-bottom: 0.5rem;
+}
+
+.app-shell-bottom-nav .app-main-content {
+  padding-bottom: var(--tab-bar-h);
+}
+
+.liquid-bg-orbs {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.liquid-bg-orbs::before,
+.liquid-bg-orbs::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: liquidOrbFloat 16s ease-in-out infinite alternate;
+}
+
+.liquid-bg-orbs::before {
+  width: 55vw;
+  height: 55vw;
+  max-width: 420px;
+  max-height: 420px;
+  top: -8%;
+  left: -12%;
+  background: radial-gradient(circle, rgba(0, 122, 255, 0.28) 0%, rgba(0, 122, 255, 0) 70%);
+}
+
+.liquid-bg-orbs::after {
+  width: 48vw;
+  height: 48vw;
+  max-width: 380px;
+  max-height: 380px;
+  bottom: 12%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(88, 86, 214, 0.22) 0%, rgba(88, 86, 214, 0) 68%);
+  animation-delay: -6s;
+}
+
+.app-shell-bottom-nav .liquid-bg-orbs {
+  display: block;
+}
+
+.app-shell:not(.app-shell-bottom-nav) .liquid-bg-orbs {
+  display: none;
+}
+
+.liquid-header {
+  position: relative;
+  z-index: 2;
+}
+
+.liquid-header .phone-header-shell {
+  padding: 0.35rem 0.75rem 0.5rem;
+  border-radius: 1.25rem;
+  background: var(--liquid-glass);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid var(--liquid-border);
+  box-shadow: var(--liquid-shadow);
+}
+
+.liquid-header .phone-header-tab-pill {
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.16), rgba(88, 86, 214, 0.1));
+  border-color: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.liquid-header .phone-header-user-chip {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.liquid-header .ios-icon-btn {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.liquid-tab-bar {
+  position: fixed;
+  z-index: 40;
+  left: max(var(--app-safe-left), 0px);
+  right: max(var(--app-safe-right), 0px);
+  bottom: 0;
+  padding: 0.35rem 0.75rem;
+  padding-bottom: max(0.45rem, var(--app-safe-bottom));
+  background: var(--liquid-glass);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 -10px 40px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  animation: liquidTabIn 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.liquid-tab-bar-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0.15rem;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.liquid-tab-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 52px;
+  padding: 0.35rem 0.2rem 0.2rem;
+  color: var(--text-tertiary);
+  touch-action: manipulation;
+  transition: color 0.28s cubic-bezier(0.22, 1, 0.36, 1), transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.liquid-tab-pill {
+  position: absolute;
+  inset: 2px 4px 14px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.2), rgba(88, 86, 214, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  opacity: 0;
+  transform: scale(0.82);
+  transition:
+    opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.liquid-tab-item-active {
+  color: var(--ios-blue);
+}
+
+.liquid-tab-item-active .liquid-tab-pill {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.liquid-tab-icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.liquid-tab-label {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.liquid-tab-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #ff6259 0%, #ff3b30 100%);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 59, 48, 0.35);
+}
+
+.liquid-tab-item-center {
+  margin-top: -14px;
+  min-height: 64px;
+}
+
+.liquid-tab-center-ring {
+  position: absolute;
+  top: 0;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.25), rgba(52, 199, 89, 0.18));
+  filter: blur(2px);
+  animation: liquidOrbFloat 4s ease-in-out infinite;
+}
+
+.liquid-tab-center-btn {
+  position: relative;
+  z-index: 1;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #34c759 0%, #007aff 52%, #5856d6 100%);
+  background-size: 200% 200%;
+  animation: liquidShimmer 6s ease infinite;
+  box-shadow:
+    0 10px 28px rgba(0, 122, 255, 0.38),
+    0 2px 0 rgba(255, 255, 255, 0.35) inset;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.liquid-tab-item-center.liquid-tab-item-active .liquid-tab-center-btn {
+  transform: scale(1.04);
+  box-shadow:
+    0 12px 32px rgba(0, 122, 255, 0.45),
+    0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+.liquid-tab-label-center {
+  margin-top: 0.15rem;
+  color: var(--ios-blue);
+  font-weight: 700;
+}
+
+.liquid-tab-item:active {
+  transform: scale(0.94);
+}
+
+.liquid-tab-item-center:active .liquid-tab-center-btn {
+  transform: scale(0.94);
+}
+
+.liquid-more-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: appFadeIn 0.22s ease both;
+}
+
+.liquid-more-sheet {
+  width: 100%;
+  max-width: 520px;
+  padding: 0.75rem 1rem 1.25rem;
+  padding-bottom: max(1.25rem, calc(var(--app-safe-bottom) + 0.75rem));
+  border-radius: 1.5rem 1.5rem 0 0;
+  background: var(--liquid-glass-strong);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  border: 1px solid var(--liquid-border);
+  border-bottom: none;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.12);
+  animation: liquidTabIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.liquid-more-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(60, 60, 67, 0.22);
+  margin: 0 auto 0.85rem;
+}
+
+.liquid-more-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.liquid-more-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.liquid-more-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  color: var(--text-secondary);
+  touch-action: manipulation;
+}
+
+.liquid-more-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.liquid-more-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem;
+  border-radius: 1.125rem;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  touch-action: manipulation;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease;
+}
+
+.liquid-more-item-active {
+  background: linear-gradient(145deg, rgba(0, 122, 255, 0.14), rgba(88, 86, 214, 0.1));
+  border-color: rgba(0, 122, 255, 0.22);
+  color: var(--ios-blue);
+}
+
+.liquid-more-item-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.45));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.liquid-more-item-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.liquid-more-item:active {
+  transform: scale(0.96);
+}
+
+body.native-app.app-shell-bottom-nav,
+body.native-app .app-shell-bottom-nav {
+  background: #e8ecf6;
+}
+
+body.native-app .app-shell-bottom-nav .ios-my-number {
+  background: var(--liquid-glass);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--liquid-border);
+  border-radius: 1.125rem;
+  box-shadow: var(--liquid-shadow);
+}
+
+body.native-app .app-shell-bottom-nav .ios-key {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.72) 100%);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+}
+
+body.native-app .app-shell-bottom-nav .ios-list-item,
+body.native-app .app-shell-bottom-nav .ios-room-card,
+body.native-app .app-shell-bottom-nav .ios-speed-dial-btn {
+  background: var(--liquid-glass);
+  backdrop-filter: blur(14px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+body.native-app .app-shell-bottom-nav .ios-keypad {
+  background: transparent;
+}
+
+body.native-app .liquid-tab-bar {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(28px) saturate(200%);
+}
+
+body.tg-webapp .liquid-tab-bar {
+  padding-bottom: max(0.65rem, calc(var(--app-safe-bottom) + 8px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-bg-orbs::before,
+  .liquid-bg-orbs::after,
+  .liquid-tab-center-ring,
+  .liquid-tab-center-btn,
+  .liquid-tab-bar {
+    animation: none !important;
+  }
 }
