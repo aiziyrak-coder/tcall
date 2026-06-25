@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bell, BellOff, LogOut, MoreVertical, Settings } from "lucide-react";
+import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -113,6 +113,7 @@ function DashboardInner({
   const [notifHint, setNotifHint] = useState("");
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
+  const [supportUnread, setSupportUnread] = useState(0);
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -176,11 +177,30 @@ function DashboardInner({
     return () => window.removeEventListener("tcall:open-chat", onOpenChat);
   }, [setTab]);
 
+  const refreshSupportUnread = useCallback(() => {
+    apiFetch("/api/support?unread=1")
+      .then((r) => r.json())
+      .then((d) => setSupportUnread(d.unread || 0))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
-    const onOpenSupport = () => setShowSupport(true);
+    const onOpenSupport = () => { setShowSupport(true); setSupportUnread(0); };
     window.addEventListener("tcall:open-support", onOpenSupport);
     return () => window.removeEventListener("tcall:open-support", onOpenSupport);
   }, []);
+
+  useEffect(() => {
+    refreshSupportUnread();
+    const t = setInterval(refreshSupportUnread, 20_000);
+    return () => clearInterval(t);
+  }, [refreshSupportUnread]);
+
+  useEffect(() => {
+    const onSupportMessage = () => refreshSupportUnread();
+    window.addEventListener("tcall:support-message", onSupportMessage);
+    return () => window.removeEventListener("tcall:support-message", onSupportMessage);
+  }, [refreshSupportUnread]);
 
   const handleNotifications = async () => {
     setNotifHint("");
@@ -222,6 +242,11 @@ function DashboardInner({
   const userLang = getLanguage(user.language);
   const nativeApp = isNativeApp();
   const userNumber = user.tcallId ? formatTcallId(user.tcallId) : "...";
+  const supportLabel = user.language?.startsWith("ru")
+    ? "Поддержка"
+    : user.language?.startsWith("en")
+      ? "Support"
+      : "Qo'llab-quvvatlash";
 
   return (
     <>
@@ -250,6 +275,18 @@ function DashboardInner({
             }
             right={
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowSupport(true); setSupportUnread(0); }}
+                  className="ios-icon-btn relative"
+                  title={supportLabel}
+                  aria-label={supportLabel}
+                >
+                  <Headset className="w-5 h-5" />
+                  {supportUnread > 0 && (
+                    <span className="header-icon-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowHeaderMenu(true)}
@@ -357,7 +394,7 @@ function DashboardInner({
       <SupportChat
         open={showSupport}
         userLanguage={user.language}
-        onClose={() => setShowSupport(false)}
+        onClose={() => { setShowSupport(false); refreshSupportUnread(); }}
       />
 
       {showHeaderMenu && (
