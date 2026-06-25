@@ -547,6 +547,14 @@ body.tg-webapp .ios-tab-bar {
   min-height: 2.5rem;
 }
 
+.ios-keypad-number-row {
+  @apply relative flex items-center justify-center w-full min-h-[2.75rem] px-12;
+}
+
+.ios-keypad-backspace {
+  @apply absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-slate-500 touch-manipulation active:bg-slate-100 active:text-slate-800;
+}
+
 .ios-keypad-name {
   @apply text-brand-600 text-base font-medium mb-1;
 }
@@ -585,7 +593,21 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .ios-keypad-bottom {
-  @apply flex items-center justify-center gap-8 mt-6 w-full max-w-xs;
+  @apply flex items-center justify-center mt-4 w-full max-w-xs;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+.ios-key-spacer {
+  aspect-ratio: 1;
+  max-height: 72px;
+}
+
+.ios-key-delete-btn {
+  @apply text-slate-600;
+}
+
+.ios-key-delete-btn:disabled {
+  @apply opacity-25 pointer-events-none;
 }
 
 .ios-call-green-btn {
@@ -1547,6 +1569,15 @@ body.tg-webapp .ios-tab-bar {
 
 .app-tab-keypad .ios-key {
   max-height: clamp(48px, 9.5vh, 68px);
+}
+
+.app-tab-keypad .ios-key-spacer {
+  max-height: clamp(48px, 9.5vh, 68px);
+}
+
+.app-tab-keypad .ios-keypad-backspace {
+  width: clamp(2.5rem, 10vw, 2.75rem);
+  height: clamp(2.5rem, 10vw, 2.75rem);
 }
 
 .app-tab-keypad .ios-key-digit {

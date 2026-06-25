@@ -15,17 +15,27 @@ interface DialerProps {
   userLanguage: string;
 }
 
-const KEYPAD: { digit: string; letters?: string }[] = [
-  { digit: "1" },
-  { digit: "2", letters: "ABC" },
-  { digit: "3", letters: "DEF" },
-  { digit: "4", letters: "GHI" },
-  { digit: "5", letters: "JKL" },
-  { digit: "6", letters: "MNO" },
-  { digit: "7", letters: "PQRS" },
-  { digit: "8", letters: "TUV" },
-  { digit: "9", letters: "WXYZ" },
-  { digit: "0", letters: "+" },
+const KEY_ROWS: { key: string; letters?: string }[][] = [
+  [
+    { key: "1" },
+    { key: "2", letters: "ABC" },
+    { key: "3", letters: "DEF" },
+  ],
+  [
+    { key: "4", letters: "GHI" },
+    { key: "5", letters: "JKL" },
+    { key: "6", letters: "MNO" },
+  ],
+  [
+    { key: "7", letters: "PQRS" },
+    { key: "8", letters: "TUV" },
+    { key: "9", letters: "WXYZ" },
+  ],
+  [
+    { key: "" },
+    { key: "0", letters: "+" },
+    { key: "del" },
+  ],
 ];
 
 export function Dialer({ userLanguage }: DialerProps) {
@@ -133,7 +143,19 @@ export function Dialer({ userLanguage }: DialerProps) {
         {lookupLoading && digits.length === 9 && (
           <div className="py-2 flex justify-center"><TcallLogo size="xs" animate /></div>
         )}
-        <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
+        <div className="ios-keypad-number-row">
+          <p className="ios-keypad-number">{digits ? formatTcallId(digits) : ""}</p>
+          {digits.length > 0 && (
+            <button
+              type="button"
+              onClick={() => press("del")}
+              className="ios-keypad-backspace"
+              aria-label={ui.deleteDigit}
+            >
+              <Delete className="w-5 h-5" />
+            </button>
+          )}
+        </div>
         {error && <p className="ios-keypad-error mt-1">{error}</p>}
 
         {lookupUser && (
@@ -219,34 +241,44 @@ export function Dialer({ userLanguage }: DialerProps) {
       </div>
 
       <div className="ios-keypad-grid">
-        {KEYPAD.map(({ digit, letters }) => (
-          <button
-            key={digit}
-            onClick={() => press(digit)}
-            className="ios-key"
-          >
-            <span className="ios-key-digit">{digit}</span>
-            {letters && <span className="ios-key-letters">{letters}</span>}
-          </button>
-        ))}
+        {KEY_ROWS.flatMap((row, rowIdx) =>
+          row.map(({ key, letters }) => {
+            if (key === "") {
+              return <div key={`spacer-${rowIdx}`} className="ios-key-spacer" aria-hidden />;
+            }
+            if (key === "del") {
+              return (
+                <button
+                  key="del"
+                  type="button"
+                  onClick={() => press("del")}
+                  className="ios-key ios-key-delete-btn"
+                  aria-label={ui.deleteDigit}
+                  disabled={!digits.length}
+                >
+                  <Delete className="w-6 h-6" />
+                </button>
+              );
+            }
+            return (
+              <button key={key} type="button" onClick={() => press(key)} className="ios-key">
+                <span className="ios-key-digit">{key}</span>
+                {letters && <span className="ios-key-letters">{letters}</span>}
+              </button>
+            );
+          })
+        )}
       </div>
 
       <div className="ios-keypad-bottom">
-        <div className="w-16" />
         <button
+          type="button"
           onClick={() => void handleCall()}
           disabled={digits.length !== 9 || calling || !!blocked}
           className="ios-call-green-btn"
           aria-label={ui.startCall}
         >
           <Phone className="w-8 h-8" />
-        </button>
-        <button
-          onClick={() => press("del")}
-          className="ios-key-delete w-16 h-16 flex items-center justify-center"
-          aria-label="Delete"
-        >
-          <Delete className="w-6 h-6 text-slate-600" />
         </button>
       </div>
     </div>
