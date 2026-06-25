@@ -666,7 +666,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .ios-empty-state-compact {
-  @apply py-8;
+  @apply py-5;
 }
 
 .ios-keypad-display {
@@ -1833,7 +1833,16 @@ body.tg-webapp .ios-tab-bar {
   flex: 0 0 auto;
   width: 100%;
   min-height: 42px;
+  max-height: min(28vh, 200px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 0.25rem;
+}
+
+.app-tab-keypad .dialer-profile-wrap {
+  max-height: min(22vh, 168px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-tab-keypad .ios-keypad-number {
@@ -1843,7 +1852,11 @@ body.tg-webapp .ios-tab-bar {
 .app-tab-keypad .ios-keypad-bottom {
   flex: 0 0 auto;
   margin-top: 0.45rem;
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+  padding-bottom: 0.25rem;
+}
+
+.app-shell-bottom-nav .app-tab-keypad .ios-keypad-bottom {
+  padding-bottom: 0;
 }
 
 /* ─── Global app notifications (kichik, iOS uslubida) ─── */
@@ -3940,6 +3953,13 @@ body.native-app .chat-conv-item:active {
   justify-content: center;
   width: 26px;
   height: 26px;
+}
+
+.liquid-tab-center-badge {
+  top: -2px;
+  right: -4px;
+  z-index: 2;
+  box-shadow: 0 1px 4px rgba(255, 59, 48, 0.5), 0 0 0 2px rgba(255, 255, 255, 0.9);
 }
 
 .liquid-tab-label {

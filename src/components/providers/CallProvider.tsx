@@ -249,6 +249,7 @@ export function CallProvider({ user, children }: CallProviderProps) {
         stopRingback();
         playCallEndTone();
         setOutgoingCall(null);
+        window.dispatchEvent(new CustomEvent("tcall:calls-changed"));
       });
 
       socket.on("call-timeout", () => {
@@ -257,11 +258,13 @@ export function CallProvider({ user, children }: CallProviderProps) {
         playCallEndTone();
         setOutgoingCall(null);
         setIncomingCall(null);
+        window.dispatchEvent(new CustomEvent("tcall:calls-changed"));
       });
 
       socket.on("call-cancelled", ({ roomId }: { roomId: string }) => {
         stopRingtone();
         setIncomingCall((prev) => (prev?.roomId === roomId ? null : prev));
+        window.dispatchEvent(new CustomEvent("tcall:calls-changed"));
       });
 
       socket.on("call-error", ({ message }: { message: string }) => {

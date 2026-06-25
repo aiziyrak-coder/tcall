@@ -4,11 +4,13 @@ import { Link2, Sparkles, Languages, X } from "lucide-react";
 import { useUI } from "@/components/providers/LocaleProvider";
 import type { PhoneTab } from "@/components/PhoneShell";
 
-const MORE_ITEMS: { id: PhoneTab; icon: typeof Link2 }[] = [
+const MORE_ITEMS = [
   { id: "room", icon: Link2 },
   { id: "numbers", icon: Sparkles },
   { id: "interpreter", icon: Languages },
-];
+] as const;
+
+type MoreTabId = (typeof MORE_ITEMS)[number]["id"];
 
 interface MoreMenuSheetProps {
   userLanguage: string;
@@ -20,13 +22,9 @@ interface MoreMenuSheetProps {
 export function MoreMenuSheet({ userLanguage, activeTab, onSelect, onClose }: MoreMenuSheetProps) {
   const ui = useUI(userLanguage);
 
-  const labels: Record<PhoneTab, string> = {
-    keypad: ui.keypad,
-    recents: ui.recents,
-    friends: ui.friendsTab,
+  const labels: Record<MoreTabId, string> = {
     room: ui.roomTab,
     numbers: ui.vanityNumbers,
-    messages: ui.messages,
     interpreter: ui.interpreterTab,
   };
 
@@ -55,7 +53,7 @@ export function MoreMenuSheet({ userLanguage, activeTab, onSelect, onClose }: Mo
                 type="button"
                 className={`liquid-more-item${active ? " liquid-more-item-active" : ""}`}
                 onClick={() => {
-                  onSelect(id);
+                  onSelect(id as PhoneTab);
                   onClose();
                 }}
               >

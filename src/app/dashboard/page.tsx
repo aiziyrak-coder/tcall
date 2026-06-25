@@ -10,7 +10,7 @@ import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
 import { Dialer } from "@/components/Dialer";
-import { ReconnectPill, HintPill } from "@/components/AppToast";
+import { ReconnectPill, HintPill, ErrorToast } from "@/components/AppToast";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
@@ -124,14 +124,12 @@ function DashboardInner({
       .then((d) => {
         if (d.calls) {
           setCalls(d.calls);
-          // "missed" = ring timed out (user was callee, didn't answer)
-          // "rejected" means user rejected = not missed, intentional
           const missedIncoming = d.calls.filter(
             (c: CallRecord) =>
               c.status === "missed" &&
               c.calleeTcallId === user.tcallId
           ).length;
-          setMissedCount(missedIncoming);
+          setMissedCount(tab === "keypad" ? 0 : missedIncoming);
         }
         setLoadError("");
       })
@@ -140,7 +138,7 @@ function DashboardInner({
     apiFetch("/api/chat/conversations")
       .then((r) => r.json())
       .then((d) => setMessageCount(d.unreadCount || 0));
-  }, [setCalls, setLoadError, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
+  }, [setCalls, setLoadError, setMissedCount, setMessageCount, tab, ui.loadError, user.tcallId]);
 
   useEffect(() => {
     refresh();
@@ -153,6 +151,12 @@ function DashboardInner({
     const retry = setTimeout(() => refresh(), 4000);
     return () => clearTimeout(retry);
   }, [loadError, refresh]);
+
+  useEffect(() => {
+    const onCallsChanged = () => refresh();
+    window.addEventListener("tcall:calls-changed", onCallsChanged);
+    return () => window.removeEventListener("tcall:calls-changed", onCallsChanged);
+  }, [refresh]);
 
   useEffect(() => {
     if (tab === "keypad") setMissedCount(0);
@@ -228,7 +232,6 @@ function DashboardInner({
 
   const tabTitles: Record<PhoneTab, string> = {
     keypad: ui.keypad,
-    recents: ui.recents,
     friends: ui.friendsTab,
     room: ui.roomTab,
     numbers: ui.vanityNumbers,
@@ -302,10 +305,12 @@ function DashboardInner({
       >
         <ReconnectPill visible={!socketConnected} label={ui.reconnecting} />
         <HintPill message={notifHint || null} />
+        <ErrorToast message={loadError || null} />
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
             <Dialer
+              isActive={tab === "keypad"}
               userLanguage={user.language}
               userTcallId={user.tcallId}
               calls={calls}

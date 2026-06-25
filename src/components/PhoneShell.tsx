@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Phone,
-  Clock,
   UserRoundSearch,
   Link2,
   Sparkles,
@@ -18,7 +17,7 @@ import { TcallLogo } from "@/components/TcallLogo";
 import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { useMobileBottomNav } from "@/hooks/useMobileBottomNav";
 
-export type PhoneTab = "keypad" | "recents" | "friends" | "room" | "numbers" | "messages" | "interpreter";
+export type PhoneTab = "keypad" | "friends" | "room" | "numbers" | "messages" | "interpreter";
 
 interface PhoneShellProps {
   userLanguage: string;
@@ -61,7 +60,6 @@ const MORE_TABS: PhoneTab[] = ["room", "numbers", "interpreter"];
 
 export const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
   keypad: Phone,
-  recents: Clock,
   friends: UserRoundSearch,
   room: Link2,
   numbers: Sparkles,
@@ -138,12 +136,14 @@ function BottomTabBar({
   onTabChange,
   badges,
   onMoreOpen,
+  moreOpen,
 }: {
   ui: UIText;
   activeTab: PhoneTab;
   onTabChange: (tab: PhoneTab) => void;
   badges?: Partial<Record<PhoneTab, number>>;
   onMoreOpen: () => void;
+  moreOpen: boolean;
 }) {
   const moreActive = MORE_TABS.includes(activeTab);
 
@@ -161,7 +161,7 @@ function BottomTabBar({
                 className={`liquid-tab-item${active ? " liquid-tab-item-active" : ""}`}
                 onClick={onMoreOpen}
                 aria-label={ui.moreTab as string}
-                aria-expanded={active}
+                aria-expanded={moreOpen}
               >
                 <span className="liquid-tab-pill" aria-hidden />
                 <span className="liquid-tab-icon-wrap">
@@ -189,6 +189,11 @@ function BottomTabBar({
                 <span className="liquid-tab-center-ring" aria-hidden />
                 <span className="liquid-tab-center-btn">
                   <Icon className="w-[26px] h-[26px] text-white drop-shadow-sm" strokeWidth={2.0} />
+                  {badge != null && badge > 0 && (
+                    <span className="liquid-tab-badge liquid-tab-center-badge">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
                 </span>
                 <span className="liquid-tab-label liquid-tab-label-center">{ui[labelKey] as string}</span>
               </button>
@@ -235,6 +240,10 @@ export function PhoneShell({
   const bottomNav = useMobileBottomNav();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  useEffect(() => {
+    if (!bottomNav) setMoreOpen(false);
+  }, [bottomNav]);
+
   const shellClass = [
     "app-shell",
     bottomNav ? "app-shell-bottom-nav" : "",
@@ -265,6 +274,7 @@ export function PhoneShell({
           onTabChange={onTabChange}
           badges={badges}
           onMoreOpen={() => setMoreOpen(true)}
+          moreOpen={moreOpen}
         />
       )}
 

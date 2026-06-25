@@ -28,6 +28,7 @@ interface DialerProps {
   userTcallId: string;
   calls: CallRecord[];
   onOpenChat?: (tcallId: string) => void;
+  isActive?: boolean;
 }
 
 const KEY_ROWS: { key: string; letters?: string }[][] = [
@@ -53,12 +54,13 @@ const KEY_ROWS: { key: string; letters?: string }[][] = [
   ],
 ];
 
-export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerProps) {
+export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive = true }: DialerProps) {
   const ui = useUI(userLanguage);
   const { dial } = useCallContext();
   const [digits, setDigits] = useState("");
   const [lookupUser, setLookupUser] = useState<UserProfileData | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupSettled, setLookupSettled] = useState(false);
   const [calling, setCalling] = useState(false);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -72,6 +74,7 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
     lookupAbortRef.current = ctrl;
 
     setLookupLoading(true);
+    setLookupSettled(false);
     try {
       const r = await apiFetch(`/api/users/lookup?tcallId=${id}`, { signal: ctrl.signal } as RequestInit);
       if (ctrl.signal.aborted) return;
@@ -89,7 +92,10 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
       if ((e as Error)?.name === "AbortError") return;
       setLookupUser(null);
     } finally {
-      if (!ctrl.signal.aborted) setLookupLoading(false);
+      if (!ctrl.signal.aborted) {
+        setLookupLoading(false);
+        setLookupSettled(true);
+      }
     }
   }, [ui.blocked, ui.numberNotFound]);
 
@@ -99,9 +105,12 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
       lookupAbortRef.current = null;
       setLookupUser(null);
       setLookupLoading(false);
+      setLookupSettled(false);
       setError("");
       return;
     }
+    setLookupLoading(true);
+    setLookupSettled(false);
     const timer = setTimeout(() => void refreshLookup(digits), 300);
     return () => clearTimeout(timer);
   }, [digits, refreshLookup]);
@@ -149,6 +158,7 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
   }, [digits, dial, blocked]);
 
   useEffect(() => {
+    if (!isActive) return;
     const onKey = (e: KeyboardEvent) => {
       const tag = (document.activeElement?.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
@@ -158,7 +168,7 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [press, handleCall]);
+  }, [press, handleCall, isActive]);
 
   const runAction = async (fn: () => Promise<void>) => {
     setActionLoading(true);
@@ -184,11 +194,11 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat }: DialerP
       </div>
 
       <div className="ios-keypad-dial">
-      <div className="ios-keypad-display">
+      <div className="ios-keypad-display ios-keypad-display-scroll">
         {!lookupUser && !lookupLoading && digits.length !== 9 && (
           <p className="ios-keypad-hint">{ui.dialNumber}</p>
         )}
-        {!lookupUser && !lookupLoading && digits.length === 9 && (
+        {!lookupUser && !lookupLoading && lookupSettled && digits.length === 9 && (
           <p className="ios-keypad-error">{ui.numberNotFound}</p>
         )}
         {lookupLoading && digits.length === 9 && (

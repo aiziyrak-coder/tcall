@@ -27,6 +27,12 @@ import {
 import { getPeerConnectionConfig } from "@/lib/webrtc";
 import type { RoomParticipant, TranslationPayload } from "@/types/signaling";
 
+function notifyCallsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("tcall:calls-changed"));
+  }
+}
+
 export interface TranslationMessage extends TranslationPayload {
   id: string;
   timestamp: number;
@@ -787,11 +793,13 @@ export function useCall({
         const onCallEnded = () => {
           handlersRef.current.stopTimer();
           setCallStatus("ended");
+          notifyCallsChanged();
         };
 
         const onCallRejected = () => {
           handlersRef.current.stopTimer();
           setCallStatus("ended");
+          notifyCallsChanged();
         };
 
         const onCallTimeout = () => {
@@ -799,6 +807,7 @@ export function useCall({
           handlersRef.current.stopRecording();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
+          notifyCallsChanged();
         };
 
         const onCallCancelled = () => {
@@ -806,6 +815,7 @@ export function useCall({
           handlersRef.current.stopRecording();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
+          notifyCallsChanged();
         };
 
         const onUserLeft = () => {
@@ -1058,7 +1068,7 @@ export function useCall({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ roomId }),
-    });
+    }).then(() => notifyCallsChanged());
     detachSocketRef.current?.();
     detachSocketRef.current = null;
     setCallStatus("ended");

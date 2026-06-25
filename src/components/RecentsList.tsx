@@ -66,8 +66,9 @@ export function RecentsList({ userLanguage, userTcallId, calls, onOpenChat, comp
               : call.participants.find((p) => p.user.tcallId !== userTcallId)?.user;
 
           const isMissed =
-            call.status === "missed" ||
-            (call.status === "rejected" && call.calleeTcallId === userTcallId);
+            call.status === "missed" &&
+            !isOutgoing &&
+            call.calleeTcallId === userTcallId;
 
           const Icon = isMissed && !isOutgoing ? PhoneMissed : isOutgoing ? PhoneOutgoing : PhoneIncoming;
 
