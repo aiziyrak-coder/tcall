@@ -83,6 +83,12 @@ app.prepare().then(async () => {
   }
 
   void seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
+
+  // Admin hisobini yaratish
+  try {
+    const { ensureDefaultAdmin } = await import("./src/lib/admin-auth");
+    await ensureDefaultAdmin();
+  } catch (e) { console.error("Admin seed error:", e); }
   await migrateChatMemberRoles().catch((e) => console.error("Chat role migrate error:", e));
   await migrateDirectConversationKeys().catch((e) => console.error("Direct key migrate error:", e));
 

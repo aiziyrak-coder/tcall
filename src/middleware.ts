@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { getAdminEmails } from "@/lib/admin";
 import { DEFAULT_APP_URL, getAllowedOrigins, getPublicAppUrl } from "@/lib/domains";
 
 const protectedPaths = ["/dashboard", "/call", "/admin"];
@@ -36,10 +35,18 @@ async function verifySessionCookie(token: string): Promise<{ ok: true; email?: s
   }
 }
 
-function isAdminEmail(email?: string): boolean {
-  if (!email) return false;
-  const admins = getAdminEmails();
-  return admins.length > 0 && admins.includes(email.toLowerCase());
+function getAdminJwtSecret() {
+  const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "admin-dev-secret";
+  return new TextEncoder().encode(secret + "-admin");
+}
+
+async function verifyAdminCookie(token: string): Promise<boolean> {
+  try {
+    const { payload } = await jwtVerify(token, getAdminJwtSecret());
+    return payload.type === "admin";
+  } catch {
+    return false;
+  }
 }
 
 export async function middleware(request: NextRequest) {
@@ -59,6 +66,16 @@ export async function middleware(request: NextRequest) {
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   if (!isProtected) return NextResponse.next();
 
+  // Admin panel — alohida cookie bilan himoyalangan
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin/login") return NextResponse.next();
+    const adminToken = request.cookies.get("admin_session")?.value;
+    if (!adminToken || !(await verifyAdminCookie(adminToken))) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    return NextResponse.next();
+  }
+
   const token = request.cookies.get("session")?.value;
   const session = token ? await verifySessionCookie(token) : { ok: false as const };
   if (!session.ok) {
@@ -69,13 +86,9 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  if (pathname.startsWith("/admin") && !isAdminEmail(session.email)) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/dashboard/:path*", "/call/:path*", "/admin/:path*"],
+  matcher: ["/api/:path*", "/dashboard/:path*", "/call/:path*", "/admin/:path*", "/admin/login"],
 };

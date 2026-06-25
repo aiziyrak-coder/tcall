@@ -9,6 +9,7 @@ import {
   isBlockedBetween,
 } from "@/lib/chat-service";
 import { getUserLanguage } from "@/lib/chat-translate";
+import { requirePlan } from "@/lib/subscription";
 
 const createDirectSchema = z.object({
   tcallId: z.string().regex(/^\d{9}$/),
@@ -39,6 +40,16 @@ export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.tcallId) {
     return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
+  }
+
+  // Chat uchun kamida Premium obuna kerak
+  const { ok: canChat, plan } = await requirePlan(session.userId, "premium");
+  if (!canChat) {
+    return NextResponse.json({
+      error: "Chat uchun Premium obuna kerak ($4.99/oy)",
+      requiresPlan: "premium",
+      currentPlan: plan,
+    }, { status: 402 });
   }
 
   try {

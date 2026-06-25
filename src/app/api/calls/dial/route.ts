@@ -6,6 +6,7 @@ import { generateRoomId } from "@/lib/utils";
 import { userHasActiveCall, endStaleCallsForUser } from "@/lib/call-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { sendIncomingCallPush } from "@/lib/push-service";
+import { requirePlan } from "@/lib/subscription";
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,6 +31,26 @@ export async function POST(req: NextRequest) {
 
     if (targetId === session.tcallId) {
       return NextResponse.json({ error: "O'zingizga qo'ng'iroq qilib bo'lmaydi" }, { status: 400 });
+    }
+
+    // Ban tekshirish
+    const activeBan = await prisma.userBan.findFirst({
+      where: { userId: session.userId, active: true, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+    });
+    if (activeBan) {
+      return NextResponse.json({ error: `Hisobingiz vaqtincha bloklangan: ${activeBan.reason}` }, { status: 403 });
+    }
+
+    // Premium+ obuna tekshirish
+    const { ok: canCall, plan } = await requirePlan(session.userId, "premium_plus");
+    if (!canCall) {
+      return NextResponse.json({
+        error: plan === "premium"
+          ? "Audio qo'ng'iroq uchun Premium+ obuna kerak ($9.99/oy)"
+          : "Audio qo'ng'iroq uchun Premium+ obuna kerak ($9.99/oy). Premium — chat, Premium+ — qo'ng'iroq va AI tarjima.",
+        requiresPlan: "premium_plus",
+        currentPlan: plan,
+      }, { status: 402 });
     }
 
     if (await userHasActiveCall(session.userId, session.tcallId)) {
