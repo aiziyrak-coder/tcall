@@ -26,6 +26,7 @@ const schema = z
     profession: optionalStr(80),
     interests: optionalStr(300),
     skills: optionalStr(300),
+    telegramUsername: optionalStr(64),
   })
   .transform((d) => ({
     ...d,
@@ -52,6 +53,7 @@ const userSelect = {
   profession: true,
   interests: true,
   skills: true,
+  telegramUsername: true,
   tcallId: true,
 } as const;
 
@@ -88,11 +90,17 @@ export async function PATCH(req: NextRequest) {
     const fields = [
       "name", "language", "translationMode", "status", "bio", "about", "age",
       "city", "country", "address", "workplace", "education", "graduatedFrom",
-      "profession", "interests", "skills",
+      "profession", "interests", "skills", "telegramUsername",
     ] as const;
 
     for (const key of fields) {
-      if (body[key] !== undefined) data[key] = body[key];
+      if (body[key] !== undefined) {
+        if (key === "telegramUsername" && typeof body[key] === "string") {
+          data[key] = (body[key] as string).replace(/^@/, "").trim() || null;
+        } else {
+          data[key] = body[key];
+        }
+      }
     }
 
     const user = await prisma.user.update({

@@ -15,6 +15,8 @@ import {
   Bell,
   LogOut,
   Crown,
+  Headset,
+  Send,
 } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
@@ -59,6 +61,7 @@ interface ProfileForm {
   profession: string;
   interests: string;
   skills: string;
+  telegramUsername: string;
 }
 
 interface PasswordForm {
@@ -152,6 +155,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     profession: "",
     interests: "",
     skills: "",
+    telegramUsername: "",
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState(user.userId);
@@ -192,6 +196,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           profession: u.profession ?? "",
           interests: u.interests ?? "",
           skills: u.skills ?? "",
+          telegramUsername: u.telegramUsername ?? "",
         });
         setAvatarUrl(u.avatarUrl ?? null);
         if (u.id) setUserId(u.id);
@@ -276,6 +281,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           profession: form.profession || null,
           interests: form.interests || null,
           skills: form.skills || null,
+          telegramUsername: form.telegramUsername || null,
         }),
       });
       const data = await res.json();
@@ -373,6 +379,21 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
       : langCode === "en"
         ? "Premium / Premium+ plans"
         : "Premium / Premium+ tariflari";
+  const supportNavTitle = langCode === "ru" ? "Поддержка" : langCode === "en" ? "Support" : "Bog'lanish";
+  const supportNavHint =
+    langCode === "ru" ? "Чат с админом (перевод авто)"
+      : langCode === "en" ? "Chat with admin (auto-translated)"
+        : "Admin bilan chat (avto-tarjima)";
+  const telegramLabel = "Telegram username";
+  const telegramHint =
+    langCode === "ru" ? "Уведомления Tcall будут приходить и в Telegram"
+      : langCode === "en" ? "Tcall notifications will also arrive in Telegram"
+        : "Tcall bildirishnomalari Telegramingizga ham keladi";
+
+  const openSupport = () => {
+    onClose();
+    setTimeout(() => window.dispatchEvent(new CustomEvent("tcall:open-support")), 100);
+  };
 
   const renderLogoutBlock = () => (
     <section className="settings-security-card">
@@ -495,6 +516,15 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           <span className="settings-nav-text">
             <strong>{subscriptionNavTitle}</strong>
             <small>{subscriptionNavHint}</small>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </button>
+
+        <button type="button" className="settings-nav-item" onClick={openSupport}>
+          <span className="settings-nav-icon"><Headset className="w-4 h-4" /></span>
+          <span className="settings-nav-text">
+            <strong>{supportNavTitle}</strong>
+            <small>{supportNavHint}</small>
           </span>
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </button>
@@ -635,6 +665,20 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
             <option key={s.value} value={s.value}>{getStatusLabel(s.value, ui)}</option>
           ))}
         </select>
+      </label>
+
+      <label className="settings-field settings-field-full">
+        <span className="settings-label flex items-center gap-1.5"><Send className="w-3.5 h-3.5 text-sky-500" /> {telegramLabel}</span>
+        <input
+          className="input-field-compact"
+          value={form.telegramUsername}
+          onChange={(e) => setField("telegramUsername", e.target.value.replace(/^@+/, "").replace(/\s/g, ""))}
+          placeholder="username"
+          maxLength={64}
+          autoCapitalize="none"
+          spellCheck={false}
+        />
+        <span className="text-xs text-slate-500 mt-1">{telegramHint}</span>
       </label>
     </div>
   );

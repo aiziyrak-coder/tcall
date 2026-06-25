@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, CreditCard, Crown, Loader2, X } from "lucide-react";
+import { Check, Copy, CreditCard, Crown, Headset, Loader2, X } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { copyToClipboard } from "@/lib/utils";
 import {
@@ -77,6 +77,7 @@ const COPY = {
     exactNote: "Diqqat: summani tiyingacha aynan yuboring — aks holda avtomatik aniqlanmaydi.",
     notConfigured: "To'lov tizimi hozircha sozlanmoqda. Iltimos keyinroq urinib ko'ring yoki admin bilan bog'laning.",
     som: "so'm",
+    contact: "Admin bilan bog'lanish", daysLeft: "{n} kun qoldi", expiresWord: "tugaydi",
   },
   ru: {
     title: "Подписка и оплата", subtitle: "Выберите тариф и оплатите",
@@ -93,6 +94,7 @@ const COPY = {
     exactNote: "Важно: отправьте сумму точно до тийина — иначе авто-подтверждение не сработает.",
     notConfigured: "Платёжная система настраивается. Попробуйте позже или свяжитесь с админом.",
     som: "сум",
+    contact: "Связаться с админом", daysLeft: "осталось {n} дн.", expiresWord: "истекает",
   },
   en: {
     title: "Subscription & Payment", subtitle: "Choose a plan and pay",
@@ -109,6 +111,7 @@ const COPY = {
     exactNote: "Important: send the exact amount down to the tiyin, otherwise auto-detection fails.",
     notConfigured: "Payment system is being set up. Please try later or contact admin.",
     som: "UZS",
+    contact: "Contact support", daysLeft: "{n} days left", expiresWord: "expires",
   },
 } as const;
 
@@ -301,9 +304,25 @@ export function SubscriptionPlansModal({
             )}
 
             <div className="mb-4 rounded-2xl border border-black/5 bg-slate-50 px-4 py-3">
-              <p className="text-xs text-slate-500">{copy.currentPlan}</p>
-              <p className="text-sm font-semibold text-slate-900">{planLabel(currentPlan)}</p>
-              {expiresAt && <p className="text-xs text-slate-500 mt-1">{copy.activeUntil}: {new Date(expiresAt).toLocaleDateString()}</p>}
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs text-slate-500">{copy.currentPlan}</p>
+                  <p className="text-sm font-semibold text-slate-900">{planLabel(currentPlan)}</p>
+                </div>
+                {currentPlan !== "free" && expiresAt && (() => {
+                  const days = Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000));
+                  return (
+                    <div className="text-right">
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${days <= 3 ? "bg-red-100 text-red-700" : days <= 7 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {copy.daysLeft.replace("{n}", String(days))}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+              {expiresAt && (
+                <p className="text-xs text-slate-500 mt-2">{copy.activeUntil}: {new Date(expiresAt).toLocaleDateString()}</p>
+              )}
             </div>
 
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{copy.choose}</p>
@@ -351,6 +370,14 @@ export function SubscriptionPlansModal({
               className="btn-primary btn-compact w-full mt-4 flex items-center justify-center gap-2">
               {buying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
               {`${copy.buyNow} (${formatSom(pricesUzs[selectedPlan])} ${copy.som})`}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { onClose(); setTimeout(() => window.dispatchEvent(new CustomEvent("tcall:open-support")), 100); }}
+              className="btn-secondary btn-compact w-full mt-2 flex items-center justify-center gap-2"
+            >
+              <Headset className="w-4 h-4" /> {copy.contact}
             </button>
           </>
         )}

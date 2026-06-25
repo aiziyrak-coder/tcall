@@ -6,6 +6,7 @@ import {
   Users, CreditCard, Phone, MessageSquare, ShieldAlert, BarChart3,
   Search, Check, X, Trash2, Lock, Ban, Crown, ChevronLeft, ChevronRight,
   RefreshCw, LogOut, ShieldCheck, Sparkles, Eye, UserPlus, AlertTriangle, Wallet,
+  Headset, Send,
 } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
@@ -13,7 +14,7 @@ import { getUI } from "@/lib/languages";
 
 const ui = getUI("uz");
 
-type Tab = "dashboard" | "users" | "subscriptions" | "payments" | "vanity" | "chats" | "reports" | "admins";
+type Tab = "dashboard" | "users" | "subscriptions" | "payments" | "support" | "vanity" | "chats" | "reports" | "admins";
 
 interface Stats {
   users: { total: number; today: number; week: number; test?: number };
@@ -56,6 +57,16 @@ interface PaymentRow {
   status: string; provider: string; createdAt: string; expiresAt: string; matchedAt: string | null;
   rawSms: string | null; approvedBy: string | null;
   user: { name: string; email: string; tcallId: string | null };
+}
+
+interface SupportTicket {
+  userId: string; name: string; email: string; tcallId: string | null; language: string;
+  lastText: string; lastSender: string; lastAt: string | null; unread: number; total: number;
+}
+
+interface SupportThreadMsg {
+  id: string; sender: "user" | "admin"; text: string; original: string; originalLang: string;
+  adminEmail: string | null; createdAt: string;
 }
 
 const VANITY_TIERS = [
@@ -104,6 +115,12 @@ export default function AdminPage() {
   const [payPages, setPayPages] = useState(1);
   const [payStatus, setPayStatus] = useState("pending");
   const [payPendingCount, setPayPendingCount] = useState(0);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(null);
+  const [thread, setThread] = useState<SupportThreadMsg[]>([]);
+  const [replyText, setReplyText] = useState("");
+  const [supportUnread, setSupportUnread] = useState(0);
+  const [supportSending, setSupportSending] = useState(false);
   const [vanityReqs, setVanityReqs] = useState<VanityReq[]>([]);
   const [vanitySubTab, setVanitySubTab] = useState<"requests" | "catalog">("requests");
   const [catalog, setCatalog] = useState<VanityCatalogItem[]>([]);
@@ -184,6 +201,43 @@ export default function AdminPage() {
     setLoading(false);
   }, [payStatus, payPage]);
 
+  const loadTickets = useCallback(async () => {
+    setLoading(true);
+    const r = await adminFetch("/api/admin/support");
+    const d = await r.json();
+    if (r.ok) setTickets(d.tickets || []);
+    setLoading(false);
+  }, []);
+
+  const loadThread = useCallback(async (t: SupportTicket) => {
+    setActiveTicket(t);
+    const r = await adminFetch(`/api/admin/support?userId=${t.userId}`);
+    const d = await r.json();
+    if (r.ok) setThread(d.messages || []);
+  }, []);
+
+  const loadSupportCount = useCallback(async () => {
+    const r = await adminFetch("/api/admin/support?count=1");
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) setSupportUnread(d.unread || 0);
+  }, []);
+
+  const sendReply = async () => {
+    if (!activeTicket || !replyText.trim() || supportSending) return;
+    setSupportSending(true); setError("");
+    const text = replyText.trim();
+    setReplyText("");
+    const r = await adminFetch("/api/admin/support", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: activeTicket.userId, text }),
+    });
+    const d = await r.json().catch(() => ({}));
+    setSupportSending(false);
+    if (!r.ok) { setError(d.error || "Xatolik"); return; }
+    await loadThread(activeTicket);
+    void loadSupportCount();
+  };
+
   const loadCatalog = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
@@ -229,12 +283,19 @@ export default function AdminPage() {
     if (tab === "users") void loadUsers();
     if (tab === "subscriptions") void loadSubs();
     if (tab === "payments") void loadPayments();
+    if (tab === "support") { setActiveTicket(null); void loadTickets(); }
     if (tab === "vanity" && vanitySubTab === "requests") void loadVanity();
     if (tab === "vanity" && vanitySubTab === "catalog") void loadCatalog();
     if (tab === "chats") void loadChats();
     if (tab === "reports") void loadReports();
     if (tab === "admins") void loadAdmins();
-  }, [tab, vanitySubTab, loadUsers, loadSubs, loadPayments, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
+  }, [tab, vanitySubTab, loadUsers, loadSubs, loadPayments, loadTickets, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
+
+  useEffect(() => {
+    void loadSupportCount();
+    const t = setInterval(() => void loadSupportCount(), 30_000);
+    return () => clearInterval(t);
+  }, [loadSupportCount]);
 
   const doAction = async () => {
     if (!actionUser) return;
@@ -363,6 +424,7 @@ export default function AdminPage() {
     { id: "users", label: "Foydalanuvchilar", icon: <Users className="w-4 h-4" />, badge: stats?.users.total },
     { id: "subscriptions", label: "Obunalar", icon: <CreditCard className="w-4 h-4" />, badge: (stats?.subscriptions.premium ?? 0) + (stats?.subscriptions.premiumPlus ?? 0) },
     { id: "payments", label: "To'lovlar", icon: <Wallet className="w-4 h-4" />, badge: payPendingCount || undefined },
+    { id: "support", label: "Qo'llab-quvvatlash", icon: <Headset className="w-4 h-4" />, badge: supportUnread || undefined },
     { id: "vanity", label: "Chiroyli raqamlar", icon: <Sparkles className="w-4 h-4" />, badge: stats?.pending.vanity },
     { id: "chats", label: "Suhbatlar", icon: <MessageSquare className="w-4 h-4" /> },
     { id: "reports", label: "Shikoyatlar", icon: <AlertTriangle className="w-4 h-4" />, badge: stats?.pending.reports },
@@ -683,6 +745,83 @@ export default function AdminPage() {
                       <button type="button" disabled={payPage >= payPages} onClick={() => setPayPage(p => p + 1)} className="p-1.5 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ SUPPORT ═══ */}
+          {tab === "support" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">Qo'llab-quvvatlash {supportUnread > 0 && <span className="text-amber-400">({supportUnread} yangi)</span>}</h2>
+                <button type="button" onClick={() => { setActiveTicket(null); void loadTickets(); void loadSupportCount(); }} className="p-2 rounded-xl bg-slate-800 text-slate-300"><RefreshCw className="w-4 h-4" /></button>
+              </div>
+
+              {!activeTicket ? (
+                loading ? <div className="text-center text-slate-500 py-10">Yuklanmoqda...</div> : tickets.length === 0 ? (
+                  <div className="text-center text-slate-500 py-16">Hozircha xabar yo'q</div>
+                ) : (
+                  <div className="space-y-2">
+                    {tickets.map((t) => (
+                      <button key={t.userId} type="button" onClick={() => void loadThread(t)} className="w-full text-left bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:bg-slate-800/50 transition-colors">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-white font-medium flex items-center gap-2">
+                              {t.name}
+                              <span className="text-slate-500 text-xs font-mono">{t.tcallId ? formatTcallId(t.tcallId) : t.email}</span>
+                              <span className="text-[10px] uppercase bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{t.language}</span>
+                            </p>
+                            <p className="text-slate-400 text-sm truncate mt-0.5">{t.lastSender === "admin" ? "Siz: " : ""}{t.lastText}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {t.unread > 0 && <span className="inline-block bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mb-1">{t.unread}</span>}
+                            <p className="text-slate-500 text-[11px]">{t.lastAt ? new Date(t.lastAt).toLocaleString() : ""}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col" style={{ height: "70vh" }}>
+                  <div className="flex items-center gap-3 p-4 border-b border-slate-800">
+                    <button type="button" onClick={() => { setActiveTicket(null); void loadTickets(); }} className="text-slate-400 hover:text-white"><ChevronLeft className="w-5 h-5" /></button>
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold">{activeTicket.name} <span className="text-slate-500 text-xs font-mono">{activeTicket.tcallId ? formatTcallId(activeTicket.tcallId) : ""}</span></p>
+                      <p className="text-slate-500 text-xs">Tili: {activeTicket.language} · javoblar avtomatik tarjima qilinadi</p>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    {thread.map((m) => (
+                      <div key={m.id} className={`flex ${m.sender === "admin" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 ${m.sender === "admin" ? "bg-brand-600 text-white rounded-br-md" : "bg-slate-800 text-slate-100 rounded-bl-md"}`}>
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>
+                          {m.sender === "user" && m.original && m.originalLang !== "uz" && (
+                            <p className="text-[11px] mt-1 text-slate-400 italic">Asl ({m.originalLang}): {m.original}</p>
+                          )}
+                          <p className={`text-[10px] mt-1 ${m.sender === "admin" ? "text-white/70" : "text-slate-500"}`}>{new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {thread.length === 0 && <p className="text-center text-slate-500 py-8">Xabar yo'q</p>}
+                  </div>
+
+                  <div className="p-3 border-t border-slate-800 flex items-end gap-2">
+                    <textarea
+                      className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
+                      placeholder="O'zbekcha javob yozing — foydalanuvchi tiliga tarjima bo'ladi"
+                      rows={2}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendReply(); } }}
+                      maxLength={2000}
+                    />
+                    <button type="button" onClick={() => void sendReply()} disabled={supportSending || !replyText.trim()} className="bg-brand-600 hover:bg-brand-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50 flex items-center gap-1.5">
+                      <Send className="w-4 h-4" /> Javob
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

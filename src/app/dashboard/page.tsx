@@ -17,6 +17,7 @@ import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { ChatMessenger } from "@/components/ChatMessenger";
+import { SupportChat } from "@/components/SupportChat";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
 import { LiveInterpreter } from "@/components/LiveInterpreter";
 import { PhoneShell, PhoneHeader, type PhoneTab } from "@/components/PhoneShell";
@@ -111,6 +112,7 @@ function DashboardInner({
   const [chatInThread, setChatInThread] = useState(false);
   const [notifHint, setNotifHint] = useState("");
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const [showSupport, setShowSupport] = useState(false);
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -173,6 +175,12 @@ function DashboardInner({
     window.addEventListener("tcall:open-chat", onOpenChat);
     return () => window.removeEventListener("tcall:open-chat", onOpenChat);
   }, [setTab]);
+
+  useEffect(() => {
+    const onOpenSupport = () => setShowSupport(true);
+    window.addEventListener("tcall:open-support", onOpenSupport);
+    return () => window.removeEventListener("tcall:open-support", onOpenSupport);
+  }, []);
 
   const handleNotifications = async () => {
     setNotifHint("");
@@ -345,6 +353,12 @@ function DashboardInner({
           onUpdate={(updates) => setUser({ ...user, ...updates })}
         />
       )}
+
+      <SupportChat
+        open={showSupport}
+        userLanguage={user.language}
+        onClose={() => setShowSupport(false)}
+      />
 
       {showHeaderMenu && (
         <div className="ios-modal-overlay" onClick={() => setShowHeaderMenu(false)}>

@@ -1,5 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PRICES } from "@/lib/subscription";
+import { notifyAdminTelegram } from "@/lib/telegram";
+
+function fmtSom(n: number): string {
+  return n.toLocaleString("ru-RU").replace(/,/g, " ");
+}
+
+async function notifyAdminNewPayment(userId: string, plan: string, amount: number) {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, tcallId: true } }).catch(() => null);
+  void notifyAdminTelegram(
+    `💳 <b>Yangi to'lov boshlandi</b>\n👤 ${u?.name || "Foydalanuvchi"} (${u?.tcallId || "—"})\nTarif: ${plan}\nSumma: <b>${fmtSom(amount)} so'm</b>`
+  );
+}
 
 export type PaidPlan = "premium" | "premium_plus";
 
@@ -68,7 +80,7 @@ export async function createPendingPayment(
       select: { id: true },
     });
     if (!clash) {
-      return prisma.payment.create({
+      const created = await prisma.payment.create({
         data: {
           userId,
           plan,
@@ -80,6 +92,8 @@ export async function createPendingPayment(
           provider: "p2p_card",
         },
       });
+      void notifyAdminNewPayment(userId, plan, amount);
+      return created;
     }
   }
   throw new Error("Noyob summa topilmadi — keyinroq urinib ko'ring");
@@ -180,6 +194,11 @@ export async function activatePayment(
       update: { plan, status: "active", startedAt: now, expiresAt, price: usdPrice, note: "p2p_payment" },
     }),
   ]);
+
+  const u = await prisma.user.findUnique({ where: { id: payment.userId }, select: { name: true, tcallId: true } }).catch(() => null);
+  void notifyAdminTelegram(
+    `✅ <b>To'lov tasdiqlandi</b> (${opts.source === "admin" ? "admin" : "SMS"})\n👤 ${u?.name || "Foydalanuvchi"} (${u?.tcallId || "—"})\nTarif: ${plan}\nSumma: <b>${fmtSom(payment.amount)} so'm</b>`
+  );
 
   return prisma.payment.findUnique({ where: { id: payment.id } });
 }

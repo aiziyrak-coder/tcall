@@ -18,6 +18,8 @@ model User {
   status          String   @default("available")
   bio             String?
   avatar          String?
+  telegramUsername String?
+  telegramChatId  String?
   age             Int?
   city            String?
   country         String?
@@ -53,6 +55,7 @@ model User {
   deviceTokens         DeviceToken[]
   passwordResetTokens  PasswordResetToken[]
   payments               Payment[]
+  supportMessages        SupportMessage[]
 }
 
 model AdminUser {
@@ -107,6 +110,23 @@ model Payment {
   @@index([status, expiresAt])
   @@index([userId, status])
   @@index([amount, status])
+}
+
+model SupportMessage {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender         String   // "user" | "admin"
+  originalText   String
+  originalLang   String   // foydalanuvchi xabari: o'z tili; admin xabari: "uz"
+  translatedText String?  // qarama-qarshi tomon tili uchun tarjima
+  adminEmail     String?
+  readByUser     Boolean  @default(false)
+  readByAdmin    Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sender, readByAdmin])
 }
 
 model UserBan {

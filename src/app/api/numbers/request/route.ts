@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_TELEGRAM_USERNAME, ADMIN_TELEGRAM_URL } from "@/lib/admin-config";
-import { quoteVanityNumber } from "@/lib/vanity-pricing";
+import { quoteVanityNumber, formatVanityPrice } from "@/lib/vanity-pricing";
 import { getUserVanityState, isNumberTaken } from "@/lib/vanity-service";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { notifyAdminTelegram } from "@/lib/telegram";
 
 export async function POST(req: NextRequest) {
   try {
@@ -87,6 +88,10 @@ export async function POST(req: NextRequest) {
         status: "pending",
       },
     });
+
+    void notifyAdminTelegram(
+      `✨ <b>Yangi chiroyli raqam so'rovi</b>\n👤 ${session.name || "Foydalanuvchi"} (${session.tcallId || "—"})\nRaqam: <b>${number}</b>\nNarx: ${formatVanityPrice(price)}`
+    );
 
     return NextResponse.json({
       success: true,
