@@ -43,6 +43,8 @@ import {
   shouldDismissOnPointerTarget,
 } from "@/lib/dismiss-keyboard";
 import { startVoiceRecord, stopVoiceRecord, type VoiceRecordSession } from "@/lib/chat-voice-record";
+import { ChatMediaViewer } from "@/components/ChatMediaViewer";
+import { VoiceMessageBubble } from "@/components/VoiceMessageBubble";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -142,9 +144,12 @@ export function ChatMessenger({
   const [showPartnerProfile, setShowPartnerProfile] = useState(false);
   const [groupAvatarUploading, setGroupAvatarUploading] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
+  const [voiceDuration, setVoiceDuration] = useState(0);
+  const [mediaViewer, setMediaViewer] = useState<{ src: string; type: "image" | "video" | "audio"; name?: string } | null>(null);
   const groupAvatarRef = useRef<HTMLInputElement>(null);
   const voiceSessionRef = useRef<VoiceRecordSession | null>(null);
   const voiceRecordStartedRef = useRef(0);
+  const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -645,7 +650,7 @@ export function ChatMessenger({
     if (!activeId || uploading) return;
     setUploadError("");
 
-    const allowedTypes = ["image/", "video/", "application/pdf", "application/zip", "text/"];
+    const allowedTypes = ["image/", "video/", "audio/", "application/pdf", "application/zip", "text/"];
     const isAllowed = allowedTypes.some((t) => file.type.startsWith(t));
     if (!isAllowed && !file.type) {
       // type bo'lmasa ham o'tkazamiz — brauzer aniqlay olmagan bo'lishi mumkin
@@ -818,17 +823,36 @@ export function ChatMessenger({
       const session = await startVoiceRecord();
       voiceSessionRef.current = session;
       voiceRecordStartedRef.current = Date.now();
+      setVoiceDuration(0);
       setRecordingVoice(true);
       setUploadError("");
+      // Timer
+      voiceTimerRef.current = setInterval(() => {
+        setVoiceDuration(Math.floor((Date.now() - voiceRecordStartedRef.current) / 1000));
+      }, 500);
     } catch {
       setUploadError(ui.chatMicDenied);
     }
   };
 
-  const finishVoiceRecord = async () => {
+  const cancelVoiceRecord = () => {
+    if (voiceTimerRef.current) { clearInterval(voiceTimerRef.current); voiceTimerRef.current = null; }
     const session = voiceSessionRef.current;
     voiceSessionRef.current = null;
     setRecordingVoice(false);
+    setVoiceDuration(0);
+    if (session) {
+      try { session.recorder.stop(); } catch { /* ignore */ }
+      session.stream.getTracks().forEach(t => t.stop());
+    }
+  };
+
+  const finishVoiceRecord = async () => {
+    if (voiceTimerRef.current) { clearInterval(voiceTimerRef.current); voiceTimerRef.current = null; }
+    const session = voiceSessionRef.current;
+    voiceSessionRef.current = null;
+    setRecordingVoice(false);
+    setVoiceDuration(0);
     if (!session) return;
     const elapsed = Date.now() - voiceRecordStartedRef.current;
     try {
@@ -1040,6 +1064,7 @@ export function ChatMessenger({
                     ui={ui}
                     onDelete={m.sender.id === userId && !m.deleted ? () => void deleteMessage(m.id) : undefined}
                     onReact={!m.deleted ? (emoji) => void handleReaction(m.id, emoji) : undefined}
+                    onOpenMedia={(src, type, name) => setMediaViewer({ src, type, name })}
                   />
                 </Fragment>
               );
@@ -1058,7 +1083,18 @@ export function ChatMessenger({
         <div className="chat-composer">
           {uploadError && <div className="chat-upload-error">{uploadError}</div>}
           {uploading && <div className="chat-upload-status">{ui.chatUploading}</div>}
-          {recordingVoice && <div className="chat-upload-status">{ui.chatHoldToRecord}</div>}
+          {recordingVoice && (
+            <div className="voice-recording-bar">
+              <span className="voice-rec-dot" aria-hidden />
+              <span className="voice-rec-time">
+                {Math.floor(voiceDuration / 60)}:{(voiceDuration % 60).toString().padStart(2, "0")}
+              </span>
+              <span className="voice-rec-hint">↑ Qo'yib yuborish — yuborish</span>
+              <button type="button" className="voice-rec-cancel" onClick={cancelVoiceRecord} aria-label="Bekor qilish">
+                ✕
+              </button>
+            </div>
+          )}
           {showEmoji && (
             <div className="chat-emoji-panel">
               {EMOJIS.map((e) => (
@@ -1472,6 +1508,15 @@ export function ChatMessenger({
       )}
       </div>
 
+      {mediaViewer && (
+        <ChatMediaViewer
+          src={mediaViewer.src}
+          type={mediaViewer.type}
+          name={mediaViewer.name}
+          onClose={() => setMediaViewer(null)}
+        />
+      )}
+
       {pendingDeleteId && (
         <div className="ios-modal-overlay" onClick={() => setPendingDeleteId(null)}>
           <div className="ios-modal-panel max-w-xs" onClick={(e) => e.stopPropagation()}>
@@ -1498,12 +1543,14 @@ function MessageBubble({
   ui,
   onDelete,
   onReact,
+  onOpenMedia,
 }: {
   msg: ChatMessageItem;
   isMine: boolean;
   ui: Record<string, string>;
   onDelete?: () => void;
   onReact?: (emoji: string) => void;
+  onOpenMedia?: (src: string, type: "image" | "video" | "audio", name?: string) => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
@@ -1543,32 +1590,39 @@ function MessageBubble({
           </p>
         )}
         {isImage && mediaSrc && !mediaBroken && (
-          <a href={mediaSrc} target="_blank" rel="noopener noreferrer">
+          <button
+            type="button"
+            className="chat-media-tap"
+            onClick={() => onOpenMedia?.(mediaSrc, "image", msg.mediaName || undefined)}
+          >
             <img
               src={mediaSrc}
               alt={msg.mediaName || ui.chatPhoto}
               className="chat-media-image"
               onError={() => setMediaBroken(true)}
             />
-          </a>
+          </button>
         )}
         {isImage && mediaSrc && mediaBroken && (
-          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
+          <button type="button" className="chat-file-link" onClick={() => onOpenMedia?.(mediaSrc, "image", msg.mediaName || undefined)}>
             📷 {msg.mediaName || ui.chatOpenFile}
-          </a>
+          </button>
         )}
         {isVideo && mediaSrc && (
-          <video src={mediaSrc} controls className="chat-media-video" playsInline preload="metadata">
-            <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
-              {ui.chatOpenFile}
-            </a>
-          </video>
+          <button
+            type="button"
+            className="chat-media-tap chat-media-video-thumb"
+            onClick={() => onOpenMedia?.(mediaSrc, "video", msg.mediaName || undefined)}
+          >
+            <video src={mediaSrc} className="chat-media-video" preload="metadata" playsInline muted />
+            <span className="chat-video-play-icon" aria-hidden>▶</span>
+          </button>
         )}
         {isAudio && mediaSrc && (
-          <audio src={mediaSrc} controls className="chat-media-audio" preload="metadata" />
+          <VoiceMessageBubble src={mediaSrc} isMine={isMine} />
         )}
         {msg.type === "file" && mediaSrc && !isImage && !isVideo && !isAudio && (
-          <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
+          <a href={mediaSrc} download={msg.mediaName || undefined} className="chat-file-link">
             📎 {msg.mediaName || ui.chatFile}
           </a>
         )}
