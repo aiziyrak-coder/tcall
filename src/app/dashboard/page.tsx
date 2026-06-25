@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset } from "lucide-react";
+import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -417,6 +417,17 @@ function DashboardInner({
       {showHeaderMenu && (
         <div className="ios-modal-overlay" onClick={() => setShowHeaderMenu(false)}>
           <div className="ios-modal-panel header-actions-sheet" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="header-actions-item"
+              onClick={() => {
+                setShowHeaderMenu(false);
+                setTab("numbers");
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>{ui.vanityNumbers}</span>
+            </button>
             <button
               type="button"
               className="header-actions-item"

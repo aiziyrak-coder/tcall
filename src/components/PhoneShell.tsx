@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   Phone,
   UserRoundSearch,
@@ -8,13 +8,11 @@ import {
   Sparkles,
   MessageSquare,
   Languages,
-  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { useUI } from "@/components/providers/LocaleProvider";
 import type { UIText } from "@/lib/ui-locale-service";
 import { TcallLogo } from "@/components/TcallLogo";
-import { MoreMenuSheet } from "@/components/MoreMenuSheet";
 import { useMobileBottomNav } from "@/hooks/useMobileBottomNav";
 
 export type PhoneTab = "keypad" | "friends" | "room" | "numbers" | "messages" | "interpreter";
@@ -31,32 +29,21 @@ interface PhoneShellProps {
   contentClassName?: string;
 }
 
-const SIDEBAR_TABS: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText }[] = [
+const NAV_TABS: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText }[] = [
   { id: "messages", icon: MessageSquare, labelKey: "messages" },
   { id: "keypad", icon: Phone, labelKey: "keypad" },
   { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
   { id: "room", icon: Link2, labelKey: "roomTab" },
-  { id: "numbers", icon: Sparkles, labelKey: "vanityNumbers" },
+  { id: "interpreter", icon: Languages, labelKey: "interpreterTab" },
 ];
 
-const BOTTOM_TAB: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText } = {
-  id: "interpreter",
-  icon: Languages,
-  labelKey: "interpreterTab",
-};
-
-type MobileBarItem =
-  | { kind: "tab"; id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText; center?: boolean }
-  | { kind: "more"; icon: LucideIcon; labelKey: "moreTab" };
-
-const MOBILE_TABS: MobileBarItem[] = [
-  { kind: "tab", id: "messages", icon: MessageSquare, labelKey: "messages" },
-  { kind: "tab", id: "keypad", icon: Phone, labelKey: "keypad", center: true },
-  { kind: "tab", id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
-  { kind: "more", icon: LayoutGrid, labelKey: "moreTab" },
+const MOBILE_TABS: { id: PhoneTab; icon: LucideIcon; labelKey: keyof UIText; center?: boolean }[] = [
+  { id: "messages", icon: MessageSquare, labelKey: "messages" },
+  { id: "friends", icon: UserRoundSearch, labelKey: "friendsTab" },
+  { id: "keypad", icon: Phone, labelKey: "keypad", center: true },
+  { id: "room", icon: Link2, labelKey: "roomTab" },
+  { id: "interpreter", icon: Languages, labelKey: "interpreterTab" },
 ];
-
-const MORE_TABS: PhoneTab[] = ["room", "numbers", "interpreter"];
 
 export const TAB_ICONS: Record<PhoneTab, LucideIcon> = {
   keypad: Phone,
@@ -85,7 +72,7 @@ function SidebarNav({
         <span className="app-sidebar-brand-text">Tcall</span>
       </div>
       <nav className="app-sidebar-nav">
-        {SIDEBAR_TABS.map(({ id, icon: Icon, labelKey }) => {
+        {NAV_TABS.map(({ id, icon: Icon, labelKey }) => {
           const active = activeTab === id;
           const badge = badges?.[id];
           return (
@@ -95,6 +82,8 @@ function SidebarNav({
               onClick={() => onTabChange(id)}
               className={`app-sidebar-item ${active ? "app-sidebar-item-active" : ""}`}
               title={ui[labelKey] as string}
+              aria-label={ui[labelKey] as string}
+              aria-current={active ? "page" : undefined}
             >
               <span className="app-sidebar-icon-wrap">
                 <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
@@ -106,25 +95,6 @@ function SidebarNav({
             </button>
           );
         })}
-        <div className="app-sidebar-spacer" aria-hidden />
-        {(() => {
-          const { id, icon: Icon, labelKey } = BOTTOM_TAB;
-          const active = activeTab === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onTabChange(id)}
-              className={`app-sidebar-item app-sidebar-item-bottom ${active ? "app-sidebar-item-active" : ""}`}
-              title={ui[labelKey] as string}
-            >
-              <span className="app-sidebar-icon-wrap">
-                <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
-              </span>
-              <span className="app-sidebar-label">{ui[labelKey] as string}</span>
-            </button>
-          );
-        })()}
       </nav>
     </aside>
   );
@@ -135,44 +105,16 @@ function BottomTabBar({
   activeTab,
   onTabChange,
   badges,
-  onMoreOpen,
-  moreOpen,
 }: {
   ui: UIText;
   activeTab: PhoneTab;
   onTabChange: (tab: PhoneTab) => void;
   badges?: Partial<Record<PhoneTab, number>>;
-  onMoreOpen: () => void;
-  moreOpen: boolean;
 }) {
-  const moreActive = MORE_TABS.includes(activeTab);
-
   return (
     <nav className="liquid-tab-bar" aria-label="Navigation">
       <div className="liquid-tab-bar-inner">
-        {MOBILE_TABS.map((tab) => {
-          if (tab.kind === "more") {
-            const active = moreActive;
-            const Icon = tab.icon;
-            return (
-              <button
-                key="more"
-                type="button"
-                className={`liquid-tab-item${active ? " liquid-tab-item-active" : ""}`}
-                onClick={onMoreOpen}
-                aria-label={ui.moreTab as string}
-                aria-expanded={moreOpen}
-              >
-                <span className="liquid-tab-pill" aria-hidden />
-                <span className="liquid-tab-icon-wrap">
-                  <Icon className="w-[22px] h-[22px]" strokeWidth={active ? 2.4 : 1.8} />
-                </span>
-                <span className="liquid-tab-label">{ui.moreTab as string}</span>
-              </button>
-            );
-          }
-
-          const { id, icon: Icon, labelKey, center } = tab;
+        {MOBILE_TABS.map(({ id, icon: Icon, labelKey, center }) => {
           const active = activeTab === id;
           const badge = badges?.[id];
 
@@ -238,11 +180,6 @@ export function PhoneShell({
 }: PhoneShellProps) {
   const ui = useUI(userLanguage);
   const bottomNav = useMobileBottomNav();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  useEffect(() => {
-    if (!bottomNav) setMoreOpen(false);
-  }, [bottomNav]);
 
   const shellClass = [
     "app-shell",
@@ -273,17 +210,6 @@ export function PhoneShell({
           activeTab={activeTab}
           onTabChange={onTabChange}
           badges={badges}
-          onMoreOpen={() => setMoreOpen(true)}
-          moreOpen={moreOpen}
-        />
-      )}
-
-      {moreOpen && (
-        <MoreMenuSheet
-          userLanguage={userLanguage}
-          activeTab={activeTab}
-          onSelect={onTabChange}
-          onClose={() => setMoreOpen(false)}
         />
       )}
     </div>
