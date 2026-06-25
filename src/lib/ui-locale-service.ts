@@ -1,3 +1,6 @@
+import { promises as fs } from "fs";
+import path from "path";
+import crypto from "crypto";
 import { UI_TEXT, type UILocale } from "./languages";
 import { getLanguageName } from "./languages";
 
@@ -6,6 +9,35 @@ export type UIText = (typeof UI_TEXT)["en"];
 const STATIC: Set<string> = new Set(Object.keys(UI_TEXT));
 const cache = new Map<string, UIText>();
 const pending = new Map<string, Promise<UIText>>();
+
+// Persisted translation cache — survives restarts so we don't re-translate (cost + latency).
+const CACHE_DIR = path.join(process.cwd(), ".locale-cache");
+// Bump automatically whenever the set of UI keys changes, invalidating stale files.
+const SCHEMA_VERSION = crypto
+  .createHash("sha1")
+  .update(Object.keys(UI_TEXT.en).sort().join(","))
+  .digest("hex")
+  .slice(0, 12);
+
+async function readFromDisk(code: string): Promise<UIText | null> {
+  try {
+    const raw = await fs.readFile(path.join(CACHE_DIR, `${code}.json`), "utf8");
+    const parsed = JSON.parse(raw) as { __v?: string; ui?: UIText };
+    if (parsed && parsed.__v === SCHEMA_VERSION && parsed.ui) return parsed.ui;
+  } catch {
+    /* missing or stale */
+  }
+  return null;
+}
+
+async function writeToDisk(code: string, ui: UIText): Promise<void> {
+  try {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    await fs.writeFile(path.join(CACHE_DIR, `${code}.json`), JSON.stringify({ __v: SCHEMA_VERSION, ui }), "utf8");
+  } catch {
+    /* best effort */
+  }
+}
 
 function getApiKey(): string | null {
   return process.env.OPENAI_API_KEY || null;
@@ -70,6 +102,10 @@ async function buildLocale(targetLang: string): Promise<UIText> {
     return UI_TEXT[targetLang as UILocale] as UIText;
   }
 
+  // Reuse a previously translated (persisted) locale when available.
+  const disk = await readFromDisk(targetLang);
+  if (disk) return disk;
+
   const base = { ...UI_TEXT.en } as Record<string, string>;
   const chunks = chunkEntries(base, 90);
 
@@ -80,7 +116,9 @@ async function buildLocale(targetLang: string): Promise<UIText> {
     }
   }
 
-  return base as UIText;
+  const result = base as UIText;
+  void writeToDisk(targetLang, result);
+  return result;
 }
 
 export async function getUILocale(lang: string): Promise<UIText> {

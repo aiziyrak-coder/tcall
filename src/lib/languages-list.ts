@@ -81,6 +81,14 @@ export const LANGUAGES = [
 
 export type LanguageCode = (typeof LANGUAGES)[number]["code"];
 
+/** Right-to-left languages (Arabic, Hebrew, Persian, Urdu, Pashto). */
+export const RTL_LANGUAGES: ReadonlySet<string> = new Set(["ar", "he", "fa", "ur", "ps"]);
+
+export function isRTL(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return RTL_LANGUAGES.has(code.split("-")[0].toLowerCase());
+}
+
 export const SPEECH_LOCALES: Record<string, string> = {
   uz: "uz-UZ", ru: "ru-RU", en: "en-US", tr: "tr-TR", ar: "ar-SA",
   zh: "zh-CN", ko: "ko-KR", ja: "ja-JP", de: "de-DE", fr: "fr-FR",

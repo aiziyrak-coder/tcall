@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getUI, type UILocale } from "@/lib/languages";
+import { isRTL } from "@/lib/languages-list";
 import type { UIText } from "@/lib/ui-locale-service";
 import { apiFetch } from "@/lib/api";
 
@@ -85,6 +86,7 @@ export function LocaleProvider({ lang, children }: { lang: string; children: Rea
     fetchLocale(controller.signal);
     if (typeof document !== "undefined") {
       document.documentElement.lang = code;
+      document.documentElement.dir = isRTL(code) ? "rtl" : "ltr";
     }
     return () => controller.abort();
   }, [code]);

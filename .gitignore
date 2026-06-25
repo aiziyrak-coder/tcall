@@ -10,3 +10,4 @@ deploy/.env.production.server
 dist
 public/uploads/
 tsconfig.tsbuildinfo
+.locale-cache/

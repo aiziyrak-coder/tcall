@@ -10,6 +10,22 @@
   80% { transform: translateX(5px); }
 }
 
+/* ===== RTL (Arabic, Hebrew, Persian, Urdu, Pashto) ===== */
+/* Flex layouts follow the document direction automatically; these keep
+   numeric/identifier fields readable left-to-right inside an RTL UI. */
+[dir="rtl"] .font-mono,
+[dir="rtl"] input[type="email"],
+[dir="rtl"] input[type="tel"],
+[dir="rtl"] input[inputmode="numeric"],
+[dir="rtl"] input[inputmode="email"],
+[dir="rtl"] .force-ltr {
+  direction: ltr;
+}
+[dir="rtl"] .force-ltr-end {
+  direction: ltr;
+  text-align: right;
+}
+
 :root {
   --bg-primary: #f2f2f7;
   --bg-secondary: #ffffff;

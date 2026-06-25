@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
+import { detectDeviceLanguage } from "@/lib/locale-detect";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
@@ -17,6 +18,14 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ email: "", password: "", name: "", language: "uz" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [langTouched, setLangTouched] = useState(false);
+
+  // Default the language to the user's device language (if supported) on first load.
+  useEffect(() => {
+    if (langTouched) return;
+    const detected = detectDeviceLanguage("uz");
+    setForm((f) => (f.language === "uz" ? { ...f, language: detected } : f));
+  }, [langTouched]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +106,7 @@ export default function RegisterPage() {
             name="language"
             className="input-field auth-input"
             value={form.language}
-            onChange={(e) => setForm({ ...form, language: e.target.value })}
+            onChange={(e) => { setLangTouched(true); setForm({ ...form, language: e.target.value }); }}
             onFocus={(e) => scrollInputIntoView(e.currentTarget)}
           >
             {LANGUAGES.map((lang) => (
