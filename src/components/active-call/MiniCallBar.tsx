@@ -1,6 +1,7 @@
 "use client";
 
-import { Mic, MicOff, PhoneOff, Maximize2 } from "lucide-react";
+import { useEffect } from "react";
+import { Mic, MicOff, PhoneOff, Maximize2, Languages, Loader2 } from "lucide-react";
 import { useActiveCall } from "./ActiveCallStateContext";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -13,13 +14,21 @@ function formatDuration(seconds: number): string {
 
 export function MiniCallBar() {
   const call = useActiveCall();
-  const { expandCall, userLanguage, userName } = useCallContext();
+  const { expandCall, userLanguage, userName, clearActiveCall } = useCallContext();
   const ui = useUI(userLanguage);
+
+  useEffect(() => {
+    if (call.callStatus !== "ended") return;
+    const timer = setTimeout(() => clearActiveCall(), 600);
+    return () => clearTimeout(timer);
+  }, [call.callStatus, clearActiveCall]);
 
   const partnerName = call.partner?.name || ui.waiting;
   const status =
     call.callStatus === "active"
       ? formatDuration(call.callDuration)
+      : call.callStatus === "ended"
+        ? ui.ended
       : !call.socketConnected
         ? ui.reconnecting
       : call.connectionSlow
@@ -31,6 +40,15 @@ export function MiniCallBar() {
   const latestTranslation = call.translations
     .filter((t) => t.speaker !== userName)
     .slice(-1)[0];
+
+  const activityHint =
+    call.translationActivity === "processing"
+      ? ui.interpreterProcessing
+      : call.translationActivity === "speaking"
+        ? ui.interpreterSpeaking
+        : call.translationActivity === "listening"
+          ? ui.interpreterListening
+          : null;
 
   return (
     <div className="mini-call-bar" role="region" aria-label={ui.callInProgress}>
@@ -47,7 +65,17 @@ export function MiniCallBar() {
         <span className="mini-call-bar-info">
           <span className="mini-call-bar-name">{partnerName}</span>
           <span className="mini-call-bar-status">{status}</span>
-          {latestTranslation && (
+          {activityHint && (
+            <span className="mini-call-bar-sub flex items-center gap-1">
+              {call.translationActivity === "processing" ? (
+                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+              ) : (
+                <Languages className="w-3 h-3 shrink-0 opacity-70" />
+              )}
+              {activityHint}
+            </span>
+          )}
+          {!activityHint && latestTranslation && (
             <span className="mini-call-bar-sub">{latestTranslation.translated}</span>
           )}
         </span>
@@ -60,6 +88,7 @@ export function MiniCallBar() {
           className={`mini-call-bar-btn ${call.isMuted ? "mini-call-bar-btn-muted" : ""}`}
           onClick={() => {
             void call.unlockAudio();
+            void call.playRemoteAudio();
             call.toggleMute();
           }}
           title={call.isMuted ? ui.unmute : ui.mute}

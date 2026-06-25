@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 import { apiFetch } from "@/lib/api";
 import { waitForSharedSocket } from "@/lib/call-socket";
-import { TranslationAudioQueue } from "@/lib/audioQueue";
+import { requestWakeLock } from "@/lib/mobile";
+import { normalizeLanguageCode } from "@/lib/lang-validators";
 import {
-  getPreferredAudioMimeType,
-  requestWakeLock,
-  isIOS,
-} from "@/lib/mobile";
-import { isValidTranscript, isDuplicateTranscript } from "@/lib/call-translation";
+  CallTranslationEngine,
+  type TranslationActivity,
+  type TranslationErrorCode,
+} from "@/lib/call-translation-engine";
 import {
   markMicGranted,
   queryMicPermission,
@@ -25,17 +25,14 @@ import {
   unlockBrowserAudio,
 } from "@/lib/audio-unlock";
 import { getPeerConnectionConfig } from "@/lib/webrtc";
-import type { RoomParticipant, TranslationPayload } from "@/types/signaling";
+import type { TranslationPayload, TranslationMessage, RoomParticipant } from "@/types/signaling";
+
+export type { TranslationMessage };
 
 function notifyCallsChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("tcall:calls-changed"));
   }
-}
-
-export interface TranslationMessage extends TranslationPayload {
-  id: string;
-  timestamp: number;
 }
 
 export type CallStatus = "connecting" | "waiting" | "ringing" | "active" | "ended" | "error";
@@ -78,27 +75,22 @@ export function useCall({
   const [connectionSlow, setConnectionSlow] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [translationActivity, setTranslationActivity] = useState<TranslationActivity>("idle");
+  const [translationError, setTranslationError] = useState<TranslationErrorCode | null>(null);
   const [micStatus, setMicStatus] = useState<MicStatus>("pending");
 
   const socketRef = useRef<Socket | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const recordingActiveRef = useRef(false);
-  const processingRef = useRef(false);
-  const chunkQueueRef = useRef<Blob[]>([]);
-  const recorderRestartTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastTranscriptRef = useRef("");
+  const translationEngineRef = useRef<CallTranslationEngine | null>(null);
   const remoteIdRef = useRef<string | null>(null);
   const iceQueueRef = useRef<RTCIceCandidateInit[]>([]);
   const intentionalEndRef = useRef(false);
   const makingOfferRef = useRef(false);
-  const msgCounterRef = useRef(0);
   const isMutedRef = useRef(false);
   const translationModeRef = useRef<TranslationMode>(translationMode);
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
-  const audioQueueRef = useRef<TranslationAudioQueue | null>(null);
   const offerRetryRef = useRef(0);
   const relayFallbackRef = useRef(false);
   const slowHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,6 +105,7 @@ export function useCall({
   const startSessionRef = useRef<(stream: MediaStream) => Promise<void>>(async () => {});
   const sessionStartedRef = useRef(false);
   const remoteAudioCtxRef = useRef<AudioContext | null>(null);
+  const remoteAudioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const playRemoteAudioRef = useRef<() => void>(() => {});
   const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
   optsRef.current = { roomId, userId, userName, userLanguage, isHost };
@@ -132,7 +125,6 @@ export function useCall({
 
   useEffect(() => {
     translationModeRef.current = translationModeState;
-    socketRef.current?.emit("update-translation-mode", { mode: translationModeState });
   }, [translationModeState]);
 
   const clearSlowHint = useCallback(() => {
@@ -180,165 +172,31 @@ export function useCall({
     iceQueueRef.current = [];
     remoteStreamRef.current = null;
     setRemoteStream(null);
+    remoteAudioSourceRef.current?.disconnect();
+    remoteAudioSourceRef.current = null;
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
     }
   }, [clearOfferRetry]);
 
-  const clearRecorderRestartTimer = useCallback(() => {
-    if (recorderRestartTimerRef.current) {
-      clearInterval(recorderRestartTimerRef.current);
-      recorderRestartTimerRef.current = null;
-    }
-  }, []);
-
-  const stopRecording = useCallback(() => {
-    recordingActiveRef.current = false;
-    clearRecorderRestartTimer();
-    chunkQueueRef.current = [];
-    const rec = recorderRef.current;
-    recorderRef.current = null;
-    if (rec && rec.state !== "inactive") {
-      try { rec.stop(); } catch { /* ignore */ }
-    }
-    setIsListening(false);
-  }, [clearRecorderRestartTimer]);
-
   const needsTranslation = useCallback(() => {
     const partnerLang = partnerLanguageRef.current;
-    return !partnerLang || partnerLang !== userLanguage;
+    if (!partnerLang) return false;
+    return normalizeLanguageCode(partnerLang) !== normalizeLanguageCode(userLanguage);
   }, [userLanguage]);
 
-  const processAudioChunkInternal = useCallback(
-    async (blob: Blob) => {
-      if (isMutedRef.current || !recordingActiveRef.current || !sessionActiveRef.current) return;
-      if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
+  const startTranslation = useCallback(() => {
+    if (!needsTranslation() || isMutedRef.current) return;
+    translationEngineRef.current?.start();
+  }, [needsTranslation]);
 
-      const isMp4 = blob.type.includes("mp4") || blob.type.includes("aac");
-      const minSize = isMp4 ? 1400 : 400;
-      if (blob.size < minSize) return;
-
-      try {
-        const formData = new FormData();
-        formData.append("audio", blob, isMp4 ? "chunk.mp4" : "chunk.webm");
-        formData.append("language", userLanguage);
-
-        const res = await apiFetch("/api/openai/transcribe", { method: "POST", body: formData });
-        if (!res.ok) return;
-
-        const data = await res.json();
-        const text = data.text?.trim();
-        if (!text || !isValidTranscript(text)) return;
-        if (isDuplicateTranscript(lastTranscriptRef.current, text)) return;
-
-        lastTranscriptRef.current = text;
-        if (sessionActiveRef.current && socketRef.current?.connected) {
-          socketRef.current.emit("speech-transcript", { text, isFinal: true });
-          msgCounterRef.current += 1;
-          setTranslations((prev) => [
-            ...prev.slice(-29),
-            {
-              id: `self-${msgCounterRef.current}`,
-              original: text,
-              translated: text,
-              sourceLang: userLanguage,
-              targetLang: userLanguage,
-              speaker: optsRef.current.userName,
-              isFinal: true,
-              timestamp: Date.now(),
-            },
-          ]);
-        }
-
-        setTimeout(() => {
-          if (lastTranscriptRef.current === text) lastTranscriptRef.current = "";
-        }, 5000);
-      } catch (e) {
-        console.error("Transcribe failed:", e);
-      }
-    },
-    [userLanguage]
-  );
-
-  const drainChunkQueue = useCallback(async () => {
-    if (processingRef.current) return;
-    processingRef.current = true;
-    try {
-      while (chunkQueueRef.current.length > 0) {
-        const blob = chunkQueueRef.current.shift()!;
-        await processAudioChunkInternal(blob);
-      }
-    } finally {
-      processingRef.current = false;
-    }
-  }, [processAudioChunkInternal]);
-
-  const enqueueAudioChunk = useCallback(
-    (blob: Blob) => {
-      if (processingRef.current && chunkQueueRef.current.length >= 6) {
-        chunkQueueRef.current.shift();
-      }
-      chunkQueueRef.current.push(blob);
-      void drainChunkQueue();
-    },
-    [drainChunkQueue]
-  );
-
-  const startRecording = useCallback(
-    (stream: MediaStream) => {
-      if (recorderRef.current || isMutedRef.current) return;
-      if (partnerLanguageRef.current && partnerLanguageRef.current === userLanguage) return;
-      const audioTrack = stream.getAudioTracks()[0];
-      if (!audioTrack?.enabled) return;
-
-      const audioStream = new MediaStream([audioTrack]);
-      const mimeType = getPreferredAudioMimeType();
-
-      try {
-        const recorder = new MediaRecorder(audioStream, { mimeType });
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) enqueueAudioChunk(e.data);
-        };
-        recorder.onerror = () => {
-          recordingActiveRef.current = false;
-          setIsListening(false);
-        };
-        recorder.onstop = () => {
-          if (recordingActiveRef.current && streamRef.current && !isMutedRef.current && needsTranslation()) {
-            recorderRef.current = null;
-            startRecording(streamRef.current);
-          }
-        };
-        recordingActiveRef.current = true;
-        const timeslice = mimeType.includes("mp4") || mimeType.includes("aac") ? 1200 : 700;
-        recorder.start(timeslice);
-        recorderRef.current = recorder;
-        setIsListening(true);
-
-        clearRecorderRestartTimer();
-        if (isIOS()) {
-          recorderRestartTimerRef.current = setInterval(() => {
-            const r = recorderRef.current;
-            if (r?.state === "recording") {
-              try { r.stop(); } catch { /* ignore */ }
-            }
-          }, 25_000);
-        }
-      } catch (e) {
-        console.error("MediaRecorder failed:", e);
-      }
-    },
-    [enqueueAudioChunk, needsTranslation, clearRecorderRestartTimer]
-  );
-
-  const playTranslationAudio = useCallback((audioBase64: string) => {
-    if (translationModeRef.current !== "voice") return;
-    audioQueueRef.current?.enqueue(audioBase64);
+  const stopTranslation = useCallback(() => {
+    translationEngineRef.current?.stop();
   }, []);
 
   const unlockAudio = useCallback(async () => {
-    return audioQueueRef.current?.unlock() ?? false;
+    return translationEngineRef.current?.unlockAudio() ?? false;
   }, []);
 
   const startTimer = useCallback(() => {
@@ -396,7 +254,7 @@ export function useCall({
           startTimer();
           clearOfferRetry();
           clearSlowHint();
-          if (streamRef.current && !recorderRef.current) startRecording(streamRef.current);
+          if (streamRef.current) startTranslation();
         } else if (state === "failed" || state === "disconnected") {
           scheduleReofferRef.current();
         }
@@ -407,8 +265,8 @@ export function useCall({
         if (ice === "connected" || ice === "completed") {
           setCallStatus("active");
           clearSlowHint();
-          if (streamRef.current && !recorderRef.current && !isMutedRef.current) {
-            startRecording(streamRef.current);
+          if (streamRef.current && !isMutedRef.current) {
+            startTranslation();
           }
         } else if (ice === "failed") {
           scheduleReofferRef.current();
@@ -427,7 +285,7 @@ export function useCall({
       }
       return pc;
     },
-    [attachRemoteTrack, clearOfferRetry, clearSlowHint, startTimer, startRecording]
+    [attachRemoteTrack, clearOfferRetry, clearSlowHint, startTimer, startTranslation]
   );
 
   const scheduleReofferRef = useRef<() => void>(() => {});
@@ -519,6 +377,13 @@ export function useCall({
       if (self) serverIsHostRef.current = !!self.isHost;
 
       if (users.length < 2) {
+        if (otherParticipantRef.current && callStatusRef.current === "active") {
+          stopTranslation();
+          handlersRef.current.stopTimer();
+          setCallStatus("ended");
+          notifyCallsChanged();
+          return;
+        }
         setCallStatus(self?.isHost || host ? "ringing" : "waiting");
         return;
       }
@@ -529,15 +394,17 @@ export function useCall({
       otherParticipantRef.current = other;
       partnerLanguageRef.current = other.language;
 
-      if (other.language === optsRef.current.userLanguage) {
-        handlersRef.current.stopRecording();
+      if (
+        normalizeLanguageCode(other.language) === normalizeLanguageCode(optsRef.current.userLanguage)
+      ) {
+        stopTranslation();
       } else if (
         streamRef.current &&
-        !recorderRef.current &&
         !isMutedRef.current &&
         (callStatusRef.current === "active" || callStatusRef.current === "connecting")
       ) {
-        handlersRef.current.startRecording(streamRef.current);
+        translationEngineRef.current?.attachStream(streamRef.current);
+        startTranslation();
       }
 
       const pc = pcRef.current;
@@ -556,7 +423,7 @@ export function useCall({
       await new Promise((r) => setTimeout(r, 400));
       await sendOffer(stream, socket, other, true);
     },
-    [resetPeerConnection, sendOffer]
+    [resetPeerConnection, sendOffer, stopTranslation, startTranslation]
   );
 
   const playRemoteAudio = useCallback(async () => {
@@ -579,8 +446,10 @@ export function useCall({
       }
       const ctx = remoteAudioCtxRef.current;
       if (ctx.state === "suspended") await ctx.resume();
+      remoteAudioSourceRef.current?.disconnect();
       const source = ctx.createMediaStreamSource(stream);
       source.connect(ctx.destination);
+      remoteAudioSourceRef.current = source;
     } catch (e) {
       console.warn("Remote audio fallback:", e);
     }
@@ -596,19 +465,12 @@ export function useCall({
     }
   }, [remoteStream, playRemoteAudio]);
 
-  useEffect(() => {
-    const el = remoteAudioRef.current;
-    if (!el) return;
-    el.volume = isSpeaking ? 0.25 : 1;
-  }, [isSpeaking]);
-
   const handlersRef = useRef({
     handleRoomUsers,
     createPeerConnection,
     flushIceQueue,
-    startRecording,
-    stopRecording,
-    playTranslationAudio,
+    startTranslation,
+    stopTranslation,
     resetPeerConnection,
     clearOfferRetry,
     startTimer,
@@ -619,9 +481,8 @@ export function useCall({
     handleRoomUsers,
     createPeerConnection,
     flushIceQueue,
-    startRecording,
-    stopRecording,
-    playTranslationAudio,
+    startTranslation,
+    stopTranslation,
     resetPeerConnection,
     clearOfferRetry,
     startTimer,
@@ -646,9 +507,27 @@ export function useCall({
     sessionStartedRef.current = false;
     serverIsHostRef.current = isHost;
 
-    const audioQueue = new TranslationAudioQueue();
-    audioQueue.setSpeakingCallback(setIsSpeaking);
-    audioQueueRef.current = audioQueue;
+    const engine = new CallTranslationEngine({
+      getUserName: () => optsRef.current.userName,
+      getUserLang: () => optsRef.current.userLanguage,
+      getPartnerLang: () => partnerLanguageRef.current,
+      getSocket: () => socketRef.current,
+      getTranslationMode: () => translationModeRef.current,
+      onActivity: setTranslationActivity,
+      onListening: setIsListening,
+      onSpeaking: setIsSpeaking,
+      onTranslation: (entry) => setTranslations((prev) => [...prev.slice(-29), entry]),
+      onError: (code, source) => {
+        if (code === "no_speech" && source === "auto") return;
+        setTranslationError(code);
+      },
+      duckRemote: (duck) => {
+        const el = remoteAudioRef.current;
+        if (el) el.volume = duck ? 0.25 : 1;
+      },
+    });
+    translationEngineRef.current = engine;
+    engine.setTranslationMode(translationModeRef.current);
 
     async function startWithStream(stream: MediaStream) {
       if (!mounted || sessionStartedRef.current) {
@@ -659,10 +538,12 @@ export function useCall({
 
       try {
         await unlockBrowserAudio();
-        void audioQueue.unlock();
+        void engine.unlockAudio();
+        engine.attachStream(stream);
 
         wakeLockRef.current = await requestWakeLock();
         if (!mounted) {
+          sessionStartedRef.current = false;
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -673,7 +554,10 @@ export function useCall({
         startSlowHint();
 
         const socket = await waitForSharedSocket();
-        if (!mounted) return;
+        if (!mounted) {
+          sessionStartedRef.current = false;
+          return;
+        }
         socketRef.current = socket;
 
         const joinRoom = () => {
@@ -726,7 +610,7 @@ export function useCall({
             await pc.setLocalDescription(answer);
             socket.emit("answer", { answer, targetId: senderId });
             setCallStatus("connecting");
-            handlersRef.current.startRecording(streamRef.current);
+            handlersRef.current.startTranslation();
           } catch (e) {
             console.error("Answer failed:", e);
             handlersRef.current.resetPeerConnection();
@@ -738,7 +622,7 @@ export function useCall({
           try {
             await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
             await handlersRef.current.flushIceQueue(pcRef.current);
-            if (streamRef.current) handlersRef.current.startRecording(streamRef.current);
+            if (streamRef.current) handlersRef.current.startTranslation();
           } catch (e) {
             console.error("Answer apply failed:", e);
           }
@@ -767,16 +651,12 @@ export function useCall({
         };
 
         const onTranslation = (msg: TranslationPayload) => {
-          msgCounterRef.current += 1;
-          const entry: TranslationMessage = {
-            ...msg,
-            id: `${msg.speaker}-${msgCounterRef.current}`,
-            timestamp: Date.now(),
-          };
-          setTranslations((prev) => [...prev.slice(-29), entry]);
-          if (msg.audioBase64 && msg.speaker !== optsRef.current.userName) {
-            handlersRef.current.playTranslationAudio(msg.audioBase64);
-          }
+          translationEngineRef.current?.handleRemoteTranslation(msg);
+        };
+
+        const onTranslationError = ({ error }: { error?: string }) => {
+          if (error === "rate_limit") setTranslationError("rate_limit");
+          else setTranslationError("error");
         };
 
         const onRoomFull = () => {
@@ -792,19 +672,21 @@ export function useCall({
 
         const onCallEnded = () => {
           handlersRef.current.stopTimer();
+          handlersRef.current.stopTranslation();
           setCallStatus("ended");
           notifyCallsChanged();
         };
 
         const onCallRejected = () => {
           handlersRef.current.stopTimer();
+          handlersRef.current.stopTranslation();
           setCallStatus("ended");
           notifyCallsChanged();
         };
 
         const onCallTimeout = () => {
           handlersRef.current.stopTimer();
-          handlersRef.current.stopRecording();
+          handlersRef.current.stopTranslation();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
           notifyCallsChanged();
@@ -812,7 +694,7 @@ export function useCall({
 
         const onCallCancelled = () => {
           handlersRef.current.stopTimer();
-          handlersRef.current.stopRecording();
+          handlersRef.current.stopTranslation();
           handlersRef.current.resetPeerConnection();
           setCallStatus("ended");
           notifyCallsChanged();
@@ -820,13 +702,12 @@ export function useCall({
 
         const onUserLeft = () => {
           if (userLeftTimerRef.current) clearTimeout(userLeftTimerRef.current);
-          userLeftTimerRef.current = setTimeout(() => {
-            if (mounted) {
-              handlersRef.current.stopTimer();
-              handlersRef.current.resetPeerConnection();
-              setCallStatus("ended");
-            }
-          }, 8000);
+          userLeftTimerRef.current = null;
+          handlersRef.current.stopTimer();
+          handlersRef.current.stopTranslation();
+          handlersRef.current.resetPeerConnection();
+          setCallStatus("ended");
+          notifyCallsChanged();
         };
 
         socket.on("connect", onConnect);
@@ -840,6 +721,7 @@ export function useCall({
         socket.on("ice-candidate", onIce);
         socket.on("request-reoffer", onReoffer);
         socket.on("translation", onTranslation);
+        socket.on("translation-error", onTranslationError);
         socket.on("call-ended", onCallEnded);
         socket.on("call-rejected", onCallRejected);
         socket.on("call-timeout", onCallTimeout);
@@ -863,6 +745,7 @@ export function useCall({
           socket.off("ice-candidate", onIce);
           socket.off("request-reoffer", onReoffer);
           socket.off("translation", onTranslation);
+          socket.off("translation-error", onTranslationError);
           socket.off("call-ended", onCallEnded);
           socket.off("call-rejected", onCallRejected);
           socket.off("call-timeout", onCallTimeout);
@@ -931,10 +814,9 @@ export function useCall({
         document.visibilityState === "visible" &&
         streamRef.current &&
         !isMutedRef.current &&
-        callStatusRef.current === "active" &&
-        !recorderRef.current
+        callStatusRef.current === "active"
       ) {
-        handlersRef.current.startRecording(streamRef.current);
+        handlersRef.current.startTranslation();
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -945,8 +827,9 @@ export function useCall({
 
       handlersRef.current.stopTimer();
       handlersRef.current.clearOfferRetry();
-      handlersRef.current.stopRecording();
-      audioQueue.stop();
+      handlersRef.current.stopTranslation();
+      engine.destroy();
+      translationEngineRef.current = null;
       detachSocketRef.current?.();
       detachSocketRef.current = null;
 
@@ -970,10 +853,12 @@ export function useCall({
         sessionActiveRef.current = false;
         sessionStartedRef.current = false;
         clearSlowHint();
-        audioQueueRef.current = null;
+        translationEngineRef.current = null;
         wakeLockRef.current?.release().catch(() => {});
         remoteAudioCtxRef.current?.close().catch(() => {});
         remoteAudioCtxRef.current = null;
+        remoteAudioSourceRef.current?.disconnect();
+        remoteAudioSourceRef.current = null;
         handlersRef.current.resetPeerConnection();
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -991,7 +876,7 @@ export function useCall({
           });
         }
 
-        if (socket?.connected) {
+        if (socket?.connected && !intentionalEndRef.current) {
           socket.emit("leave-room", { roomId: rid });
         }
         socketRef.current = null;
@@ -1032,13 +917,19 @@ export function useCall({
     stream.getAudioTracks().forEach((t) => { t.enabled = !nextMuted; });
     setIsMuted(nextMuted);
 
-    if (nextMuted) stopRecording();
-    else if (streamRef.current) startRecording(streamRef.current);
-  }, [isMuted, stopRecording, startRecording]);
+    if (nextMuted) {
+      stopTranslation();
+      translationEngineRef.current?.setMuted(true);
+    } else {
+      translationEngineRef.current?.setMuted(false);
+      startTranslation();
+    }
+  }, [isMuted, stopTranslation, startTranslation]);
 
   const setTranslationMode = useCallback(async (mode: TranslationMode) => {
     setTranslationModeState(mode);
     translationModeRef.current = mode;
+    translationEngineRef.current?.setTranslationMode(mode);
     socketRef.current?.emit("update-translation-mode", { mode });
 
     await apiFetch("/api/user/settings", {
@@ -1046,15 +937,27 @@ export function useCall({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ translationMode: mode }),
     }).catch(() => {});
+  }, []);
 
-    if (mode === "text") audioQueueRef.current?.stop();
+  const pressTranslateStart = useCallback(() => {
+    void translationEngineRef.current?.unlockAudio();
+    translationEngineRef.current?.pressStart();
+  }, []);
+
+  const pressTranslateEnd = useCallback(() => {
+    translationEngineRef.current?.pressEnd();
+  }, []);
+
+  const clearTranslationError = useCallback(() => {
+    setTranslationError(null);
   }, []);
 
   const endCall = useCallback(() => {
     intentionalEndRef.current = true;
     stopTimer();
-    stopRecording();
-    audioQueueRef.current?.stop();
+    stopTranslation();
+    translationEngineRef.current?.destroy();
+    translationEngineRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     resetPeerConnection();
@@ -1072,7 +975,7 @@ export function useCall({
     detachSocketRef.current?.();
     detachSocketRef.current = null;
     setCallStatus("ended");
-  }, [stopRecording, resetPeerConnection, stopTimer, isHost, roomId]);
+  }, [stopTranslation, resetPeerConnection, stopTimer, isHost, roomId]);
 
   const partner = participants.find((p) => p.userId !== userId);
 
@@ -1084,6 +987,8 @@ export function useCall({
     translations,
     isMuted,
     translationMode: translationModeState,
+    translationActivity,
+    translationError,
     callStatus,
     callError,
     isListening,
@@ -1096,6 +1001,9 @@ export function useCall({
     playRemoteAudio,
     toggleMute,
     setTranslationMode,
+    pressTranslateStart,
+    pressTranslateEnd,
+    clearTranslationError,
     endCall,
     requestMicrophone,
   };

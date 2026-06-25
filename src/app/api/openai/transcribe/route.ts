@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { transcribeAudio } from "@/lib/openai";
 import { getTranscriptionAttempts, isValidTranscript } from "@/lib/call-translation";
+import { normalizeLanguageCode } from "@/lib/lang-validators";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const maxDuration = 30;
@@ -37,28 +38,30 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await audio.arrayBuffer());
 
     // Juda kichik bo'laklar — ovoz yo'q
-    if (buffer.length < 600) {
+    if (buffer.length < 200) {
       return NextResponse.json({ text: "" });
     }
 
-    const hintLang = (language || session.language || "uz").split("-")[0].toLowerCase();
+    const hintLang = normalizeLanguageCode(language || session.language || "uz");
     const attempts = getTranscriptionAttempts(hintLang);
     let text = "";
+    let detectedLang: string | undefined;
 
     for (const attempt of attempts) {
-      const candidate = await transcribeAudio(
+      const result = await transcribeAudio(
         buffer,
         audio.name || "audio.webm",
         attempt.hintLang || hintLang,
         attempt.whisperLang
       );
-      if (candidate && isValidTranscript(candidate)) {
-        text = candidate;
+      if (result.text && isValidTranscript(result.text)) {
+        text = result.text;
+        detectedLang = result.language ? normalizeLanguageCode(result.language) : attempt.hintLang || hintLang;
         break;
       }
     }
 
-    return NextResponse.json({ text });
+    return NextResponse.json({ text, detectedLang });
   } catch (e) {
     console.error("Transcribe API error:", e);
     return NextResponse.json({ error: "Transkripsiya xatosi" }, { status: 500 });

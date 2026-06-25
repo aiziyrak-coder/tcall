@@ -214,6 +214,11 @@
   touch-action: manipulation;
 }
 
+.phone-content {
+  @apply relative z-10 w-full flex flex-col items-center flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 .phone-bg {
   @apply absolute inset-0;
   background: var(--call-bg);
@@ -258,7 +263,7 @@
 
 .phone-subtitle-voice {
   @apply mt-3 py-2 px-3 opacity-95;
-  max-height: 5.5rem;
+  max-height: 7rem;
   overflow-y: auto;
 }
 
@@ -277,6 +282,22 @@
 
 .phone-mode-active {
   @apply bg-brand-600 text-white shadow-sm;
+}
+
+.phone-translate-ptt {
+  @apply relative z-10 mx-6 mb-3 w-[calc(100%-3rem)] flex flex-col items-center gap-1.5 py-4 px-5 rounded-2xl border-2 border-brand-500/40 bg-white/90 text-brand-700 font-semibold text-sm shadow-md touch-none select-none transition-all active:scale-[0.98] active:bg-brand-50;
+}
+
+.phone-translate-ptt-active {
+  @apply border-brand-600 bg-brand-600 text-white shadow-lg shadow-brand-600/25;
+}
+
+.phone-translate-status {
+  @apply relative z-10 text-xs text-brand-600 font-medium text-center px-6 -mt-1 mb-2;
+}
+
+.phone-translate-error {
+  @apply relative z-10 text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2 mx-6 mb-2 text-center;
 }
 
 .phone-controls {

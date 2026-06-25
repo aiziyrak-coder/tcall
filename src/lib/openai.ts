@@ -44,18 +44,17 @@ export async function transcribeAudio(
   hintLang?: string,
   whisperLangOverride?: string,
   options?: { interpreterMode?: boolean }
-): Promise<string> {
+): Promise<{ text: string; language?: string }> {
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)]);
   formData.append("file", blob, filename);
   formData.append("model", "whisper-1");
-  formData.append("response_format", "json");
+  formData.append("response_format", "verbose_json");
   formData.append("temperature", "0");
 
   const whisperLang =
     whisperLangOverride ?? (hintLang ? getWhisperLanguage(hintLang) : undefined);
   if (whisperLang) formData.append("language", whisperLang);
-  // Tarjimon: promptsiz — prompt Whisper halosinatsiyasini kuchaytiradi
   if (hintLang && !options?.interpreterMode) {
     formData.append("prompt", getWhisperPrompt(hintLang));
   }
@@ -72,11 +71,13 @@ export async function transcribeAudio(
   if (!res.ok) {
     const err = await res.text();
     console.error("Whisper error:", err);
-    return "";
+    return { text: "" };
   }
 
   const data = await res.json();
-  return (data.text as string)?.trim() || "";
+  const text = (data.text as string)?.trim() || "";
+  const language = typeof data.language === "string" ? data.language : undefined;
+  return { text, language };
 }
 
 /** GPT — chat xabarlari uchun aniq, grammatik to'g'ri tarjima */

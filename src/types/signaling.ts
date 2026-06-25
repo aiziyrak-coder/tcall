@@ -18,6 +18,7 @@ export interface RoomParticipant {
   userId: string;
   name: string;
   language: string;
+  translationMode?: string;
   isHost?: boolean;
 }
 
@@ -29,4 +30,10 @@ export interface TranslationPayload {
   speaker: string;
   isFinal: boolean;
   audioBase64?: string;
+  outgoing?: boolean;
+}
+
+export interface TranslationMessage extends TranslationPayload {
+  id: string;
+  timestamp: number;
 }

@@ -14,13 +14,17 @@ interface ActiveCallEngineProps {
   children: React.ReactNode;
 }
 
+function normalizeTranslationMode(value: string | undefined): TranslationMode {
+  return value === "voice" ? "voice" : "text";
+}
+
 export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: ActiveCallEngineProps) {
   const call = useCall({
     roomId,
     userId: user.userId,
     userName: user.name,
     userLanguage: user.language,
-    translationMode: (user.translationMode as TranslationMode) || "text",
+    translationMode: normalizeTranslationMode(user.translationMode),
     isHost,
     enabled: true,
   });
@@ -34,10 +38,6 @@ export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: Ac
   );
 
   useEffect(() => {
-    if (call.callStatus === "ended") onEnded();
-  }, [call.callStatus, onEnded]);
-
-  useEffect(() => {
     if (call.micStatus === "granted") {
       void call.unlockAudio();
       void call.playRemoteAudio();
@@ -47,7 +47,25 @@ export function ActiveCallEngine({ roomId, isHost, user, onEnded, children }: Ac
   return (
     <ActiveCallStateProvider value={call}>
       <audio ref={setRemoteAudioRef} autoPlay playsInline className="sr-only" aria-hidden />
+      <CallEndedWatcher callStatus={call.callStatus} onEnded={onEnded} />
       {children}
     </ActiveCallStateProvider>
   );
+}
+
+/** Faqat minimizatsiya qilinganda sessiyani yopish — to'liq ekranda AudioCallRoom boshqaradi */
+function CallEndedWatcher({
+  callStatus,
+  onEnded,
+}: {
+  callStatus: string;
+  onEnded: () => void;
+}) {
+  useEffect(() => {
+    if (callStatus !== "ended") return;
+    const path = typeof window !== "undefined" ? window.location.pathname : "";
+    if (path.startsWith("/call/")) return;
+    onEnded();
+  }, [callStatus, onEnded]);
+  return null;
 }

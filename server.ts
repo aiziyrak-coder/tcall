@@ -33,6 +33,7 @@ import { migrateChatMemberRoles } from "./src/lib/chat-migrate";
 import { migrateDirectConversationKeys } from "./src/lib/chat-migrate-direct";
 import { assertMember } from "./src/lib/chat-service";
 import { getAllowedOrigins, getPublicApiUrl, getPublicAppUrl } from "./src/lib/domains";
+import { normalizeLanguageCode } from "./src/lib/lang-validators";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -252,7 +253,9 @@ app.prepare().then(async () => {
 
           const userId = session.userId;
           const name = (dbUser?.name || session.name || "User").slice(0, 80);
-          const language = dbUser?.language || session.language || "uz";
+          const language = normalizeLanguageCode(
+            data.language || dbUser?.language || session.language || "uz"
+          );
           const translationMode =
             data.translationMode === "voice" || dbUser?.translationMode === "voice"
               ? "voice"
@@ -304,10 +307,11 @@ app.prepare().then(async () => {
 
     socket.on("update-translation-mode", (data: { mode: string }) => {
       if (!currentUser || !data?.mode) return;
-      currentUser.translationMode = data.mode;
+      const mode = data.mode === "voice" ? "voice" : "text";
+      currentUser.translationMode = mode;
       if (currentRoom) {
         const u = rooms.get(currentRoom)?.get(socket.id);
-        if (u) u.translationMode = data.mode;
+        if (u) u.translationMode = mode;
       }
     });
 
@@ -369,7 +373,87 @@ app.prepare().then(async () => {
       }
     });
 
-    socket.on("speech-transcript", async (data: { text: string; isFinal: boolean }) => {
+    socket.on(
+      "call-translation",
+      async (data: {
+        original: string;
+        translated: string;
+        sourceLang: string;
+        targetLang: string;
+      }) => {
+        try {
+          if (!currentRoom || !currentUser) return;
+
+          const limited = rateLimit(`call-tr:${session.userId}`, 90, 60_000);
+          if (!limited.ok) {
+            io.to(socket.id).emit("translation-error", { error: "rate_limit" });
+            return;
+          }
+
+          const original = clampTranscript(data.original);
+          const translated = clampTranscript(data.translated);
+          if (!original || !translated) return;
+
+          const room = rooms.get(currentRoom);
+          if (!room) return;
+
+          const speakerLang = normalizeLanguageCode(data.sourceLang || currentUser.language);
+          pushRoomContext(currentRoom, `${currentUser.name}: ${original}`);
+
+          const recipients = Array.from(room.values()).filter((u) => u.socketId !== socket.id);
+          const callRecord = await prisma.call.findUnique({ where: { roomId: currentRoom } });
+
+          await Promise.all(
+            recipients.map(async (user) => {
+              const userLang = normalizeLanguageCode(user.language);
+              const needsTranslation = userLang !== speakerLang;
+              const textForUser = needsTranslation
+                ? translated
+                : original;
+
+              let audioBase64: string | undefined;
+              if (needsTranslation && textForUser && user.translationMode === "voice") {
+                try {
+                  const audio = await textToSpeech(textForUser, userLang);
+                  if (audio) audioBase64 = audio.toString("base64");
+                } catch (e) {
+                  console.error("TTS failed:", e);
+                }
+              }
+
+              io.to(user.socketId).emit("translation", {
+                original,
+                translated: textForUser,
+                sourceLang: speakerLang,
+                targetLang: userLang,
+                speaker: currentUser!.name,
+                isFinal: true,
+                audioBase64,
+              });
+            })
+          );
+
+          if (callRecord) {
+            prisma.callTranscript
+              .create({
+                data: {
+                  callId: callRecord.id,
+                  speakerName: currentUser!.name,
+                  originalText: original,
+                  translatedText: translated,
+                  sourceLang: speakerLang,
+                  targetLang: normalizeLanguageCode(data.targetLang || recipients[0]?.language || ""),
+                },
+              })
+              .catch((e) => console.error("Transcript save error:", e));
+          }
+        } catch (e) {
+          console.error("call-translation error:", e);
+        }
+      }
+    );
+
+    socket.on("speech-transcript", async (data: { text: string; isFinal: boolean; sourceLang?: string }) => {
       try {
         if (!currentRoom || !currentUser || !data.isFinal) return;
 
@@ -382,6 +466,7 @@ app.prepare().then(async () => {
         const room = rooms.get(currentRoom);
         if (!room) return;
 
+        const speakerLang = normalizeLanguageCode(data.sourceLang || currentUser.language);
         const context = roomTranscriptContext.get(currentRoom) || [];
         pushRoomContext(currentRoom, `${currentUser!.name}: ${text}`);
 
@@ -391,9 +476,10 @@ app.prepare().then(async () => {
 
         await Promise.all(
           recipients.map(async (user) => {
-            const needsTranslation = user.language !== currentUser!.language;
+            const targetLang = normalizeLanguageCode(user.language);
+            const needsTranslation = targetLang !== speakerLang;
             const translated = needsTranslation
-              ? await translateText(text, currentUser!.language, user.language, context)
+              ? await translateText(text, speakerLang, targetLang, context)
               : text;
 
             if (needsTranslation && !savedTranslation) savedTranslation = translated;
@@ -401,7 +487,7 @@ app.prepare().then(async () => {
             let audioBase64: string | undefined;
             if (needsTranslation && translated && user.translationMode === "voice") {
               try {
-                const audio = await textToSpeech(translated, user.language);
+                const audio = await textToSpeech(translated, targetLang);
                 if (audio) audioBase64 = audio.toString("base64");
               } catch (e) {
                 console.error("TTS failed:", e);
@@ -411,8 +497,8 @@ app.prepare().then(async () => {
             io.to(user.socketId).emit("translation", {
               original: text,
               translated,
-              sourceLang: currentUser!.language,
-              targetLang: user.language,
+              sourceLang: speakerLang,
+              targetLang,
               speaker: currentUser!.name,
               isFinal: true,
               audioBase64,
@@ -420,20 +506,39 @@ app.prepare().then(async () => {
           })
         );
 
-      if (callRecord) {
-        prisma.callTranscript
-          .create({
-            data: {
-              callId: callRecord.id,
-              speakerName: currentUser!.name,
-              originalText: text,
-              translatedText: savedTranslation,
-              sourceLang: currentUser!.language,
-              targetLang: savedTranslation ? recipients[0]?.language : null,
-            },
-          })
-          .catch((e) => console.error("Transcript save error:", e));
-      }
+        // Gapiruvchiga ham sherik tilidagi tarjimani ko'rsatish
+        if (recipients.length > 0) {
+          const partner = recipients[0];
+          const targetLang = normalizeLanguageCode(partner.language);
+          if (targetLang !== speakerLang) {
+            const translated =
+              savedTranslation || (await translateText(text, speakerLang, targetLang, context));
+            io.to(socket.id).emit("translation", {
+              original: text,
+              translated,
+              sourceLang: speakerLang,
+              targetLang,
+              speaker: currentUser!.name,
+              isFinal: true,
+              outgoing: true,
+            });
+          }
+        }
+
+        if (callRecord) {
+          prisma.callTranscript
+            .create({
+              data: {
+                callId: callRecord.id,
+                speakerName: currentUser!.name,
+                originalText: text,
+                translatedText: savedTranslation,
+                sourceLang: speakerLang,
+                targetLang: savedTranslation ? normalizeLanguageCode(recipients[0]?.language || "") : null,
+              },
+            })
+            .catch((e) => console.error("Transcript save error:", e));
+        }
       } catch (e) {
         console.error("speech-transcript error:", e);
       }

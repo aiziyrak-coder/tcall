@@ -628,7 +628,6 @@ export function CallProvider({ user, children }: CallProviderProps) {
           user={user}
           onEnded={() => {
             clearActiveCall();
-            router.replace("/dashboard");
           }}
         >
           {children}

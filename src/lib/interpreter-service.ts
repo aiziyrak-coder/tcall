@@ -56,8 +56,8 @@ export async function transcribeForInterpreter(
 
   for (const { hintLang, whisperLang } of langAttempts) {
     for (const name of names) {
-      const text = await transcribeAudio(buffer, name, hintLang, whisperLang, { interpreterMode: true });
-      if (isValidInterpreterTranscript(text, buffer.length)) return text;
+      const result = await transcribeAudio(buffer, name, hintLang, whisperLang, { interpreterMode: true });
+      if (isValidInterpreterTranscript(result.text, buffer.length)) return result.text;
     }
   }
 

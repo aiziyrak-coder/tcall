@@ -37,6 +37,7 @@ export class TranslationAudioQueue {
   private compressor: DynamicsCompressorNode | null = null;
   private currentSource: AudioBufferSourceNode | null = null;
   private onSpeakingChange: ((speaking: boolean) => void) | null = null;
+  private duckRemote: ((duck: boolean) => void) | null = null;
 
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
@@ -45,6 +46,14 @@ export class TranslationAudioQueue {
 
   setSpeakingCallback(cb: (speaking: boolean) => void) {
     this.onSpeakingChange = cb;
+  }
+
+  setRemoteDuckCallback(cb: (duck: boolean) => void) {
+    this.duckRemote = cb;
+  }
+
+  isActive(): boolean {
+    return this.playing || this.queue.length > 0;
   }
 
   private ensureGraph(ctx: AudioContext) {
@@ -106,6 +115,7 @@ export class TranslationAudioQueue {
     }
     this.playing = false;
     this.onSpeakingChange?.(false);
+    this.duckRemote?.(false);
   }
 
   private async playBase64Mp3(base64: string): Promise<void> {
@@ -181,6 +191,7 @@ export class TranslationAudioQueue {
 
     this.playing = true;
     this.onSpeakingChange?.(true);
+    this.duckRemote?.(true);
 
     const base64 = this.queue.shift()!;
     await this.playBase64Mp3(base64);
@@ -191,6 +202,7 @@ export class TranslationAudioQueue {
       void this.processQueue();
     } else {
       this.onSpeakingChange?.(false);
+      this.duckRemote?.(false);
     }
   }
 }
