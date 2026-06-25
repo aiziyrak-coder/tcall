@@ -25,15 +25,17 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-export NODE_ENV=production
 source .env 2>/dev/null || true
 
+# Build uchun devDependencies kerak (tailwindcss, typescript)
 npm ci
 npx prisma generate
 npx prisma db push
 mkdir -p public/uploads/avatars public/uploads/chat
 
 npm run build
+
+export NODE_ENV=production
 
 # PM2
 if ! command -v pm2 &>/dev/null; then
