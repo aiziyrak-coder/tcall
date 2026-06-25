@@ -5,6 +5,8 @@ node_modules
 deploy/.env.production.server
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 dist
 public/uploads/
 tsconfig.tsbuildinfo
