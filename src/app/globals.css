@@ -1566,27 +1566,25 @@ body.tg-webapp .ios-tab-bar {
 
 /* Phone dashboard header */
 .phone-header-shell {
-  @apply flex flex-col gap-2.5;
+  @apply block;
 }
 
 .phone-header-row {
-  @apply flex items-center justify-between gap-2 min-h-[44px];
-}
-
-.phone-header-shell-compact {
-  @apply gap-0;
-}
-
-.phone-header-context-inline {
-  @apply flex flex-wrap items-center gap-2 min-w-0 flex-1;
+  @apply flex items-center gap-1.5 min-h-[40px];
 }
 
 .phone-header-logo {
-  @apply min-w-0 flex-1 max-w-[calc(100%-7.5rem)];
+  @apply shrink-0;
+}
+
+.phone-header-logo .tcall-logo-image,
+.phone-header-logo img {
+  width: 30px !important;
+  height: 30px !important;
 }
 
 .phone-header-actions {
-  @apply shrink-0 flex items-center gap-1.5;
+  @apply shrink-0 flex items-center gap-1.5 ml-auto pl-1;
 }
 
 @keyframes payWarnPulse {
@@ -1628,18 +1626,18 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-context {
-  @apply flex flex-wrap items-center gap-2;
+  @apply flex flex-nowrap items-center gap-1.5 min-w-0;
 }
 
 .phone-header-tab-pill {
-  @apply inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full text-sm font-semibold text-brand-700;
+  @apply inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full text-[13px] font-semibold text-brand-700 shrink-0;
   background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, rgba(99, 102, 241, 0.08) 100%);
   border: 1px solid rgba(0, 122, 255, 0.15);
   box-shadow: 0 1px 2px rgba(0, 122, 255, 0.06);
 }
 
 .phone-header-tab-icon {
-  @apply w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0;
+  @apply w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0;
   background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
 }
 
@@ -1648,17 +1646,17 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-user-chip {
-  @apply inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full bg-slate-50 border border-black/[0.06];
+  @apply inline-flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-slate-50 border border-black/[0.06] min-w-0;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .phone-header-avatar {
-  @apply w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0;
+  @apply w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0;
   background: linear-gradient(145deg, #34c759 0%, #007aff 100%);
 }
 
 .phone-header-user-text {
-  @apply inline-flex items-center gap-1.5 min-w-0;
+  @apply inline-flex items-center gap-1 min-w-0;
 }
 
 .phone-header-user-text-stack {
@@ -1666,19 +1664,19 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-user-caption {
-  @apply text-[9px] uppercase tracking-wide text-slate-500 leading-none;
+  @apply text-[8px] uppercase tracking-wide text-slate-500 leading-none truncate max-w-full;
 }
 
 .phone-header-user-main {
-  @apply inline-flex items-center gap-1.5 min-w-0;
+  @apply inline-flex items-center gap-1 min-w-0;
 }
 
 .phone-header-flag {
-  @apply text-base leading-none;
+  @apply text-sm leading-none;
 }
 
 .phone-header-user-name {
-  @apply text-[12px] font-semibold text-slate-800 truncate max-w-[8rem] sm:max-w-[10rem];
+  @apply text-[12px] font-semibold text-slate-800 truncate max-w-[6.5rem] sm:max-w-[10rem];
 }
 
 .header-actions-sheet {

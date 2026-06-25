@@ -305,75 +305,49 @@ export function PhoneHeader({
 }) {
   const TabIcon = context ? TAB_ICONS[context.tab] : Phone;
   const initial = context?.userCaption ? "#" : context?.userName?.trim().charAt(0).toUpperCase() || "?";
-  const contextOnly = !!context && !showLogo;
+
+  const contextNode = context ? (
+    <div className="phone-header-context">
+      <div className="phone-header-tab-pill">
+        <span className="phone-header-tab-icon">
+          <TabIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </span>
+        <span className="phone-header-tab-label">{context.tabLabel}</span>
+      </div>
+      {context.userName && (
+        <div className="phone-header-user-chip">
+          <span className="phone-header-avatar">{initial}</span>
+          <span className={`phone-header-user-text${context.userCaption ? " phone-header-user-text-stack" : ""}`}>
+            {context.userCaption && <span className="phone-header-user-caption">{context.userCaption}</span>}
+            <span className="phone-header-user-main">
+              {context.userFlag && (
+                <span className="phone-header-flag" aria-hidden>
+                  {context.userFlag}
+                </span>
+              )}
+              <span className="phone-header-user-name">{context.userName}</span>
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
-    <div className={`phone-header-shell${contextOnly ? " phone-header-shell-compact" : ""}`}>
+    <div className="phone-header-shell">
       <div className="phone-header-row">
-        {showLogo ? (
-          <TcallLogo size="sm" layout="horizontal" variant="full" className="phone-header-logo" />
-        ) : contextOnly ? (
-          <div className="phone-header-context phone-header-context-inline">
-            <div className="phone-header-tab-pill">
-              <span className="phone-header-tab-icon">
-                <TabIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
-              </span>
-              <span className="phone-header-tab-label">{context.tabLabel}</span>
-            </div>
-            {context.userName && (
-              <div className="phone-header-user-chip">
-                <span className="phone-header-avatar">{initial}</span>
-                <span className={`phone-header-user-text${context.userCaption ? " phone-header-user-text-stack" : ""}`}>
-                  {context.userCaption && <span className="phone-header-user-caption">{context.userCaption}</span>}
-                  <span className="phone-header-user-main">
-                    {context.userFlag && (
-                      <span className="phone-header-flag" aria-hidden>
-                        {context.userFlag}
-                      </span>
-                    )}
-                    <span className="phone-header-user-name">{context.userName}</span>
-                  </span>
-                </span>
-              </div>
-            )}
-          </div>
-        ) : (
+        {showLogo && (
+          <TcallLogo size="xs" variant="icon" className="phone-header-logo" />
+        )}
+        {contextNode}
+        {!showLogo && !context && (
           <div className="phone-header-title-only">
             <h1 className="phone-header-page-title">{title}</h1>
-            {subtitle && !context && (
-              <p className="phone-header-page-sub">{subtitle}</p>
-            )}
+            {subtitle && <p className="phone-header-page-sub">{subtitle}</p>}
           </div>
         )}
         {right && <div className="phone-header-actions">{right}</div>}
       </div>
-
-      {context && showLogo && (
-        <div className="phone-header-context">
-          <div className="phone-header-tab-pill">
-            <span className="phone-header-tab-icon">
-              <TabIcon className="w-3.5 h-3.5" strokeWidth={2.2} />
-            </span>
-            <span className="phone-header-tab-label">{context.tabLabel}</span>
-          </div>
-          {context.userName && (
-            <div className="phone-header-user-chip">
-              <span className="phone-header-avatar">{initial}</span>
-              <span className={`phone-header-user-text${context.userCaption ? " phone-header-user-text-stack" : ""}`}>
-                {context.userCaption && <span className="phone-header-user-caption">{context.userCaption}</span>}
-                <span className="phone-header-user-main">
-                  {context.userFlag && (
-                    <span className="phone-header-flag" aria-hidden>
-                      {context.userFlag}
-                    </span>
-                  )}
-                  <span className="phone-header-user-name">{context.userName}</span>
-                </span>
-              </span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
