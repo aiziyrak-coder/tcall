@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Fragment } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, Fragment } from "react";
 import {
   ArrowLeft,
   ArrowDown,
@@ -8,6 +8,7 @@ import {
   CheckCheck,
   ImagePlus,
   MessageSquare,
+  Mic,
   MoreVertical,
   Paperclip,
   Phone,
@@ -114,6 +115,7 @@ export function ChatMessenger({
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const [newTcallId, setNewTcallId] = useState("");
@@ -133,6 +135,8 @@ export function ChatMessenger({
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const attachWrapRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef<string | null>(null);
   const atBottomRef = useRef(true);
   const typingEmitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,6 +144,32 @@ export function ChatMessenger({
   const mediaRef = useRef<HTMLInputElement>(null);
 
   activeIdRef.current = activeId;
+
+  const syncInputHeight = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    const max = 128;
+    const min = 44;
+    const next = Math.min(Math.max(el.scrollHeight, min), max);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > max ? "auto" : "hidden";
+  }, []);
+
+  useLayoutEffect(() => {
+    syncInputHeight();
+  }, [text, syncInputHeight, activeId]);
+
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const onDoc = (e: MouseEvent) => {
+      if (attachWrapRef.current && !attachWrapRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [showAttachMenu]);
 
   const activeConv = conversations.find((c) => c.id === activeId);
 
@@ -490,8 +520,10 @@ export function ChatMessenger({
       if (res.ok) {
         setText("");
         setShowEmoji(false);
+        setShowAttachMenu(false);
         localStorage.removeItem(`tcall:draft:${activeId}`);
         stopTyping();
+        requestAnimationFrame(() => syncInputHeight());
         if (d.message) {
           setMessages((prev) =>
             prev.some((m) => m.id === d.message.id) ? prev : [...prev, d.message]
@@ -865,22 +897,58 @@ export function ChatMessenger({
           {showEmoji && (
             <div className="chat-emoji-panel">
               {EMOJIS.map((e) => (
-                <button key={e} type="button" className="chat-emoji-btn" onClick={() => setText((t) => t + e)}>
+                <button
+                  key={e}
+                  type="button"
+                  className="chat-emoji-btn"
+                  onClick={() => {
+                    setText((t) => t + e);
+                    inputRef.current?.focus();
+                  }}
+                >
                   {e}
                 </button>
               ))}
             </div>
           )}
-          <div className="chat-composer-row">
-            <button type="button" className="chat-tool-btn" onClick={() => setShowEmoji((v) => !v)}>
-              <Smile className="w-5 h-5" />
-            </button>
-            <button type="button" className="chat-tool-btn" disabled={uploading} onClick={() => mediaRef.current?.click()}>
-              <ImagePlus className="w-5 h-5" />
-            </button>
-            <button type="button" className="chat-tool-btn" disabled={uploading} onClick={() => fileRef.current?.click()}>
-              <Paperclip className="w-5 h-5" />
-            </button>
+          <div className="chat-composer-bar">
+            <div className="chat-composer-attach-wrap" ref={attachWrapRef}>
+              <button
+                type="button"
+                className="chat-composer-circle-btn"
+                aria-label={ui.chatAttach}
+                disabled={uploading}
+                onClick={() => setShowAttachMenu((v) => !v)}
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+              {showAttachMenu && (
+                <div className="chat-attach-menu">
+                  <button
+                    type="button"
+                    className="chat-attach-menu-item"
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      mediaRef.current?.click();
+                    }}
+                  >
+                    <ImagePlus className="w-5 h-5 text-brand-600" />
+                    <span>{ui.chatPhoto}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-attach-menu-item"
+                    onClick={() => {
+                      setShowAttachMenu(false);
+                      fileRef.current?.click();
+                    }}
+                  >
+                    <Paperclip className="w-5 h-5 text-slate-600" />
+                    <span>{ui.chatFile}</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <input
               ref={mediaRef}
               type="file"
@@ -903,33 +971,61 @@ export function ChatMessenger({
                 e.target.value = "";
               }}
             />
-            <textarea
-              className="chat-input"
-              placeholder={ui.typeMessage}
-              value={text}
-              onChange={(e) => {
-                setText(e.target.value);
-                if (typingEmitRef.current) clearTimeout(typingEmitRef.current);
-                typingEmitRef.current = setTimeout(() => emitTyping(), 400);
-              }}
-              onBlur={() => stopTyping()}
-              rows={1}
-              maxLength={2000}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  void sendText();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="chat-send-btn"
-              disabled={sending || uploading || !text.trim()}
-              onClick={() => void sendText()}
-            >
-              <Send className="w-5 h-5" />
-            </button>
+            <div className="chat-composer-field">
+              <textarea
+                ref={inputRef}
+                className="chat-input"
+                placeholder={ui.typeMessage}
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  syncInputHeight();
+                  if (typingEmitRef.current) clearTimeout(typingEmitRef.current);
+                  typingEmitRef.current = setTimeout(() => emitTyping(), 400);
+                }}
+                onBlur={() => stopTyping()}
+                rows={1}
+                maxLength={2000}
+                enterKeyHint="send"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendText();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className={`chat-composer-emoji-btn ${showEmoji ? "chat-composer-emoji-btn-active" : ""}`}
+                aria-label="Emoji"
+                onClick={() => {
+                  setShowEmoji((v) => !v);
+                  setShowAttachMenu(false);
+                }}
+              >
+                <Smile className="w-5 h-5" />
+              </button>
+            </div>
+            {text.trim() ? (
+              <button
+                type="button"
+                className="chat-composer-send-btn"
+                disabled={sending || uploading}
+                aria-label={ui.typeMessage}
+                onClick={() => void sendText()}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="chat-composer-mic-btn"
+                aria-label={ui.chatVoiceHint}
+                onClick={() => inputRef.current?.focus()}
+              >
+                <Mic className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
         </div>
