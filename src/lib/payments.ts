@@ -99,33 +99,65 @@ export async function createPendingPayment(
   throw new Error("Noyob summa topilmadi — keyinroq urinib ko'ring");
 }
 
-/** SMS matnidan so'm summasini va kirim/chiqim ekanini ajratadi */
+/** Bitta raqam matnini so'mga aylantiradi (oxirgi .00 tiyinni tashlab) */
+function parseAmountToken(raw: string): number | null {
+  const cleaned = raw
+    .replace(/\s/g, "")
+    .replace(/[.,]\d{2}$/, "") // oxirgi tiyin (.00 / ,00)
+    .replace(/[.,]/g, "");
+  const n = parseInt(cleaned, 10);
+  return Number.isFinite(n) && n >= 1000 && n <= 1_000_000_000 ? n : null;
+}
+
+/**
+ * SMS matnidan TO'LOV summasini (Miqdor/Summa) ajratadi.
+ * "Qoldiq/Balans" (balans) va karta maskasi (***5696), sana/vaqt e'tiborga olinmaydi.
+ */
 export function parseIncomingSms(text: string): {
   amount: number | null;
   isIncoming: boolean;
   isOutgoing: boolean;
 } {
-  const lower = text.toLowerCase();
+  // Apostrof variantlarini olib tashlab normallashtiramiz (o'tkazma -> otkazma)
+  const norm = text.toLowerCase().replace(/['`’ʻ‘]/g, "");
 
-  const incomingHints = ["pul tushdi", "kirim", "popolnen", "пополн", "приход", "zachisl", "зачисл", "tushdi", "kelib tushdi"];
-  const outgoingHints = ["spisan", "списан", "оплата", "to'lov", "tolov", "charge", "purchase", "pokupka", "покупка", "yechib", "снят"];
+  // Chiqim (kartadan) — bu holatda obuna yoqilmasligi kerak
+  const outgoingHints = [
+    "kartadan otkazma", "spisan", "списан", "оплата", "tolov amalga", "pokupka",
+    "покупка", "yechib", "снят", "charge", "purchase", "debit",
+  ];
+  // Kirim (kartaga)
+  const incomingHints = [
+    "kartaga otkazma", "otkazma", "pul tushdi", "kirim", "popolnen", "пополн",
+    "приход", "zachisl", "зачисл", "tushdi", "kelib tushdi", "credit",
+  ];
 
-  const isIncoming = incomingHints.some((h) => lower.includes(h));
-  const isOutgoing = outgoingHints.some((h) => lower.includes(h));
+  const isOutgoing = outgoingHints.some((h) => norm.includes(h));
+  const isIncoming = !isOutgoing && incomingHints.some((h) => norm.includes(h));
 
-  // So'm summalarini topish (masalan: "60 473.00 UZS", "60473 sum", "60,473.00")
-  const candidates: number[] = [];
-  for (const m of text.matchAll(/(\d[\d\s.,]{2,}\d|\d{4,})/g)) {
-    const raw = m[1];
-    const cleaned = raw
-      .replace(/\s/g, "")
-      .replace(/[.,]\d{2}$/, "") // oxirgi tiyin (.00 / ,00)
-      .replace(/[.,]/g, "");
-    const n = parseInt(cleaned, 10);
-    if (Number.isFinite(n) && n >= 1000 && n <= 100_000_000) candidates.push(n);
+  // Balans qismini kesib tashlaymiz (Qoldiq/Balans/Остаток/Balance dan keyingisi)
+  let amountText = text;
+  const balanceIdx = amountText.search(/(qoldiq|qoldi|balans|balance|остаток|доступно|mavjud)/i);
+  if (balanceIdx >= 0) amountText = amountText.slice(0, balanceIdx);
+
+  // 1) "Miqdor / Summa / Сумма / Amount" yorlig'idan keyingi summani afzal ko'ramiz
+  let amount: number | null = null;
+  const labeled = amountText.match(/(?:miqdor|miqdori|summa|сумма|сумму|amount|to['`’ʻ]?lov)[^\d]{0,12}([\d][\d\s.,]*\d|\d+)/i);
+  if (labeled) amount = parseAmountToken(labeled[1]);
+
+  // 2) Yorliq topilmasa — karta maskasi, sana, vaqtni olib tashlab eng katta summani olamiz
+  if (amount == null) {
+    const cleanedText = amountText
+      .replace(/\*+\s*\d+/g, " ") // ***5696
+      .replace(/\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}/g, " ") // 24.06.26
+      .replace(/\d{1,2}:\d{2}/g, " "); // 15:45
+    const candidates: number[] = [];
+    for (const m of cleanedText.matchAll(/(\d[\d\s.,]{2,}\d|\d{4,})/g)) {
+      const n = parseAmountToken(m[1]);
+      if (n != null) candidates.push(n);
+    }
+    amount = candidates.length ? Math.max(...candidates) : null;
   }
-  // To'lov summasi odatda eng katta mantiqiy son bo'ladi
-  const amount = candidates.length ? Math.max(...candidates) : null;
 
   return { amount, isIncoming, isOutgoing };
 }
