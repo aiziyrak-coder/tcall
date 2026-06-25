@@ -7,3 +7,4 @@ deploy/.env.production.server
 *.db-journal
 dist
 public/uploads/
+tsconfig.tsbuildinfo

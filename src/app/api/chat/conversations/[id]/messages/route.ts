@@ -30,7 +30,15 @@ export async function POST(
   // Ban va Premium tekshiruvi
   const guard = await guardUser(session.userId, "premium");
   if (!guard.ok) {
-    return NextResponse.json({ error: guard.error, code: guard.code }, { status: guard.status });
+    return NextResponse.json(
+      {
+        error: guard.error,
+        code: guard.code,
+        requiresPlan: guard.requiresPlan,
+        currentPlan: guard.currentPlan,
+      },
+      { status: guard.status }
+    );
   }
 
   const limited = rateLimit(`chat:${session.userId}`, 30, 60_000);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { DEFAULT_APP_URL, getAllowedOrigins, getPublicAppUrl } from "@/lib/domains";
+import { getAdminJwtSecretBytes } from "@/lib/admin-jwt";
 
 const protectedPaths = ["/dashboard", "/call", "/admin"];
 const ALLOWED_ORIGINS = getAllowedOrigins();
@@ -35,14 +36,9 @@ async function verifySessionCookie(token: string): Promise<{ ok: true; email?: s
   }
 }
 
-function getAdminJwtSecret() {
-  const secret = process.env.ADMIN_JWT_SECRET || process.env.JWT_SECRET || "admin-dev-secret";
-  return new TextEncoder().encode(secret + "-admin");
-}
-
 async function verifyAdminCookie(token: string): Promise<boolean> {
   try {
-    const { payload } = await jwtVerify(token, getAdminJwtSecret());
+    const { payload } = await jwtVerify(token, getAdminJwtSecretBytes());
     return payload.type === "admin";
   } catch {
     return false;

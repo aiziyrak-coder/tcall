@@ -26,7 +26,15 @@ export async function POST(req: NextRequest) {
     // Ban va Premium+ tekshiruvi
     const guard = await guardUser(session.userId, "premium_plus");
     if (!guard.ok) {
-      return NextResponse.json({ error: guard.error, code: guard.code }, { status: guard.status });
+      return NextResponse.json(
+        {
+          error: guard.error,
+          code: guard.code,
+          requiresPlan: guard.requiresPlan,
+          currentPlan: guard.currentPlan,
+        },
+        { status: guard.status }
+      );
     }
 
     const body = await req.json();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Copy, Check, Bell, BellOff, LogOut, Settings } from "lucide-react";
+import { Bell, BellOff, LogOut, MoreVertical, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,14 +9,12 @@ import { useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
 import { formatTcallId } from "@/lib/tcallId";
-import { copyToClipboard } from "@/lib/utils";
 import { Dialer } from "@/components/Dialer";
 import { ReconnectPill, HintPill } from "@/components/AppToast";
 import { RecentsList } from "@/components/RecentsList";
 import { FriendsPanel } from "@/components/FriendsPanel";
 import { RoomPanel } from "@/components/RoomPanel";
 import { VanityShop } from "@/components/VanityShop";
-import { SpeedDial } from "@/components/SpeedDial";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { ChatMessenger } from "@/components/ChatMessenger";
 import { QuickMessageModal } from "@/components/QuickMessageModal";
@@ -39,11 +37,9 @@ export default function DashboardPage() {
   const { user, loading, logout, setUser } = useAuth();
   const router = useRouter();
   const [calls, setCalls] = useState<CallRecord[]>([]);
-  const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<PhoneTab>("keypad");
   const [loadError, setLoadError] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [friends, setFriends] = useState<{ name: string; tcallId: string }[]>([]);
   const [missedCount, setMissedCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
 
@@ -61,16 +57,12 @@ export default function DashboardPage() {
       setUser={setUser}
       calls={calls}
       setCalls={setCalls}
-      copied={copied}
-      setCopied={setCopied}
       tab={tab}
       setTab={setTab}
       loadError={loadError}
       setLoadError={setLoadError}
       showSettings={showSettings}
       setShowSettings={setShowSettings}
-      friends={friends}
-      setFriends={setFriends}
       missedCount={missedCount}
       setMissedCount={setMissedCount}
       messageCount={messageCount}
@@ -85,16 +77,12 @@ function DashboardInner({
   setUser,
   calls,
   setCalls,
-  copied,
-  setCopied,
   tab,
   setTab,
   loadError,
   setLoadError,
   showSettings,
   setShowSettings,
-  friends,
-  setFriends,
   missedCount,
   setMissedCount,
   messageCount,
@@ -105,16 +93,12 @@ function DashboardInner({
   setUser: ReturnType<typeof useAuth>["setUser"];
   calls: CallRecord[];
   setCalls: (c: CallRecord[]) => void;
-  copied: boolean;
-  setCopied: (v: boolean) => void;
   tab: PhoneTab;
   setTab: (t: PhoneTab) => void;
   loadError: string;
   setLoadError: (v: string) => void;
   showSettings: boolean;
   setShowSettings: (v: boolean) => void;
-  friends: { name: string; tcallId: string }[];
-  setFriends: (f: { name: string; tcallId: string }[]) => void;
   missedCount: number;
   setMissedCount: (n: number) => void;
   messageCount: number;
@@ -125,8 +109,8 @@ function DashboardInner({
   const [mountedTabs, setMountedTabs] = useState<Set<PhoneTab>>(new Set(["keypad"]));
   const [chatOpenTcallId, setChatOpenTcallId] = useState<string | null>(null);
   const [chatInThread, setChatInThread] = useState(false);
-  const [copyError, setCopyError] = useState("");
   const [notifHint, setNotifHint] = useState("");
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
 
   useEffect(() => {
     setMountedTabs((prev) => new Set(prev).add(tab));
@@ -151,20 +135,10 @@ function DashboardInner({
       })
       .catch(() => setLoadError(ui.loadError));
 
-    apiFetch("/api/contacts")
-      .then((r) => r.json())
-      .then((d) => {
-        const list = (d.contacts || []).map((c: { name: string; tcallId: string }) => ({
-          name: c.name,
-          tcallId: c.tcallId,
-        }));
-        setFriends(list);
-      });
-
     apiFetch("/api/chat/conversations")
       .then((r) => r.json())
       .then((d) => setMessageCount(d.unreadCount || 0));
-  }, [setCalls, setLoadError, setFriends, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
+  }, [setCalls, setLoadError, setMissedCount, setMessageCount, ui.loadError, user.tcallId]);
 
   useEffect(() => {
     refresh();
@@ -200,19 +174,6 @@ function DashboardInner({
     return () => window.removeEventListener("tcall:open-chat", onOpenChat);
   }, [setTab]);
 
-  const copyId = async () => {
-    if (!user.tcallId) return;
-    setCopyError("");
-    const ok = await copyToClipboard(user.tcallId);
-    if (ok) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } else {
-      setCopyError(ui.copyFailed);
-      setTimeout(() => setCopyError(""), 4000);
-    }
-  };
-
   const handleNotifications = async () => {
     setNotifHint("");
     if (typeof Notification !== "undefined") {
@@ -234,6 +195,10 @@ function DashboardInner({
     if (tab !== "messages") setChatInThread(false);
   }, [tab]);
 
+  useEffect(() => {
+    setShowHeaderMenu(false);
+  }, [tab]);
+
   const tabTitles: Record<PhoneTab, string> = {
     keypad: ui.keypad,
     recents: ui.recents,
@@ -248,6 +213,7 @@ function DashboardInner({
 
   const userLang = getLanguage(user.language);
   const nativeApp = isNativeApp();
+  const userNumber = user.tcallId ? formatTcallId(user.tcallId) : "...";
 
   return (
     <>
@@ -268,32 +234,23 @@ function DashboardInner({
                 ? {
                     tab,
                     tabLabel: tabTitles[tab],
-                    userFlag: tab === "keypad" ? userLang.flag : undefined,
-                    userName: tab === "keypad" ? user.name : undefined,
+                    userName: tab === "keypad" ? userNumber : undefined,
+                    userCaption: tab === "keypad" ? ui.yourNumber : undefined,
+                    userFlag: tab === "keypad" ? undefined : userLang.flag,
                   }
                 : undefined
             }
             right={
               <div className="flex items-center gap-2">
-                <button onClick={() => setShowSettings(true)} className="ios-icon-btn" title={ui.settings}>
-                  <Settings className="w-5 h-5" />
-                </button>
                 <button
-                  onClick={() => void handleNotifications()}
+                  type="button"
+                  onClick={() => setShowHeaderMenu(true)}
                   className="ios-icon-btn"
-                  title={notificationsEnabled ? ui.notificationsEnabled : ui.enableNotifications}
+                  title={ui.moreTab}
+                  aria-label={ui.moreTab}
                 >
-                  {notificationsEnabled ? (
-                    <Bell className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <BellOff className="w-5 h-5 text-yellow-400" />
-                  )}
+                  <MoreVertical className="w-5 h-5" />
                 </button>
-                {!nativeApp && (
-                  <button onClick={() => void logout()} className="ios-icon-btn" title={ui.logout}>
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                )}
               </div>
             }
           />
@@ -304,15 +261,6 @@ function DashboardInner({
 
         {mountedTabs.has("keypad") && (
           <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
-            <button onClick={() => void copyId()} className="ios-my-number shrink-0">
-              <span className="text-xs text-slate-500">{ui.yourNumber}</span>
-              <span className="font-mono text-lg font-semibold text-brand-600 tracking-wider flex items-center gap-2">
-                {user.tcallId ? formatTcallId(user.tcallId) : "..."}
-                {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-              </span>
-              {copyError && <span className="text-xs text-red-500 mt-1">{copyError}</span>}
-            </button>
-            <SpeedDial userLanguage={user.language} favorites={friends} />
             <Dialer userLanguage={user.language} />
           </div>
         )}
@@ -396,6 +344,52 @@ function DashboardInner({
           onClose={() => setShowSettings(false)}
           onUpdate={(updates) => setUser({ ...user, ...updates })}
         />
+      )}
+
+      {showHeaderMenu && (
+        <div className="ios-modal-overlay" onClick={() => setShowHeaderMenu(false)}>
+          <div className="ios-modal-panel header-actions-sheet" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="header-actions-item"
+              onClick={() => {
+                setShowHeaderMenu(false);
+                void handleNotifications();
+              }}
+            >
+              {notificationsEnabled ? (
+                <Bell className="w-4 h-4 text-green-600" />
+              ) : (
+                <BellOff className="w-4 h-4 text-yellow-500" />
+              )}
+              <span>{notificationsEnabled ? ui.notificationsEnabled : ui.enableNotifications}</span>
+            </button>
+            <button
+              type="button"
+              className="header-actions-item"
+              onClick={() => {
+                setShowHeaderMenu(false);
+                setShowSettings(true);
+              }}
+            >
+              <Settings className="w-4 h-4" />
+              <span>{ui.settings}</span>
+            </button>
+            {!nativeApp && (
+              <button
+                type="button"
+                className="header-actions-item header-actions-item-danger"
+                onClick={() => {
+                  setShowHeaderMenu(false);
+                  void logout();
+                }}
+              >
+                <LogOut className="w-4 h-4" />
+                <span>{ui.logout}</span>
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {quickMessageTarget && (

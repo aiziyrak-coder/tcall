@@ -18,6 +18,7 @@ import { formatTcallId } from "@/lib/tcallId";
 import { copyToClipboard } from "@/lib/utils";
 import { unlockAudio } from "@/lib/ringtone";
 import { prefetchMicrophoneAccess } from "@/lib/mic-permission";
+import { extractSubscriptionRequirement, emitSubscriptionRequired } from "@/lib/subscription-required";
 
 interface RoomPanelProps {
   userLanguage: string;
@@ -94,7 +95,13 @@ export function RoomPanel({ userLanguage }: RoomPanelProps) {
         body: JSON.stringify({ roomId: code }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || ui.joinError);
+      if (!res.ok) {
+        const required = extractSubscriptionRequirement(res.status, data);
+        if (required) {
+          emitSubscriptionRequired({ ...required, source: "room-join" });
+        }
+        throw new Error(data.error || ui.joinError);
+      }
       window.location.href = `/call/${data.roomId}`;
     } catch (e) {
       setError(e instanceof Error ? e.message : ui.joinError);

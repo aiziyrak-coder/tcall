@@ -2,17 +2,9 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { NextRequest } from "next/server";
+import { getAdminJwtSecretBytes } from "@/lib/admin-jwt";
 
 const ADMIN_COOKIE = "admin_session";
-
-function getAdminSecret() {
-  const secret = process.env.ADMIN_JWT_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("ADMIN_JWT_SECRET muhit o'zgaruvchisi ishlab chiqarish rejimida talab qilinadi");
-  }
-  const fallback = (process.env.JWT_SECRET || "dev-admin-fallback") + "-admin-2026-tcall";
-  return new TextEncoder().encode(secret || fallback);
-}
 
 export interface AdminSession {
   adminId: string;
@@ -26,12 +18,12 @@ export async function createAdminToken(payload: AdminSession): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("24h")
-    .sign(getAdminSecret());
+    .sign(getAdminJwtSecretBytes());
 }
 
 export async function verifyAdminToken(token: string): Promise<AdminSession | null> {
   try {
-    const { payload } = await jwtVerify(token, getAdminSecret());
+    const { payload } = await jwtVerify(token, getAdminJwtSecretBytes());
     if (payload.type !== "admin") return null;
     return {
       adminId: payload.adminId as string,
@@ -69,11 +61,14 @@ export async function ensureDefaultAdmin() {
   if (existing) {
     // Muhim: env da yangi parol bo'lsa, yangilab qo'yamiz
     if (process.env.DEFAULT_ADMIN_PASSWORD) {
-      const newHash = await hashAdminPassword(password);
-      await prisma.adminUser.update({
-        where: { email },
-        data: { passwordHash: newHash },
-      });
+      const alreadyMatches = await verifyAdminPassword(password, existing.passwordHash);
+      if (!alreadyMatches) {
+        const newHash = await hashAdminPassword(password);
+        await prisma.adminUser.update({
+          where: { email },
+          data: { passwordHash: newHash },
+        });
+      }
     }
     return;
   }

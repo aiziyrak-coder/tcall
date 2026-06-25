@@ -45,6 +45,7 @@ import {
 import { startVoiceRecord, stopVoiceRecord, type VoiceRecordSession } from "@/lib/chat-voice-record";
 import { ChatMediaViewer } from "@/components/ChatMediaViewer";
 import { VoiceMessageBubble } from "@/components/VoiceMessageBubble";
+import { emitSubscriptionRequired, extractSubscriptionRequirement } from "@/lib/subscription-required";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -212,6 +213,20 @@ export function ChatMessenger({
 
   const activeConv = conversations.find((c) => c.id === activeId);
 
+  const handleSubscriptionRequirement = useCallback(
+    (status: number, payload: unknown, source: string): string | null => {
+      const required = extractSubscriptionRequirement(status, payload);
+      if (!required) return null;
+      emitSubscriptionRequired({ ...required, source });
+      const body =
+        payload && typeof payload === "object"
+          ? (payload as { error?: string })
+          : null;
+      return body?.error || ui.chatActionFailed;
+    },
+    [ui.chatActionFailed]
+  );
+
   useEffect(() => {
     onThreadChange?.(!!activeId);
   }, [activeId, onThreadChange]);
@@ -369,7 +384,11 @@ export function ChatMessenger({
       });
       const d = await r.json();
       if (!r.ok) {
-        setActionError((d as { error?: string }).error || ui.chatActionFailed);
+        const msg =
+          handleSubscriptionRequirement(r.status, d, "chat-start") ||
+          (d as { error?: string }).error ||
+          ui.chatActionFailed;
+        setActionError(msg);
         return;
       }
       await loadConversations();
@@ -377,7 +396,12 @@ export function ChatMessenger({
       setShowNewChat(false);
       setNewTcallId("");
     },
-    [loadConversations, openConversation, ui.chatActionFailed]
+    [
+      loadConversations,
+      openConversation,
+      ui.chatActionFailed,
+      handleSubscriptionRequirement,
+    ]
   );
 
   useEffect(() => {
@@ -639,7 +663,11 @@ export function ChatMessenger({
         }
         void loadConversations();
       } else {
-        setActionError((d as { error?: string }).error || ui.chatActionFailed);
+        const msg =
+          handleSubscriptionRequirement(res.status, d, "chat-send-text") ||
+          (d as { error?: string }).error ||
+          ui.chatActionFailed;
+        setActionError(msg);
       }
     } finally {
       setSending(false);
@@ -697,7 +725,11 @@ export function ChatMessenger({
       });
       if (!msgRes.ok) {
         const err = await msgRes.json().catch(() => ({}));
-        setUploadError((err as { error?: string }).error || ui.chatUploadFailed);
+        const msg =
+          handleSubscriptionRequirement(msgRes.status, err, "chat-send-media") ||
+          (err as { error?: string }).error ||
+          ui.chatUploadFailed;
+        setUploadError(msg);
         return;
       }
       const sent = await msgRes.json();
@@ -738,7 +770,11 @@ export function ChatMessenger({
     });
     const d = await r.json();
     if (!r.ok) {
-      setActionError((d as { error?: string }).error || ui.chatActionFailed);
+      const msg =
+        handleSubscriptionRequirement(r.status, d, "chat-create-group") ||
+        (d as { error?: string }).error ||
+        ui.chatActionFailed;
+      setActionError(msg);
       return;
     }
     setShowNewGroup(false);

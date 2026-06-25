@@ -39,8 +39,15 @@ import { OutgoingCallModal } from "@/components/OutgoingCallModal";
 import { ErrorToast } from "@/components/AppToast";
 import { ActiveCallEngine } from "@/components/active-call/ActiveCallEngine";
 import { MiniCallBar } from "@/components/active-call/MiniCallBar";
+import { SubscriptionPlansModal } from "@/components/SubscriptionPlansModal";
 import { useUI } from "@/components/providers/LocaleProvider";
 import type { User } from "@/hooks/useAuth";
+import {
+  extractSubscriptionRequirement,
+  emitSubscriptionRequired,
+  onSubscriptionRequired,
+  type ClientSubscriptionPlan,
+} from "@/lib/subscription-required";
 
 export interface IncomingCall {
   roomId: string;
@@ -120,6 +127,11 @@ export function CallProvider({ user, children }: CallProviderProps) {
   const [socketConnected, setSocketConnected] = useState(false);
   const [activeCall, setActiveCall] = useState<{ roomId: string; isHost: boolean } | null>(null);
   const [callMinimized, setCallMinimized] = useState(false);
+  const [subscriptionPrompt, setSubscriptionPrompt] = useState<{
+    requiredPlan?: ClientSubscriptionPlan;
+    currentPlan?: ClientSubscriptionPlan;
+    error?: string;
+  } | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const ringTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,6 +155,16 @@ export function CallProvider({ user, children }: CallProviderProps) {
       return () => clearTimeout(t);
     }
   }, [acceptError]);
+
+  useEffect(() => {
+    return onSubscriptionRequired((detail) => {
+      setSubscriptionPrompt({
+        requiredPlan: detail.requiredPlan,
+        currentPlan: detail.currentPlan,
+        error: detail.error,
+      });
+    });
+  }, []);
 
   useEffect(() => {
     setupAudioUnlockOnGesture();
@@ -438,8 +460,18 @@ export function CallProvider({ user, children }: CallProviderProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId }),
       });
-      const data = await parseApiJson<{ error?: string }>(res);
-      if (!res.ok) throw new Error(data.error || ui.dialError);
+      const data = await parseApiJson<{
+        error?: string;
+        requiresPlan?: ClientSubscriptionPlan;
+        currentPlan?: ClientSubscriptionPlan;
+      }>(res);
+      if (!res.ok) {
+        const required = extractSubscriptionRequirement(res.status, data);
+        if (required) {
+          emitSubscriptionRequired({ ...required, source: "incoming-call-accept" });
+        }
+        throw new Error(data.error || ui.dialError);
+      }
 
       socketRef.current?.emit("call-accept", { roomId });
       setIncomingCall(null);
@@ -518,6 +550,8 @@ export function CallProvider({ user, children }: CallProviderProps) {
       error?: string;
       canMessage?: boolean;
       calleeTcallId?: string;
+      requiresPlan?: ClientSubscriptionPlan;
+      currentPlan?: ClientSubscriptionPlan;
       callee?: { name?: string; userId?: string; tcallId?: string; language?: string };
       roomId?: string;
       callId?: string;
@@ -525,6 +559,10 @@ export function CallProvider({ user, children }: CallProviderProps) {
       calleeOnline?: boolean;
     }>(res);
     if (!res.ok) {
+      const required = extractSubscriptionRequirement(res.status, data);
+      if (required) {
+        emitSubscriptionRequired({ ...required, source: "dial" });
+      }
       if (data.canMessage && data.calleeTcallId) {
         setQuickMessageTarget({ tcallId: data.calleeTcallId, name: data.callee?.name });
       }
@@ -599,6 +637,15 @@ export function CallProvider({ user, children }: CallProviderProps) {
 
       <ErrorToast message={dialError} type="warn" />
       <ErrorToast message={acceptError} type="error" />
+
+      <SubscriptionPlansModal
+        open={subscriptionPrompt != null}
+        userLanguage={userLanguage}
+        requiredPlan={subscriptionPrompt?.requiredPlan}
+        currentPlanHint={subscriptionPrompt?.currentPlan}
+        errorHint={subscriptionPrompt?.error}
+        onClose={() => setSubscriptionPrompt(null)}
+      />
 
       {incomingCall && (
         <IncomingCallModal

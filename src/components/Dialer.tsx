@@ -157,7 +157,7 @@ export function Dialer({ userLanguage }: DialerProps) {
 
   return (
     <div className="ios-keypad">
-      <div className="ios-keypad-display ios-keypad-display-scroll">
+      <div className="ios-keypad-display">
         {!lookupUser && !lookupLoading && digits.length !== 9 && (
           <p className="ios-keypad-hint">{ui.dialNumber}</p>
         )}

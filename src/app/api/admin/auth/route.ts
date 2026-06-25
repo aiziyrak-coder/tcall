@@ -6,6 +6,7 @@ import {
   createAdminToken,
   getAdminSession,
   ADMIN_COOKIE,
+  ensureDefaultAdmin,
 } from "@/lib/admin-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
   if (!limited.ok) return NextResponse.json({ error: "Juda ko'p urinish" }, { status: 429 });
 
   try {
+    await ensureDefaultAdmin();
     const { email, password } = loginSchema.parse(await req.json());
     const admin = await prisma.adminUser.findUnique({ where: { email: email.toLowerCase() } });
     if (!admin) return NextResponse.json({ error: "Email yoki parol noto'g'ri" }, { status: 401 });
@@ -30,7 +32,15 @@ export async function POST(req: NextRequest) {
     const token = await createAdminToken({ adminId: admin.id, email: admin.email, name: admin.name, role: admin.role });
 
     const res = NextResponse.json({ ok: true, admin: { email: admin.email, name: admin.name, role: admin.role } });
-    res.cookies.set(ADMIN_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 86400, path: "/" });
+    const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const isHttps = req.nextUrl.protocol === "https:" || forwardedProto === "https";
+    res.cookies.set(ADMIN_COOKIE, token, {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+    });
     return res;
   } catch (e) {
     if (e instanceof z.ZodError) return NextResponse.json({ error: "Noto'g'ri ma'lumot" }, { status: 400 });

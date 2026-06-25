@@ -1260,6 +1260,10 @@ body.tg-webapp .ios-tab-bar {
   @apply bg-red-50 border border-red-200 text-red-600 rounded-xl px-3 py-2 text-xs mb-3;
 }
 
+.ios-success-banner {
+  @apply bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-3 py-2 text-xs mb-3;
+}
+
 .ios-tab-bar-6 {
   @apply grid grid-cols-6 gap-0;
 }
@@ -1331,6 +1335,46 @@ body.tg-webapp .ios-tab-bar {
 
 .settings-block-item {
   @apply flex items-center justify-between py-2 text-sm;
+}
+
+.settings-nav-list {
+  @apply space-y-2;
+}
+
+.settings-nav-item {
+  @apply w-full flex items-center gap-3 rounded-2xl border border-black/5 bg-white px-3 py-3 text-left touch-manipulation transition-colors;
+}
+
+.settings-nav-item:hover {
+  @apply bg-slate-50;
+}
+
+.settings-nav-icon {
+  @apply w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0;
+}
+
+.settings-nav-text {
+  @apply flex-1 min-w-0;
+}
+
+.settings-nav-text strong {
+  @apply block text-sm font-semibold text-slate-900;
+}
+
+.settings-nav-text small {
+  @apply block text-xs text-slate-500 mt-0.5 truncate;
+}
+
+.settings-profile-hero-compact {
+  @apply py-2;
+}
+
+.settings-security-card {
+  @apply rounded-2xl border border-black/5 bg-white/80 p-3;
+}
+
+.settings-danger-btn {
+  @apply w-full flex items-center justify-center gap-2 rounded-xl bg-red-500 text-white py-2.5 text-sm font-semibold touch-manipulation active:scale-[0.99];
 }
 
 .ios-modal-overlay {
@@ -1554,16 +1598,28 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-user-chip {
-  @apply inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-slate-50 border border-black/[0.06];
+  @apply inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full bg-slate-50 border border-black/[0.06];
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .phone-header-avatar {
-  @apply w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0;
+  @apply w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0;
   background: linear-gradient(145deg, #34c759 0%, #007aff 100%);
 }
 
 .phone-header-user-text {
+  @apply inline-flex items-center gap-1.5 min-w-0;
+}
+
+.phone-header-user-text-stack {
+  @apply flex flex-col items-start gap-0 min-w-0;
+}
+
+.phone-header-user-caption {
+  @apply text-[9px] uppercase tracking-wide text-slate-500 leading-none;
+}
+
+.phone-header-user-main {
   @apply inline-flex items-center gap-1.5 min-w-0;
 }
 
@@ -1572,7 +1628,27 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-user-name {
-  @apply text-sm font-semibold text-slate-800 truncate max-w-[9rem] sm:max-w-[12rem];
+  @apply text-[12px] font-semibold text-slate-800 truncate max-w-[8rem] sm:max-w-[10rem];
+}
+
+.header-actions-sheet {
+  @apply p-2 w-full max-w-xs;
+}
+
+.header-actions-item {
+  @apply w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 transition-colors;
+}
+
+.header-actions-item:hover {
+  @apply bg-slate-100;
+}
+
+.header-actions-item-danger {
+  @apply text-red-600;
+}
+
+.header-actions-meta {
+  @apply ml-auto text-[11px] text-slate-500 font-mono;
 }
 
 .app-splash {
@@ -1618,44 +1694,36 @@ body.tg-webapp .ios-tab-bar {
 .app-tab-keypad {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  padding-bottom: 0.5rem;
-}
-
-.app-tab-keypad .ios-my-number {
-  @apply py-2 mb-1;
-}
-
-.app-tab-keypad .ios-my-number {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-  margin-bottom: 0;
+  justify-content: center;
+  padding-bottom: 0 !important;
 }
 
 .app-tab-keypad .ios-keypad {
-  padding-bottom: 0.5rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  justify-content: space-between;
+  padding-bottom: 0.25rem;
 }
 
 .app-tab-keypad .ios-keypad-grid {
-  max-width: min(288px, 92vw);
-  gap: 6px;
+  flex: 0 0 auto;
+  max-width: min(300px, 88vw);
+  gap: 5px 8px;
 }
 
 .app-tab-keypad .ios-key {
-  max-height: 66px;
-  min-height: 52px;
+  max-height: clamp(52px, 8.4vh, 64px);
+  min-height: clamp(46px, 7.2vh, 56px);
   aspect-ratio: 1;
 }
 
 .app-tab-keypad .ios-key-spacer {
-  max-height: 66px;
-  min-height: 52px;
+  max-height: clamp(52px, 8.4vh, 64px);
+  min-height: clamp(46px, 7.2vh, 56px);
   aspect-ratio: 1;
 }
 
@@ -1665,17 +1733,29 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .app-tab-keypad .ios-key-digit {
-  font-size: 1.625rem;
+  font-size: clamp(1.4rem, 4.4vw, 1.65rem);
 }
 
 .app-tab-keypad .ios-call-green-btn {
-  width: 62px;
-  height: 62px;
+  width: clamp(56px, 7.8vh, 62px);
+  height: clamp(56px, 7.8vh, 62px);
 }
 
 .app-tab-keypad .ios-keypad-display {
-  min-height: 48px;
-  margin-bottom: 0.5rem;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 0.25rem;
+}
+
+.app-tab-keypad .ios-keypad-number {
+  font-size: clamp(1.7rem, 5vw, 2.1rem);
+}
+
+.app-tab-keypad .ios-keypad-bottom {
+  flex: 0 0 auto;
+  margin-top: 0.45rem;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
 }
 
 /* ─── Global app notifications (kichik, iOS uslubida) ─── */
@@ -3100,14 +3180,13 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .ios-keypad-display-scroll {
-  max-height: 42vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  max-height: none;
+  overflow: visible;
 }
 
 .dialer-profile-wrap {
-  max-height: 36vh;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .chat-thread-avatar-btn {

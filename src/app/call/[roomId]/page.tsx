@@ -9,6 +9,7 @@ import { AudioCallRoom } from "@/components/AudioCallRoom";
 import { AppSplash } from "@/components/AppSplash";
 import { TcallLogo } from "@/components/TcallLogo";
 import { useCallContext } from "@/components/providers/CallProvider";
+import { extractSubscriptionRequirement, emitSubscriptionRequired } from "@/lib/subscription-required";
 
 function CallPageReady({
   roomId,
@@ -34,6 +35,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
   const [joinState, setJoinState] = useState<"loading" | "ready" | "error">("loading");
   const [isHost, setIsHost] = useState(false);
   const [joinError, setJoinError] = useState("");
+  const [subscriptionBlocked, setSubscriptionBlocked] = useState(false);
 
   const roomId = params.roomId.toUpperCase();
   const ui = getUI(user?.language || "uz");
@@ -44,6 +46,7 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
 
   useEffect(() => {
     if (!user) return;
+    setSubscriptionBlocked(false);
 
     apiFetch("/api/calls/join", {
       method: "POST",
@@ -52,7 +55,14 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
     })
       .then(async (r) => {
         const data = await parseApiJson<{ error?: string; isHost?: boolean }>(r);
-        if (!r.ok) throw new Error(data.error || "Xatolik");
+        if (!r.ok) {
+          const required = extractSubscriptionRequirement(r.status, data);
+          if (required) {
+            emitSubscriptionRequired({ ...required, source: "call-page-join" });
+            setSubscriptionBlocked(true);
+          }
+          throw new Error(data.error || "Xatolik");
+        }
         setIsHost(data.isHost ?? false);
         setJoinState("ready");
       })
@@ -63,10 +73,10 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
   }, [user, roomId]);
 
   useEffect(() => {
-    if (joinState !== "error") return;
+    if (joinState !== "error" || subscriptionBlocked) return;
     const timer = setTimeout(() => router.replace("/dashboard"), 3000);
     return () => clearTimeout(timer);
-  }, [joinState, router]);
+  }, [joinState, router, subscriptionBlocked]);
 
   if (loading || !user || joinState === "loading") {
     return <AppSplash message={ui.connecting} />;
@@ -79,7 +89,9 @@ export default function CallPage({ params }: { params: { roomId: string } }) {
           <TcallLogo size="md" animate className="mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Xatolik</h2>
           <p className="text-slate-500 mb-6">{joinError}</p>
-          <p className="text-sm text-slate-400">{ui.returningToDashboard}</p>
+          <p className="text-sm text-slate-400">
+            {subscriptionBlocked ? "Obunani yoqing va qayta urinib ko'ring." : ui.returningToDashboard}
+          </p>
         </div>
       </div>
     );

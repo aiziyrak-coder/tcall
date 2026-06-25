@@ -6,7 +6,14 @@ import { requirePlan, type SubscriptionPlan } from "@/lib/subscription";
 
 export type GuardResult =
   | { ok: true }
-  | { ok: false; error: string; status: number; code?: string };
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      code?: string;
+      requiresPlan?: SubscriptionPlan;
+      currentPlan?: SubscriptionPlan;
+    };
 
 /** Foydalanuvchi banlanganmi tekshiradi */
 export async function checkBan(userId: string): Promise<GuardResult> {
@@ -54,6 +61,8 @@ export async function guardUser(
         error: `Bu funksiya uchun ${planLabels[requiredPlan]} obuna kerak. Joriy tarif: ${planLabels[plan]}`,
         status: 402,
         code: "SUBSCRIPTION_REQUIRED",
+        requiresPlan: requiredPlan,
+        currentPlan: plan,
       };
     }
   }
