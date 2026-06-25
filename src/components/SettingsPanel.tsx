@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Save, Camera, Trash2 } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
+import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
 import { LANGUAGES } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
 import { STATUS_OPTIONS, type UserStatus } from "@/lib/status";
@@ -107,12 +108,13 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     setUploading(true);
     setError("");
     try {
+      const prepared = await prepareAvatarFile(file);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", prepared);
       const res = await apiFetch("/api/user/avatar", { method: "POST", body: fd });
       const data = await parseApiJson<{ error?: string; url?: string }>(res);
       if (!res.ok) throw new Error(data.error || "Yuklash xatosi");
-      if (data.url) setAvatarUrl(data.url);
+      if (data.url) setAvatarUrl(`${data.url}?v=${Date.now()}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : ui.chatActionFailed);
     } finally {
@@ -204,7 +206,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*,.heic,.heif,.HEIC,.HEIF"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];

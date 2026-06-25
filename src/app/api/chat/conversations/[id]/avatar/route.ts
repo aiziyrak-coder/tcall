@@ -7,9 +7,19 @@ import { prisma } from "@/lib/prisma";
 import { assertCanManageGroup } from "@/lib/chat-service";
 import { groupAvatarUrl } from "@/lib/avatar-url";
 import { rateLimit } from "@/lib/rate-limit";
+import { extForImageMime, normalizeImageMime } from "@/lib/image-mime";
 
 const MAX_SIZE = 5 * 1024 * 1024;
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+async function readUploadEntry(entry: FormDataEntryValue | null): Promise<{ buffer: Buffer; mime: string } | null> {
+  if (!entry || typeof entry === "string") return null;
+  const blob = entry as Blob;
+  if (!blob.size) return null;
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  const mime = normalizeImageMime(entry instanceof File ? entry.type : blob.type, buffer);
+  if (!mime) return null;
+  return { buffer, mime };
+}
 
 export const runtime = "nodejs";
 
@@ -29,24 +39,19 @@ export async function POST(
     await assertCanManageGroup(params.id, session.userId);
 
     const formData = await req.formData();
-    const file = formData.get("file");
-    if (!(file instanceof File) || !file.size) {
-      return NextResponse.json({ error: "Rasm kerak" }, { status: 400 });
+    const upload = await readUploadEntry(formData.get("file"));
+    if (!upload) {
+      return NextResponse.json({ error: "Rasm kerak (JPG, PNG, WebP, GIF)" }, { status: 400 });
     }
-    if (file.size > MAX_SIZE) {
+    if (upload.buffer.length > MAX_SIZE) {
       return NextResponse.json({ error: "Rasm juda katta (max 5 MB)" }, { status: 400 });
     }
 
-    const mime = file.type || "image/jpeg";
-    if (!ALLOWED.has(mime)) {
-      return NextResponse.json({ error: "Faqat JPG, PNG, WebP, GIF" }, { status: 400 });
-    }
-
-    const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("gif") ? "gif" : "jpg";
+    const ext = extForImageMime(upload.mime);
     const filename = `${randomUUID()}.${ext}`;
     const dir = join(process.cwd(), "public", "uploads", "groups", params.id);
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
+    await writeFile(join(dir, filename), upload.buffer);
 
     await prisma.conversation.update({
       where: { id: params.id },

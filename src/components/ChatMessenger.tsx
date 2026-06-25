@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
 import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -676,8 +677,9 @@ export function ChatMessenger({
     setGroupAvatarUploading(true);
     setActionError("");
     try {
+      const prepared = await prepareAvatarFile(file);
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", prepared);
       const r = await apiFetch(`/api/chat/conversations/${activeId}/avatar`, { method: "POST", body: fd });
       if (!r.ok) throw new Error();
       await loadConversations();
@@ -1115,7 +1117,7 @@ export function ChatMessenger({
                 <input
                   ref={groupAvatarRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  accept="image/*,.heic,.heif,.HEIC,.HEIF"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
