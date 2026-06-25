@@ -107,6 +107,28 @@
     @apply h-full overflow-y-auto overscroll-contain;
     -webkit-overflow-scrolling: touch;
   }
+  .auth-app-shell {
+    @apply fixed inset-0 flex flex-col overflow-hidden;
+    height: 100dvh;
+    max-height: 100dvh;
+    background: #f2f2f7;
+  }
+  .auth-app-scroll {
+    @apply flex-1 min-h-0 overflow-y-auto overscroll-contain;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+      max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  }
+  .auth-app-inner {
+    @apply w-full max-w-lg;
+  }
+  .auth-app-card {
+    @apply bg-white rounded-2xl p-6 sm:p-8 border border-black/[0.06];
+    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  }
   .page-scroll-shell {
     @apply overflow-y-auto overscroll-contain;
     -webkit-overflow-scrolling: touch;
@@ -2773,7 +2795,41 @@ body.native-app .phone-header-shell {
   }
 }
 
-/* Native onboarding — birinchi ochish */
+body.web-app .auth-app-card {
+  box-shadow: 0 2px 16px rgba(15, 23, 42, 0.05);
+}
+
+/* ===== Web ilova rejimi (PWA / brauzer) ===== */
+html.web-app {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html.web-app body,
+body.web-app {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #f2f2f7;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.web-app #__next,
+body.web-app > *:not(script) {
+  height: 100%;
+  min-height: 0;
+}
+
+body.web-app-standalone .auth-app-shell,
+body.web-app-standalone .phone-screen,
+body.web-app-standalone .chat-app {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Native onboarding — birinchi ochish (web + native) */
 .native-onboarding {
   position: fixed;
   inset: 0;

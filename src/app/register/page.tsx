@@ -8,7 +8,6 @@ import { LANGUAGES } from "@/lib/languages";
 import { useAuth } from "@/hooks/useAuth";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
-import { AppCopyright } from "@/components/AppCopyright";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -41,29 +40,26 @@ export default function RegisterPage() {
 
   if (loading) {
     return (
-      <div className="page-shell">
+      <div className="auth-app-shell">
         <AppSplash message="Ro'yxatdan o'tish..." />
       </div>
     );
   }
 
   return (
-    <div className="page-shell app-page-enter">
-      <div className="auth-page-scroll flex items-center justify-center px-4 py-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
-        <div className="relative w-full max-w-lg">
-        <div className="flex justify-center mb-8 sm:mb-10">
-          <Link href="/" className="touch-manipulation">
-            <TcallLogo
-              size="xl"
-              layout="horizontal"
-              title="Ro'yxatdan o'tish"
-              subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
-            />
-          </Link>
+    <div className="auth-app-shell app-page-enter">
+      <div className="auth-app-scroll">
+        <div className="auth-app-inner">
+        <div className="flex justify-center mb-8">
+          <TcallLogo
+            size="xl"
+            layout="horizontal"
+            title="Ro'yxatdan o'tish"
+            subtitle="Tilingizni tanlang — tarjima shu tilga bo'ladi"
+          />
         </div>
 
-        <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-5">
+        <form onSubmit={handleSubmit} className="auth-app-card space-y-5">
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-4 py-3 text-sm">
               {error}
@@ -136,8 +132,6 @@ export default function RegisterPage() {
             </Link>
           </p>
         </form>
-
-        <AppCopyright className="mt-8" />
         </div>
       </div>
     </div>

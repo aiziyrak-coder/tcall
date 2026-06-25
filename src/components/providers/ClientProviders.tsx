@@ -8,6 +8,7 @@ import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import { TelegramInit } from "@/components/TelegramInit";
 import { NativeAppInit } from "@/components/NativeAppInit";
 import { NativeAppRouter } from "@/components/NativeAppRouter";
+import { WebAppInit } from "@/components/WebAppInit";
 import { AppSplash } from "@/components/AppSplash";
 
 function CallBridge({ children }: { children: React.ReactNode }) {
@@ -43,6 +44,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <NativeAppInit />
+      <WebAppInit />
       <NativeAppRouter />
       <TelegramInit />
       <CallBridge>{children}</CallBridge>

@@ -48,7 +48,7 @@ function ResetForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="glass rounded-2xl p-8 space-y-4">
+    <form onSubmit={handleSubmit} className="auth-app-card space-y-4">
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm">
           {error}
@@ -94,9 +94,9 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="page-shell app-page-enter">
-      <div className="auth-page-scroll flex items-center justify-center px-4 py-8">
-        <div className="relative w-full max-w-lg">
+    <div className="auth-app-shell app-page-enter">
+      <div className="auth-app-scroll">
+        <div className="auth-app-inner">
           <div className="flex justify-center mb-8">
             <TcallLogo size="lg" layout="horizontal" title="Yangi parol" />
           </div>

@@ -6,10 +6,15 @@ import { ClientProviders } from "@/components/providers/ClientProviders";
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "Tcall — Audio qo'ng'iroq",
+  title: "Tcall",
   description: "Real-time tarjima bilan audio qo'ng'iroq. Dunyo bilan o'z tilingizda gaplashing.",
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Tcall" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Tcall",
+    startupImage: "/logo-icon.png",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -29,16 +34,16 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#F2F2F7",
+  themeColor: "#007AFF",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uz">
-      <body className={`${inter.className} overflow-x-hidden`}>
+      <body className={`${inter.className} overflow-hidden`}>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var c=window.Capacitor;if(!c||!c.isNativePlatform||!c.isNativePlatform())return;var b=document.body,p=c.getPlatform&&c.getPlatform();b.classList.add("native-app");if(p)b.classList.add("native-"+p);}catch(e){}})();`,
+            __html: `(function(){try{var c=window.Capacitor;if(c&&c.isNativePlatform&&c.isNativePlatform()){var b=document.body,p=c.getPlatform&&c.getPlatform();b.classList.add("native-app");if(p)b.classList.add("native-"+p);return;}document.documentElement.classList.add("web-app");document.body.classList.add("web-app");document.documentElement.style.setProperty("--app-vh",window.innerHeight*0.01+"px");}catch(e){}})();`,
           }}
         />
         <ClientProviders>{children}</ClientProviders>

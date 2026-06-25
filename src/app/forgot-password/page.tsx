@@ -4,9 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
-import { isNativeApp } from "@/lib/native-app";
 import { TcallLogo } from "@/components/TcallLogo";
-import { AppCopyright } from "@/components/AppCopyright";
 
 type Step = "email" | "code";
 
@@ -70,15 +68,14 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="page-shell app-page-enter">
-      <div className="auth-page-scroll flex items-center justify-center px-4 py-8">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-100/50 via-slate-50 to-white pointer-events-none" />
-        <div className="relative w-full max-w-lg">
+    <div className="auth-app-shell app-page-enter">
+      <div className="auth-app-scroll">
+        <div className="auth-app-inner">
           <div className="flex justify-center mb-8">
             <TcallLogo size="lg" layout="horizontal" title="Parolni tiklash" subtitle="Email orqali kod oling" />
           </div>
 
-          <div className="glass rounded-2xl p-8 space-y-5">
+          <div className="auth-app-card space-y-5">
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-4 py-3 text-sm">
                 {error}
@@ -168,8 +165,6 @@ export default function ForgotPasswordPage() {
               </Link>
             </p>
           </div>
-
-          {!isNativeApp() && <AppCopyright className="mt-8" />}
         </div>
       </div>
     </div>

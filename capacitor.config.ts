@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   appName: "Tcall",
   webDir: "mobile/www",
   server: {
-    url: `${PRODUCTION_URL}/login`,
+    url: `${PRODUCTION_URL}/`,
     cleartext: false,
     allowNavigation: [
       "tcall.uz",
