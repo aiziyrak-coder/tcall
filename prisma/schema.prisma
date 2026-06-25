@@ -39,6 +39,7 @@ model User {
   vanityRequests    VanityNumberRequest[]
   contacts          Contact[]         @relation("OwnerContacts")
   blocks            BlockedUser[]     @relation("Blocker")
+  messageReactions  MessageReaction[]
   unblockRequestsSent     UnblockRequest[] @relation("UnblockRequestsSent")
   unblockRequestsReceived UnblockRequest[] @relation("UnblockRequestsReceived")
   friendRequestsSent     FriendRequest[] @relation("FriendRequestsSent")
@@ -182,9 +183,10 @@ model Call {
   transcripts  CallTranscript[]
 
   @@index([hostId])
-  @@index([status])
+  @@index([status, createdAt])
   @@index([createdAt])
   @@index([calleeTcallId])
+  @@index([hostId, status])
 }
 
 model CallParticipant {
@@ -253,9 +255,12 @@ model ConversationMember {
   joinedAt       DateTime     @default(now())
   lastReadAt     DateTime?
   hiddenAt       DateTime?
+  pinnedAt       DateTime?
+  mutedUntil     DateTime?
 
   @@unique([conversationId, userId])
   @@index([userId])
+  @@index([userId, pinnedAt])
 }
 
 model ChatMessage {
@@ -273,11 +278,28 @@ model ChatMessage {
   mediaSize      Int?
   deletedAt      DateTime?
   createdAt      DateTime     @default(now())
+  replyToId      String?
+  replyTo        ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        ChatMessage[] @relation("MessageReplies")
 
   translations MessageTranslation[]
+  reactions    MessageReaction[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+model MessageReaction {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
 }
 
 model MessageTranslation {

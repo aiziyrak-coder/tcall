@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { emitToUser } from "@/lib/socket-io";
+import { sendFriendRequestPush } from "@/lib/push-service";
 
 const postSchema = z.object({
   tcallId: z.string().regex(/^\d{9}$/),
@@ -120,6 +121,10 @@ export async function POST(req: NextRequest) {
 
     emitToUser(receiver.id, "friend-request", {
       sender: { id: session.userId, name: session.name, tcallId: session.tcallId },
+    });
+    void sendFriendRequestPush(receiver.id, {
+      senderName: session.name,
+      senderTcallId: session.tcallId ?? "",
     });
 
     return NextResponse.json({ ok: true });

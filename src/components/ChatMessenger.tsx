@@ -64,6 +64,7 @@ export interface ChatMessageItem {
   hasTranslation: boolean;
   readStatus?: "sent" | "read";
   deleted?: boolean;
+  reactions?: { emoji: string; count: number; mine?: boolean }[];
 }
 
 interface ConversationItem {
@@ -79,6 +80,7 @@ interface ConversationItem {
   lastPreview?: string;
   lastMessage: ChatMessageItem | null;
   members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; language?: string; role?: string }[];
+  pinnedAt?: string | null;
 }
 
 interface PeerPresence {
@@ -472,6 +474,25 @@ export function ChatMessenger({
     return () => window.removeEventListener("tcall:chat-typing", onTyping);
   }, [activeId, userId]);
 
+  // Reaksiyalar — socket orqali real-time yangilanish
+  useEffect(() => {
+    const onReaction = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        messageId: string;
+        conversationId: string;
+        summary: { emoji: string; count: number }[];
+      };
+      if (!detail?.messageId) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === detail.messageId ? { ...m, reactions: detail.summary.map((r) => ({ ...r, mine: false })) } : m
+        )
+      );
+    };
+    window.addEventListener("tcall:message-reaction", onReaction);
+    return () => window.removeEventListener("tcall:message-reaction", onReaction);
+  }, []);
+
   useEffect(() => {
     const onPresence = (e: Event) => {
       const detail = (e as CustomEvent).detail as PeerPresence;
@@ -545,6 +566,28 @@ export function ChatMessenger({
 
   const deleteMessage = (messageId: string) => {
     setPendingDeleteId(messageId);
+  };
+
+  const handleReaction = async (messageId: string, emoji: string) => {
+    try {
+      const r = await apiFetch("/api/chat/reactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, reactions: data.summary.map((s: { emoji: string; count: number }) => ({ ...s, mine: s.emoji === emoji ? data.action === "added" : m.reactions?.find((rx) => rx.emoji === s.emoji)?.mine })) }
+              : m
+          )
+        );
+      }
+    } catch {
+      /* ignore */
+    }
   };
 
   const confirmDeleteMessage = async () => {
@@ -990,6 +1033,7 @@ export function ChatMessenger({
                     isMine={m.sender.id === userId}
                     ui={ui}
                     onDelete={m.sender.id === userId && !m.deleted ? () => void deleteMessage(m.id) : undefined}
+                    onReact={!m.deleted ? (emoji) => void handleReaction(m.id, emoji) : undefined}
                   />
                 </Fragment>
               );
@@ -1447,11 +1491,13 @@ function MessageBubble({
   isMine,
   ui,
   onDelete,
+  onReact,
 }: {
   msg: ChatMessageItem;
   isMine: boolean;
   ui: Record<string, string>;
   onDelete?: () => void;
+  onReact?: (emoji: string) => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
@@ -1562,12 +1608,43 @@ function MessageBubble({
           </button>
         )}
       </div>
-      {showActions && onDelete && (
+      {showActions && (
         <div className="chat-msg-actions">
-          <button type="button" className="chat-msg-action-danger" onClick={onDelete}>
-            <Trash2 className="w-3.5 h-3.5" />
-            {ui.chatDeleteMessage}
-          </button>
+          {onReact && !msg.deleted && (
+            <div className="chat-reaction-bar">
+              {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="chat-reaction-emoji-btn"
+                  onClick={() => { onReact(emoji); setShowActions(false); }}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+          {onDelete && (
+            <button type="button" className="chat-msg-action-danger" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
+              {ui.chatDeleteMessage}
+            </button>
+          )}
+        </div>
+      )}
+      {msg.reactions && msg.reactions.length > 0 && (
+        <div className={`chat-reactions ${isMine ? "chat-reactions-mine" : ""}`}>
+          {msg.reactions.map((r) => (
+            <button
+              key={r.emoji}
+              type="button"
+              className={`chat-reaction-pill${r.mine ? " chat-reaction-pill-mine" : ""}`}
+              onClick={() => onReact?.(r.emoji)}
+              title={r.emoji}
+            >
+              {r.emoji} <span className="chat-reaction-count">{r.count}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

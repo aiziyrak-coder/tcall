@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mic,
@@ -20,6 +20,7 @@ import { TcallLogo } from "@/components/TcallLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { useActiveCallOptional } from "@/components/active-call/ActiveCallStateContext";
+import { CallRatingModal } from "@/components/CallRatingModal";
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -40,6 +41,8 @@ export function AudioCallRoom() {
   const { minimizeCall, activeCall } = useCallContext();
   const call = useActiveCallOptional();
   const leaveHandledRef = useRef(false);
+  const [showRating, setShowRating] = useState(false);
+  const ratingCallIdRef = useRef<string | null>(null);
 
   const leaveToDashboard = useCallback(() => {
     if (!activeCall || leaveHandledRef.current) return;
@@ -59,9 +62,18 @@ export function AudioCallRoom() {
 
   useEffect(() => {
     if (!call || call.callStatus !== "ended") return;
+
+    // Qo'ng'iroq 10+ soniya davom etsa — baholash so'raymiz
+    if (call.callDuration >= 10 && activeCall?.roomId) {
+      ratingCallIdRef.current = activeCall.roomId;
+      const timer = setTimeout(() => setShowRating(true), 300);
+      return () => clearTimeout(timer);
+    }
+
     const timer = setTimeout(leaveToDashboard, LEAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [call, call?.callStatus, leaveToDashboard]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [call?.callStatus]);
 
   useEffect(() => {
     if (!call || call.callStatus !== "error" || call.micStatus !== "granted") return;
@@ -75,6 +87,19 @@ export function AudioCallRoom() {
   if (!user || !activeCall || !call) return null;
 
   const ui = useUI(user.language);
+
+  if (showRating && ratingCallIdRef.current) {
+    return (
+      <CallRatingModal
+        callId={ratingCallIdRef.current}
+        userLanguage={user.language}
+        onClose={() => {
+          setShowRating(false);
+          leaveToDashboard();
+        }}
+      />
+    );
+  }
   const partnerLang = call.partner ? getLanguage(call.partner.language) : null;
 
   if (call.micStatus !== "granted" && call.callStatus !== "ended") {

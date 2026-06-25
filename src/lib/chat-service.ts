@@ -3,10 +3,9 @@ import {
   backfillTranslationForUser,
   ensureMessageTranslations,
 } from "./chat-translate";
-import { emitToUser } from "./socket-io";
+import { emitToUser, isUserOnline } from "./socket-io";
 import { computeMessageReadStatus, type MessageReadStatus } from "./chat-read-status";
-import { isUserOnline } from "./socket-io";
-
+import { sendChatPush } from "./push-service";
 import { formatMessagePreview } from "./chat-preview";
 import { getUI } from "./languages";
 
@@ -357,12 +356,22 @@ export async function sendChatMessage(input: SendMessageInput) {
     message: formatMessage(msg, translations, sourceLang),
   };
 
+  const senderUser = members.find((m) => m.userId === input.senderId)?.user;
+
   for (const member of members) {
     if (member.userId === input.senderId) continue;
     emitToUser(member.userId, "chat-message", {
       ...payload,
       message: formatMessageForUser(msg, translations, member.user.language),
     });
+    // Foydalanuvchi onlayn bo'lmasa — push yuboramiz
+    if (!isUserOnline(member.userId)) {
+      void sendChatPush(member.userId, {
+        senderName: senderUser?.name || "Tcall",
+        text: msg.originalText || "Yangi xabar",
+        conversationId: input.conversationId,
+      });
+    }
   }
 
   emitToUser(input.senderId, "chat-message", {

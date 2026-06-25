@@ -308,6 +308,12 @@ export function CallProvider({ user, children }: CallProviderProps) {
         }
       });
 
+      socket.on("message-reaction", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:message-reaction", { detail: data }));
+        }
+      });
+
       socket.on("friend-request", (data: unknown) => {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("tcall:friend-request", { detail: data }));

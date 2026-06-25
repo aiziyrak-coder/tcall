@@ -3624,3 +3624,136 @@ body.tg-webapp .liquid-tab-bar {
     transition: none !important;
   }
 }
+
+/* ===== Chat Reaksiyalar ===== */
+.chat-reaction-bar {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+  flex-wrap: wrap;
+}
+
+.chat-reaction-emoji-btn {
+  font-size: 1.35rem;
+  line-height: 1;
+  padding: 0.2rem 0.3rem;
+  border-radius: 0.5rem;
+  touch-action: manipulation;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chat-reaction-emoji-btn:active {
+  transform: scale(1.25);
+}
+
+.chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.2rem;
+  padding-left: 0.35rem;
+}
+
+.chat-reactions-mine {
+  justify-content: flex-end;
+  padding-left: 0;
+  padding-right: 0.35rem;
+}
+
+.chat-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  touch-action: manipulation;
+  transition: transform 0.2s ease, background 0.15s ease;
+}
+
+.chat-reaction-pill-mine {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+
+.chat-reaction-pill:active {
+  transform: scale(0.94);
+}
+
+.chat-reaction-count {
+  font-weight: 600;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+/* ===== Qo'ng'iroq baholash ===== */
+.call-rating-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: appFadeIn 0.2s ease both;
+}
+
+.call-rating-panel {
+  width: 100%;
+  max-width: 360px;
+  padding: 1.75rem 1.5rem 1.5rem;
+  border-radius: 1.5rem;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 24px 48px rgba(0,0,0,0.18);
+  text-align: center;
+  animation: liquidTabIn 0.3s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.call-rating-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.call-rating-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+}
+
+.call-rating-stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.call-rating-star {
+  color: #d1d5db;
+  touch-action: manipulation;
+  transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), color 0.15s ease;
+}
+
+.call-rating-star-active {
+  color: #fbbf24;
+}
+
+.call-rating-star:active {
+  transform: scale(0.88);
+}
+
+/* ===== Chat pin badge ===== */
+.chat-conv-pinned {
+  @apply text-brand-500 shrink-0;
+  font-size: 0.7rem;
+}

@@ -12,6 +12,27 @@ function requireApiKey(): string {
   return key;
 }
 
+/** Exponential backoff retry — OpenAI 429/5xx xatolari uchun */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 800
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts - 1) {
+        const delay = baseDelayMs * 2 ** attempt + Math.random() * 200;
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
 function getModel(): string {
   return process.env.OPENAI_MODEL || "gpt-4o-mini";
 }
@@ -39,11 +60,14 @@ export async function transcribeAudio(
     formData.append("prompt", getWhisperPrompt(hintLang));
   }
 
-  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${requireApiKey()}` },
-    body: formData,
-  });
+  const res = await withRetry(() =>
+    fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${requireApiKey()}` },
+      body: formData,
+      signal: AbortSignal.timeout(30_000),
+    })
+  );
 
   if (!res.ok) {
     const err = await res.text();
@@ -72,31 +96,34 @@ export async function translateForChat(
   const sourceName = getLanguageName(sourceLang);
   const targetName = getLanguageName(targetLang);
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: getModel(),
-      temperature: 0.15,
-      max_tokens: 800,
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional chat message translator. Translate from ${sourceName} to ${targetName}.
+  const res = await withRetry(() =>
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: getModel(),
+        temperature: 0.15,
+        max_tokens: 800,
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional chat message translator. Translate from ${sourceName} to ${targetName}.
 Rules:
 - Preserve the exact meaning, tone, and intent of the original message.
 - Use natural, grammatically correct ${targetName} that reads like a native speaker wrote it.
 - Do NOT add, omit, or summarize information.
 - Keep emojis and proper nouns unchanged when appropriate.
 - Return ONLY the translated message text, nothing else.`,
-        },
-        { role: "user", content: text },
-      ],
-    }),
-  });
+          },
+          { role: "user", content: text },
+        ],
+      }),
+      signal: AbortSignal.timeout(20_000),
+    })
+  );
 
   if (!res.ok) {
     console.error("GPT chat translate error:", await res.text());

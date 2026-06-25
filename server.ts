@@ -575,6 +575,41 @@ app.prepare().then(async () => {
     console.error("HTTP server error:", err);
     if (err.code === "EADDRINUSE") process.exit(1);
   });
+
+  // Graceful shutdown — faol qo'ng'iroqlar va socketlar to'g'ri yopilsin
+  let isShuttingDown = false;
+
+  function gracefulShutdown(signal: string) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`\n[${signal}] Graceful shutdown boshlandi...`);
+
+    // Yangi ulanishlarni rad etish
+    io.close(() => {
+      console.log("Socket.IO yopildi");
+    });
+
+    httpServer.close(() => {
+      console.log("HTTP server yopildi");
+      process.exit(0);
+    });
+
+    // 30 soniyadan keyin majburan yopish
+    setTimeout(() => {
+      console.error("Graceful shutdown vaqti tugadi, majburan yopilmoqda");
+      process.exit(1);
+    }, 30_000).unref();
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  process.on("uncaughtException", (err) => {
+    console.error("Uncaught exception:", err);
+    if (!isShuttingDown) gracefulShutdown("uncaughtException");
+  });
+  process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled rejection:", reason);
+  });
 }).catch((err) => {
   console.error("Failed to start server:", err);
   process.exit(1);
