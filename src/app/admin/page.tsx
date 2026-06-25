@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Users, CreditCard, Phone, MessageSquare, ShieldAlert, BarChart3,
   Search, Check, X, Trash2, Lock, Ban, Crown, ChevronLeft, ChevronRight,
-  RefreshCw, LogOut, ShieldCheck, Sparkles, Eye, UserPlus, AlertTriangle,
+  RefreshCw, LogOut, ShieldCheck, Sparkles, Eye, UserPlus, AlertTriangle, Wallet,
 } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
@@ -13,7 +13,7 @@ import { getUI } from "@/lib/languages";
 
 const ui = getUI("uz");
 
-type Tab = "dashboard" | "users" | "subscriptions" | "vanity" | "chats" | "reports" | "admins";
+type Tab = "dashboard" | "users" | "subscriptions" | "payments" | "vanity" | "chats" | "reports" | "admins";
 
 interface Stats {
   users: { total: number; today: number; week: number; test?: number };
@@ -49,6 +49,13 @@ interface VanityCatalogItem {
   id: string; number: string; price: number; tier: string; available: boolean;
   purchasedAt: string | null;
   user: { id: string; name: string; email: string; tcallId: string | null } | null;
+}
+
+interface PaymentRow {
+  id: string; plan: string; amount: number; baseAmount: number; currency: string;
+  status: string; provider: string; createdAt: string; expiresAt: string; matchedAt: string | null;
+  rawSms: string | null; approvedBy: string | null;
+  user: { name: string; email: string; tcallId: string | null };
 }
 
 const VANITY_TIERS = [
@@ -91,6 +98,12 @@ export default function AdminPage() {
   const [subTotal, setSubTotal] = useState(0);
   const [subPage, setSubPage] = useState(1);
   const [subPages, setSubPages] = useState(1);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [payTotal, setPayTotal] = useState(0);
+  const [payPage, setPayPage] = useState(1);
+  const [payPages, setPayPages] = useState(1);
+  const [payStatus, setPayStatus] = useState("pending");
+  const [payPendingCount, setPayPendingCount] = useState(0);
   const [vanityReqs, setVanityReqs] = useState<VanityReq[]>([]);
   const [vanitySubTab, setVanitySubTab] = useState<"requests" | "catalog">("requests");
   const [catalog, setCatalog] = useState<VanityCatalogItem[]>([]);
@@ -158,6 +171,19 @@ export default function AdminPage() {
     setLoading(false);
   }, []);
 
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    const r = await adminFetch(`/api/admin/payments?status=${payStatus}&page=${payPage}`);
+    const d = await r.json();
+    if (r.ok) {
+      setPayments(d.payments || []);
+      setPayTotal(d.total || 0);
+      setPayPages(d.pages || 1);
+      setPayPendingCount(d.pendingCount || 0);
+    }
+    setLoading(false);
+  }, [payStatus, payPage]);
+
   const loadCatalog = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({
@@ -202,12 +228,13 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab === "users") void loadUsers();
     if (tab === "subscriptions") void loadSubs();
+    if (tab === "payments") void loadPayments();
     if (tab === "vanity" && vanitySubTab === "requests") void loadVanity();
     if (tab === "vanity" && vanitySubTab === "catalog") void loadCatalog();
     if (tab === "chats") void loadChats();
     if (tab === "reports") void loadReports();
     if (tab === "admins") void loadAdmins();
-  }, [tab, vanitySubTab, loadUsers, loadSubs, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
+  }, [tab, vanitySubTab, loadUsers, loadSubs, loadPayments, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
 
   const doAction = async () => {
     if (!actionUser) return;
@@ -231,6 +258,18 @@ export default function AdminPage() {
   };
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(""), 3000); };
+
+  const reviewPayment = async (paymentId: string, action: "approve" | "reject") => {
+    setError("");
+    const r = await adminFetch("/api/admin/payments", {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId, action }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { setError(d.error || "Xatolik"); return; }
+    void loadPayments(); void loadStats();
+    flash(action === "approve" ? "To'lov tasdiqlandi, obuna yoqildi" : "To'lov rad etildi");
+  };
 
   const openEditNum = (n: VanityCatalogItem) => {
     setEditNum(n);
@@ -323,6 +362,7 @@ export default function AdminPage() {
     { id: "dashboard", label: "Dashboard", icon: <BarChart3 className="w-4 h-4" /> },
     { id: "users", label: "Foydalanuvchilar", icon: <Users className="w-4 h-4" />, badge: stats?.users.total },
     { id: "subscriptions", label: "Obunalar", icon: <CreditCard className="w-4 h-4" />, badge: (stats?.subscriptions.premium ?? 0) + (stats?.subscriptions.premiumPlus ?? 0) },
+    { id: "payments", label: "To'lovlar", icon: <Wallet className="w-4 h-4" />, badge: payPendingCount || undefined },
     { id: "vanity", label: "Chiroyli raqamlar", icon: <Sparkles className="w-4 h-4" />, badge: stats?.pending.vanity },
     { id: "chats", label: "Suhbatlar", icon: <MessageSquare className="w-4 h-4" /> },
     { id: "reports", label: "Shikoyatlar", icon: <AlertTriangle className="w-4 h-4" />, badge: stats?.pending.reports },
@@ -572,6 +612,79 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* ═══ PAYMENTS ═══ */}
+          {tab === "payments" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">To'lovlar {payPendingCount > 0 && <span className="text-amber-400">({payPendingCount} kutilmoqda)</span>}</h2>
+                <div className="flex items-center gap-2">
+                  <select className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-sm focus:outline-none" value={payStatus} onChange={(e) => { setPayStatus(e.target.value); setPayPage(1); }}>
+                    <option value="pending">Kutilmoqda</option>
+                    <option value="paid">To'langan</option>
+                    <option value="expired">Muddati o'tgan</option>
+                    <option value="cancelled">Bekor qilingan</option>
+                    <option value="all">Hammasi</option>
+                  </select>
+                  <button type="button" onClick={() => void loadPayments()} className="p-2 rounded-xl bg-slate-800 text-slate-300"><RefreshCw className="w-4 h-4" /></button>
+                </div>
+              </div>
+
+              {loading ? <div className="text-center text-slate-500 py-10">Yuklanmoqda...</div> : (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800">
+                        {["Foydalanuvchi", "Plan", "Summa (so'm)", "Holat", "Vaqt", "Amallar"].map((h) => (
+                          <th key={h} className="px-4 py-3 text-left text-slate-400 font-medium">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {payments.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-800/50">
+                          <td className="px-4 py-3">
+                            <p className="text-white">{p.user.name}</p>
+                            <p className="text-slate-500 text-xs">{p.user.email}</p>
+                          </td>
+                          <td className="px-4 py-3"><span className={`px-2 py-1 rounded-lg text-xs font-semibold ${PLAN_COLORS[p.plan] || "bg-slate-100 text-slate-600"}`}>{p.plan}</span></td>
+                          <td className="px-4 py-3 font-mono font-bold text-white">{p.amount.toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                              p.status === "paid" ? "bg-green-100 text-green-700" :
+                              p.status === "pending" ? "bg-amber-100 text-amber-700" :
+                              "bg-slate-200 text-slate-600"
+                            }`}>{p.status}</span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-xs">{new Date(p.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3">
+                            {p.status === "pending" ? (
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => void reviewPayment(p.id, "approve")} className="flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><Check className="w-3.5 h-3.5" /> Tasdiqlash</button>
+                                <button type="button" onClick={() => void reviewPayment(p.id, "reject")} className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1.5 rounded-lg text-xs font-medium"><X className="w-3.5 h-3.5" /> Rad</button>
+                              </div>
+                            ) : (
+                              <span className="text-slate-500 text-xs">{p.approvedBy || (p.matchedAt ? "SMS auto" : "—")}</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {payments.length === 0 && (
+                        <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">To'lov yo'q</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                  {payPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800">
+                      <button type="button" disabled={payPage <= 1} onClick={() => setPayPage(p => p - 1)} className="p-1.5 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+                      <span className="text-slate-400 text-sm">{payPage} / {payPages} · {payTotal}</span>
+                      <button type="button" disabled={payPage >= payPages} onClick={() => setPayPage(p => p + 1)} className="p-1.5 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

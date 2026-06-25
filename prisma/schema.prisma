@@ -52,6 +52,7 @@ model User {
   chatMessagesSent     ChatMessage[]  @relation("ChatMessageSender")
   deviceTokens         DeviceToken[]
   passwordResetTokens  PasswordResetToken[]
+  payments               Payment[]
 }
 
 model AdminUser {
@@ -80,6 +81,32 @@ model Subscription {
 
   @@index([plan, status])
   @@index([expiresAt])
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan          String
+  // Asosiy narx (so'm) va to'lov uchun noyob summa (so'm) — moslash uchun
+  baseAmount    Int
+  // To'lov uchun noyob summa (so'm) — faqat kutilayotgan to'lovlar orasida noyob (kod orqali)
+  amount        Int
+  currency      String    @default("UZS")
+  durationDays  Int       @default(30)
+  status        String    @default("pending") // pending | paid | expired | cancelled
+  provider      String    @default("p2p_card")
+  rawSms        String?
+  matchedAt     DateTime?
+  approvedBy    String?
+  note          String?
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, expiresAt])
+  @@index([userId, status])
+  @@index([amount, status])
 }
 
 model UserBan {
