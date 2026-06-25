@@ -10,6 +10,7 @@ import { NativeAppInit } from "@/components/NativeAppInit";
 import { NativeAppRouter } from "@/components/NativeAppRouter";
 import { WebAppInit } from "@/components/WebAppInit";
 import { AppSplash } from "@/components/AppSplash";
+import { AppLockGate } from "@/components/AppLockGate";
 
 function CallBridge({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,11 +33,13 @@ function CallBridge({ children }: { children: React.ReactNode }) {
   if (!user) return <>{children}</>;
 
   return (
-    <LocaleProvider lang={user.language}>
-      <CallProvider user={user}>
-        <div className="app-page-enter">{children}</div>
-      </CallProvider>
-    </LocaleProvider>
+    <AppLockGate userName={user.name}>
+      <LocaleProvider lang={user.language}>
+        <CallProvider user={user}>
+          <div className="app-page-enter">{children}</div>
+        </CallProvider>
+      </LocaleProvider>
+    </AppLockGate>
   );
 }
 

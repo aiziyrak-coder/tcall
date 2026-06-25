@@ -38,6 +38,12 @@ model User {
   lastLoginIp     String?
   lastUserAgent   String?
 
+  // App lock (Telegram-style passcode)
+  pinHash         String?
+  pinUpdatedAt    DateTime?
+  faceImage       String?
+  faceDescriptor  String?
+
   hostedCalls       Call[]            @relation("HostCalls")
   callLogs          CallParticipant[]
   vanityNumber      VanityNumber?
@@ -56,9 +62,11 @@ model User {
   conversationMembers  ConversationMember[]
   chatMessagesSent     ChatMessage[]  @relation("ChatMessageSender")
   deviceTokens         DeviceToken[]
+  pushSubscriptions    PushSubscription[]
   passwordResetTokens  PasswordResetToken[]
   payments               Payment[]
   supportMessages        SupportMessage[]
+  pinRecoveryRequests    PinRecoveryRequest[]
 }
 
 model AdminUser {
@@ -184,6 +192,39 @@ model DeviceToken {
 
   @@unique([userId, token])
   @@index([userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PinRecoveryRequest {
+  id                  String    @id @default(cuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  faceImage           String
+  similarity          Float?
+  autoMatched         Boolean   @default(false)
+  status              String    @default("pending")
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  note                String?
+  createdAt           DateTime  @default(now())
+  resolvedAt          DateTime?
+  resolvedBy          String?
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Contact {

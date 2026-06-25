@@ -6,7 +6,7 @@ import {
   Users, CreditCard, Phone, MessageSquare, ShieldAlert, BarChart3,
   Search, Check, X, Trash2, Lock, Ban, Crown, ChevronLeft, ChevronRight,
   RefreshCw, LogOut, ShieldCheck, Sparkles, Eye, UserPlus, AlertTriangle, Wallet,
-  Headset, Send, MapPin, Smartphone, Globe, Loader2,
+  Headset, Send, MapPin, Smartphone, Globe, Loader2, ScanFace,
 } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
@@ -14,7 +14,18 @@ import { getUI } from "@/lib/languages";
 
 const ui = getUI("uz");
 
-type Tab = "dashboard" | "users" | "subscriptions" | "payments" | "support" | "vanity" | "chats" | "reports" | "admins";
+type Tab = "dashboard" | "users" | "subscriptions" | "payments" | "support" | "vanity" | "chats" | "reports" | "admins" | "pin";
+
+interface PinRecoveryRow {
+  id: string;
+  faceImage: string;
+  similarity: number | null;
+  autoMatched: boolean;
+  status: string;
+  note: string | null;
+  createdAt: string;
+  user: { id: string; name: string; email: string; tcallId: string | null; faceImage: string | null };
+}
 
 interface Stats {
   users: { total: number; today: number; week: number; test?: number };
@@ -137,6 +148,10 @@ export default function AdminPage() {
   const [replyText, setReplyText] = useState("");
   const [supportUnread, setSupportUnread] = useState(0);
   const [supportSending, setSupportSending] = useState(false);
+  const [pinReqs, setPinReqs] = useState<PinRecoveryRow[]>([]);
+  const [pinPendingCount, setPinPendingCount] = useState(0);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinActioning, setPinActioning] = useState<string | null>(null);
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [vanityReqs, setVanityReqs] = useState<VanityReq[]>([]);
@@ -297,6 +312,33 @@ export default function AdminPage() {
     if (r.ok) setAdmins(d.admins || []);
   }, []);
 
+  const loadPinRecoveries = useCallback(async () => {
+    setPinLoading(true);
+    const r = await adminFetch("/api/admin/pin-recoveries?status=pending");
+    const d = await r.json();
+    if (r.ok) {
+      setPinReqs(d.requests || []);
+      setPinPendingCount(d.pendingCount || 0);
+    }
+    setPinLoading(false);
+  }, []);
+
+  const loadPinCount = useCallback(async () => {
+    const r = await adminFetch("/api/admin/pin-recoveries?count=1");
+    const d = await r.json();
+    if (r.ok) setPinPendingCount(d.pendingCount || 0);
+  }, []);
+
+  const resolvePin = async (id: string, action: "approve" | "reject") => {
+    setPinActioning(id);
+    const r = await adminFetch("/api/admin/pin-recoveries", {
+      method: "PATCH",
+      body: JSON.stringify({ id, action }),
+    });
+    if (r.ok) await loadPinRecoveries();
+    setPinActioning(null);
+  };
+
   useEffect(() => {
     if (tab === "users") void loadUsers();
     if (tab === "subscriptions") void loadSubs();
@@ -307,13 +349,15 @@ export default function AdminPage() {
     if (tab === "chats") void loadChats();
     if (tab === "reports") void loadReports();
     if (tab === "admins") void loadAdmins();
-  }, [tab, vanitySubTab, loadUsers, loadSubs, loadPayments, loadTickets, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins]);
+    if (tab === "pin") void loadPinRecoveries();
+  }, [tab, vanitySubTab, loadUsers, loadSubs, loadPayments, loadTickets, loadVanity, loadCatalog, loadChats, loadReports, loadAdmins, loadPinRecoveries]);
 
   useEffect(() => {
     void loadSupportCount();
-    const t = setInterval(() => void loadSupportCount(), 30_000);
+    void loadPinCount();
+    const t = setInterval(() => { void loadSupportCount(); void loadPinCount(); }, 30_000);
     return () => clearInterval(t);
-  }, [loadSupportCount]);
+  }, [loadSupportCount, loadPinCount]);
 
   const doAction = async () => {
     if (!actionUser) return;
@@ -456,6 +500,7 @@ export default function AdminPage() {
     { id: "subscriptions", label: "Obunalar", icon: <CreditCard className="w-4 h-4" />, badge: (stats?.subscriptions.premium ?? 0) + (stats?.subscriptions.premiumPlus ?? 0) },
     { id: "payments", label: "To'lovlar", icon: <Wallet className="w-4 h-4" />, badge: payPendingCount || undefined },
     { id: "support", label: "Qo'llab-quvvatlash", icon: <Headset className="w-4 h-4" />, badge: supportUnread || undefined },
+    { id: "pin", label: "PIN tiklash", icon: <ScanFace className="w-4 h-4" />, badge: pinPendingCount || undefined },
     { id: "vanity", label: "Chiroyli raqamlar", icon: <Sparkles className="w-4 h-4" />, badge: stats?.pending.vanity },
     { id: "chats", label: "Suhbatlar", icon: <MessageSquare className="w-4 h-4" /> },
     { id: "reports", label: "Shikoyatlar", icon: <AlertTriangle className="w-4 h-4" />, badge: stats?.pending.reports },
@@ -855,6 +900,97 @@ export default function AdminPage() {
                       <Send className="w-4 h-4" /> Javob
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ═══ PIN RECOVERY ═══ */}
+          {tab === "pin" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">
+                  PIN tiklash so'rovlari {pinPendingCount > 0 && <span className="text-amber-400">({pinPendingCount})</span>}
+                </h2>
+                <button type="button" onClick={() => void loadPinRecoveries()} className="p-2 rounded-xl bg-slate-800 text-slate-300">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-slate-400 text-sm mb-4">
+                Foydalanuvchi PINni unutib, yuzini yuborgan. Chapdagi — ro'yxatdan o'tishdagi yuz, o'ngdagi — hozir yuborilgani.
+                Solishtirib tasdiqlang. Tasdiqlasangiz, foydalanuvchi yangi PIN o'rnata oladi.
+              </p>
+
+              {pinLoading ? (
+                <div className="text-center text-slate-500 py-10">Yuklanmoqda...</div>
+              ) : pinReqs.length === 0 ? (
+                <div className="text-center text-slate-500 py-16">Kutilayotgan so'rov yo'q</div>
+              ) : (
+                <div className="space-y-3">
+                  {pinReqs.map((p) => {
+                    const sim = p.similarity;
+                    const simColor =
+                      sim == null ? "text-slate-400 bg-slate-800"
+                        : sim <= 0.4 ? "text-emerald-300 bg-emerald-500/15"
+                        : sim <= 0.55 ? "text-amber-300 bg-amber-500/15"
+                        : "text-red-300 bg-red-500/15";
+                    const simText =
+                      sim == null ? "AI: yuz tavsifi yo'q"
+                        : `AI masofa: ${sim.toFixed(3)} ${sim <= 0.4 ? "(juda mos)" : sim <= 0.55 ? "(ehtimol mos)" : "(mos emas)"}`;
+                    return (
+                      <div key={p.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <p className="text-white font-medium">{p.user.name}</p>
+                            <p className="text-slate-500 text-xs font-mono">
+                              {p.user.tcallId ? formatTcallId(p.user.tcallId) : p.user.email}
+                            </p>
+                          </div>
+                          <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${simColor}`}>{simText}</span>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-4 mb-4">
+                          <div className="text-center">
+                            <p className="text-slate-500 text-[11px] mb-1">Ro'yxatdagi yuz</p>
+                            {p.user.faceImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.user.faceImage} alt="enroll" className="w-28 h-28 rounded-xl object-cover ring-1 ring-slate-700" />
+                            ) : (
+                              <div className="w-28 h-28 rounded-xl bg-slate-800 flex items-center justify-center text-slate-600 text-xs">yo'q</div>
+                            )}
+                          </div>
+                          <div className="text-slate-600 text-2xl">→</div>
+                          <div className="text-center">
+                            <p className="text-slate-500 text-[11px] mb-1">Yuborilgan yuz</p>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.faceImage} alt="new" className="w-28 h-28 rounded-xl object-cover ring-1 ring-slate-700" />
+                          </div>
+                        </div>
+
+                        <p className="text-slate-500 text-[11px] text-center mb-3">{new Date(p.createdAt).toLocaleString()}</p>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void resolvePin(p.id, "approve")}
+                            disabled={pinActioning === p.id}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          >
+                            <Check className="w-4 h-4" /> Tasdiqlash
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void resolvePin(p.id, "reject")}
+                            disabled={pinActioning === p.id}
+                            className="flex-1 bg-red-600/90 hover:bg-red-500 text-white rounded-xl py-2.5 text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-1.5"
+                          >
+                            <X className="w-4 h-4" /> Rad etish
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

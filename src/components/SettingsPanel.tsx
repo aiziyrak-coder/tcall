@@ -17,8 +17,12 @@ import {
   Crown,
   Headset,
   Send,
+  Lock,
+  ScanFace,
 } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
+import { FaceCapture } from "@/components/FaceCapture";
+import { setCachedPinEnabled } from "@/lib/app-lock";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
 import { LANGUAGES } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -42,6 +46,7 @@ type SettingsSection =
   | "preferences"
   | "notifications"
   | "password"
+  | "applock"
   | "security";
 
 interface ProfileForm {
@@ -172,6 +177,15 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     typeof Notification === "undefined" ? "unsupported" : Notification.permission
   );
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // App lock (PIN) state
+  const [pinStatus, setPinStatus] = useState<{ enabled: boolean; faceEnrolled: boolean } | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinNew, setPinNew] = useState("");
+  const [pinNew2, setPinNew2] = useState("");
+  const [pinCurrent, setPinCurrent] = useState("");
+  const [pinFace, setPinFace] = useState<{ image: string; descriptor: number[] | null } | null>(null);
+  const [faceMode, setFaceMode] = useState<null | "enroll" | "update">(null);
 
   useEffect(() => {
     apiFetch("/api/user/settings")
@@ -343,6 +357,134 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     setNotifPermission(permission);
   };
 
+  const loadPinStatus = async () => {
+    try {
+      const r = await apiFetch("/api/security/pin");
+      if (!r.ok) return;
+      const d = await r.json();
+      setPinStatus({ enabled: !!d.enabled, faceEnrolled: !!d.faceEnrolled });
+      setCachedPinEnabled(!!d.enabled);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    if (section === "applock" && !pinStatus) void loadPinStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
+
+  const resetPinForms = () => {
+    setPinNew("");
+    setPinNew2("");
+    setPinCurrent("");
+    setPinFace(null);
+  };
+
+  const enablePin = async () => {
+    setNotice(null);
+    if (!/^\d{4}$/.test(pinNew)) return setNotice({ type: "error", text: "PIN 4 ta raqamdan iborat bo'lishi kerak" });
+    if (pinNew !== pinNew2) return setNotice({ type: "error", text: "PIN lar mos kelmadi" });
+    setPinBusy(true);
+    try {
+      const r = await apiFetch("/api/security/pin", {
+        method: "POST",
+        body: JSON.stringify({
+          pin: pinNew,
+          faceImage: pinFace?.image,
+          faceDescriptor: pinFace?.descriptor ?? undefined,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Xatolik");
+      setCachedPinEnabled(true);
+      setPinStatus({ enabled: true, faceEnrolled: !!pinFace });
+      resetPinForms();
+      setNotice({ type: "success", text: "Ilova qulfi yoqildi" });
+    } catch (e) {
+      setNotice({ type: "error", text: e instanceof Error ? e.message : "Xatolik" });
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const changePin = async () => {
+    setNotice(null);
+    if (!/^\d{4}$/.test(pinCurrent)) return setNotice({ type: "error", text: "Joriy PIN noto'g'ri" });
+    if (!/^\d{4}$/.test(pinNew)) return setNotice({ type: "error", text: "Yangi PIN 4 ta raqam bo'lishi kerak" });
+    if (pinNew !== pinNew2) return setNotice({ type: "error", text: "PIN lar mos kelmadi" });
+    setPinBusy(true);
+    try {
+      const r = await apiFetch("/api/security/pin", {
+        method: "PUT",
+        body: JSON.stringify({ currentPin: pinCurrent, pin: pinNew }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Xatolik");
+      resetPinForms();
+      setNotice({ type: "success", text: "PIN o'zgartirildi" });
+    } catch (e) {
+      setNotice({ type: "error", text: e instanceof Error ? e.message : "Xatolik" });
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const disablePin = async () => {
+    setNotice(null);
+    if (!/^\d{4}$/.test(pinCurrent)) return setNotice({ type: "error", text: "PIN ni kiriting" });
+    setPinBusy(true);
+    try {
+      const r = await apiFetch("/api/security/pin", {
+        method: "DELETE",
+        body: JSON.stringify({ pin: pinCurrent }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Xatolik");
+      setCachedPinEnabled(false);
+      setPinStatus({ enabled: false, faceEnrolled: pinStatus?.faceEnrolled ?? false });
+      resetPinForms();
+      setNotice({ type: "success", text: "Ilova qulfi o'chirildi" });
+    } catch (e) {
+      setNotice({ type: "error", text: e instanceof Error ? e.message : "Xatolik" });
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const updateFace = async (image: string, descriptor: number[] | null) => {
+    setNotice(null);
+    if (!/^\d{4}$/.test(pinCurrent)) {
+      setNotice({ type: "error", text: "Yuzni yangilash uchun avval joriy PIN ni kiriting" });
+      return;
+    }
+    setPinBusy(true);
+    try {
+      const r = await apiFetch("/api/security/pin", {
+        method: "PATCH",
+        body: JSON.stringify({ currentPin: pinCurrent, faceImage: image, faceDescriptor: descriptor ?? undefined }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Xatolik");
+      setPinStatus((s) => (s ? { ...s, faceEnrolled: true } : { enabled: true, faceEnrolled: true }));
+      setNotice({ type: "success", text: "Yuz yangilandi" });
+    } catch (e) {
+      setNotice({ type: "error", text: e instanceof Error ? e.message : "Xatolik" });
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const handleFaceCaptured = (result: { image: string; descriptor: number[] | null }) => {
+    const mode = faceMode;
+    setFaceMode(null);
+    if (mode === "enroll") {
+      setPinFace(result);
+    } else if (mode === "update") {
+      void updateFace(result.image, result.descriptor);
+    }
+  };
+
   const profileMainFields: { key: keyof ProfileForm; label: string; multiline?: boolean; max?: number }[] = [
     { key: "bio", label: ui.profileStatusLine, max: 120 },
     { key: "about", label: ui.profileAbout, multiline: true, max: 300 },
@@ -368,6 +510,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     preferences: ui.settingsPreferences,
     notifications: extra.notificationsTitle,
     password: extra.passwordTitle,
+    applock: "Ilova qulfi",
     security: extra.accountTitle,
   };
   const langCode = userLanguage.split("-")[0].toLowerCase();
@@ -501,6 +644,15 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           <span className="settings-nav-text">
             <strong>{extra.passwordTitle}</strong>
             <small>{extra.passwordHint}</small>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </button>
+
+        <button type="button" className="settings-nav-item" onClick={() => setSection("applock")}>
+          <span className="settings-nav-icon"><Lock className="w-4 h-4" /></span>
+          <span className="settings-nav-text">
+            <strong>Ilova qulfi (PIN)</strong>
+            <small>4 xonali PIN, yuz orqali tiklash</small>
           </span>
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </button>
@@ -759,6 +911,136 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     </section>
   );
 
+  const renderAppLock = () => (
+    <div className="space-y-4">
+      <section className="settings-security-card">
+        <div className="flex items-center gap-2 mb-2">
+          <Lock className="w-4 h-4 text-brand-600" />
+          <p className="font-semibold text-slate-900">Ilova qulfi</p>
+          {pinStatus?.enabled && (
+            <span className="ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+              Yoqilgan
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Telegram’dagidek — ilovani 4 xonali PIN bilan himoyalang. Ilova har ochilganda PIN so‘raladi.
+          PINni unutsangiz, yuzingiz orqali (AI + admin tasdig‘i bilan) tiklaysiz.
+        </p>
+      </section>
+
+      {pinStatus === null ? (
+        <p className="text-sm text-slate-400 text-center py-4">Yuklanmoqda...</p>
+      ) : !pinStatus.enabled ? (
+        <section className="settings-security-card space-y-2.5">
+          <p className="settings-section-label">Yangi PIN o‘rnatish</p>
+          <input
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={4}
+            className="input-field-compact text-center tracking-[0.4em]"
+            placeholder="4 xonali PIN"
+            value={pinNew}
+            onChange={(e) => setPinNew(e.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
+          <input
+            inputMode="numeric"
+            pattern="\d*"
+            maxLength={4}
+            className="input-field-compact text-center tracking-[0.4em]"
+            placeholder="PIN ni takrorlang"
+            value={pinNew2}
+            onChange={(e) => setPinNew2(e.target.value.replace(/\D/g, "").slice(0, 4))}
+          />
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-brand-200 bg-brand-50 text-brand-700 font-medium text-sm"
+            onClick={() => setFaceMode("enroll")}
+          >
+            <ScanFace className="w-4 h-4" />
+            {pinFace ? "Yuz tayyor ✓ — qayta skanerlash" : "Yuzni skanerlash (tiklash uchun, tavsiya etiladi)"}
+          </button>
+          <p className="text-[11px] text-slate-400">
+            Yuz skaneri ixtiyoriy, lekin uni qo‘shsangiz PINni unutib qolsangiz osongina tiklaysiz.
+          </p>
+          <button
+            type="button"
+            className="btn-primary btn-compact w-full"
+            onClick={() => void enablePin()}
+            disabled={pinBusy}
+          >
+            {pinBusy ? "..." : "PINni yoqish"}
+          </button>
+        </section>
+      ) : (
+        <>
+          <section className="settings-security-card space-y-2.5">
+            <p className="settings-section-label">Joriy PIN</p>
+            <input
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={4}
+              className="input-field-compact text-center tracking-[0.4em]"
+              placeholder="Joriy PIN"
+              value={pinCurrent}
+              onChange={(e) => setPinCurrent(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+            <button
+              type="button"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-medium text-sm"
+              onClick={() => setFaceMode("update")}
+            >
+              <ScanFace className="w-4 h-4" />
+              {pinStatus.faceEnrolled ? "Yuzni yangilash" : "Yuz qo‘shish (tiklash uchun)"}
+            </button>
+          </section>
+
+          <section className="settings-security-card space-y-2.5">
+            <p className="settings-section-label">PINni o‘zgartirish</p>
+            <input
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={4}
+              className="input-field-compact text-center tracking-[0.4em]"
+              placeholder="Yangi PIN"
+              value={pinNew}
+              onChange={(e) => setPinNew(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+            <input
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={4}
+              className="input-field-compact text-center tracking-[0.4em]"
+              placeholder="Yangi PIN ni takrorlang"
+              value={pinNew2}
+              onChange={(e) => setPinNew2(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+            <button
+              type="button"
+              className="btn-primary btn-compact w-full"
+              onClick={() => void changePin()}
+              disabled={pinBusy}
+            >
+              {pinBusy ? "..." : "PINni o‘zgartirish"}
+            </button>
+          </section>
+
+          <section className="settings-security-card">
+            <button
+              type="button"
+              className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 font-medium text-sm"
+              onClick={() => void disablePin()}
+              disabled={pinBusy}
+            >
+              Ilova qulfini o‘chirish
+            </button>
+            <p className="text-[11px] text-slate-400 mt-1.5">O‘chirish uchun yuqorida joriy PIN ni kiriting.</p>
+          </section>
+        </>
+      )}
+    </div>
+  );
+
   const renderSecurity = () => (
     <div className="space-y-4">
       <section className="settings-security-card">
@@ -787,6 +1069,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     section === "preferences";
 
   return (
+    <>
     <div className="ios-settings-overlay" onClick={onClose}>
       <div className="ios-settings-panel ios-settings-panel-wide" onClick={(e) => e.stopPropagation()}>
         <div className="ios-settings-header">
@@ -822,6 +1105,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           {section === "preferences" && renderPreferences()}
           {section === "notifications" && renderNotifications()}
           {section === "password" && renderPassword()}
+          {section === "applock" && renderAppLock()}
           {section === "security" && renderSecurity()}
         </div>
 
@@ -844,6 +1128,16 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         </div>
       </div>
     </div>
+    {faceMode && (
+      <FaceCapture
+        title={faceMode === "enroll" ? "Yuzni ro'yxatdan o'tkazish" : "Yuzni yangilash"}
+        hint="Yuzingizni doira ichiga joylang. Bu rasm PINni tiklashda shaxsingizni tasdiqlash uchun ishlatiladi."
+        confirmLabel={faceMode === "enroll" ? "Yuzni saqlash" : "Yangilash"}
+        onCapture={handleFaceCaptured}
+        onCancel={() => setFaceMode(null)}
+      />
+    )}
+    </>
   );
 }
 
