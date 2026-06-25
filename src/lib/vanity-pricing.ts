@@ -1,4 +1,7 @@
-import { toVanityUsdPrice, formatVanityPrice as formatUsd } from "@/lib/vanity-currency";
+/**
+ * Chiroyli raqam narxlash va tasnif tizimi
+ * Narxlar USD da — avvalgi narxlardan 10x arzon
+ */
 
 export type VanityTier =
   | "free"
@@ -24,27 +27,36 @@ export interface VanityQuote {
   pretty: boolean;
   trailingRun: number;
   leadingRun: number;
+  /** Aniqlanган pattern nomi (UI uchun) */
+  pattern?: string;
+  /** Ball — qanchalik chiroyli (0–100) */
+  score: number;
 }
 
-/** Narxlar so'mda — USD ga toVanityUsdPrice orqali */
-const TIER_PRICE_SOM: Record<VanityTier, number> = {
-  free: 0,
-  bronze: 80_000,
-  silver: 220_000,
-  silver_plus: 380_000,
-  silver_plus_plus: 580_000,
-  gold: 850_000,
-  gold_plus: 1_200_000,
-  gold_plus_plus: 1_750_000,
-  platinum: 2_500_000,
-  platinum_plus: 3_400_000,
-  platinum_plus_plus: 4_600_000,
-  platinum_premium: 6_500_000,
-  platinum_premium_plus: 8_500_000,
-  platinum_premium_plus_plus: 11_000_000,
-  vip: 18_000_000,
+/** Narxlar to'g'ridan-to'g'ri USD da (avvalgi narxdan 10x arzon) */
+const TIER_PRICE_USD: Record<VanityTier, number> = {
+  free:                     0,
+  bronze:                   8,
+  silver:                   22,
+  silver_plus:              38,
+  silver_plus_plus:         58,
+  gold:                     85,
+  gold_plus:                120,
+  gold_plus_plus:           175,
+  platinum:                 250,
+  platinum_plus:            340,
+  platinum_plus_plus:       460,
+  platinum_premium:         650,
+  platinum_premium_plus:    850,
+  platinum_premium_plus_plus: 1_100,
+  vip:                      1_800,
 };
 
+// ──────────────────────────────────────────────
+//  Pattern aniqlovchi funksiyalar
+// ──────────────────────────────────────────────
+
+/** Oxirdan bir xil raqamlar soni */
 export function runLengthFromEnd(num: string): number {
   if (!num) return 0;
   const d = num[num.length - 1];
@@ -53,6 +65,7 @@ export function runLengthFromEnd(num: string): number {
   return n;
 }
 
+/** Boshidan bir xil raqamlar soni */
 export function runLengthFromStart(num: string): number {
   if (!num) return 0;
   const d = num[0];
@@ -61,44 +74,48 @@ export function runLengthFromStart(num: string): number {
   return n;
 }
 
-function baseTierFromTrailing(trailing: number): VanityTier {
-  if (trailing >= 9) return "vip";
-  if (trailing >= 8) return "platinum_premium";
-  if (trailing >= 7) return "platinum";
-  if (trailing >= 6) return "gold";
-  if (trailing >= 5) return "silver";
-  if (trailing >= 4) return "bronze";
-  return "free";
+/** Eng uzun ketma-ket bir xil raqamlar oralig'i */
+function maxInternalRun(num: string): number {
+  let max = 1, cur = 1;
+  for (let i = 1; i < num.length; i++) {
+    if (num[i] === num[i - 1]) { cur++; max = Math.max(max, cur); }
+    else cur = 1;
+  }
+  return max;
 }
 
-function isSequentialRun(num: string, minLen = 6): boolean {
-  let asc = 1;
-  let desc = 1;
+/** O'sish yoki kamayish ketma-ketligi uzunligi */
+function sequenceRunLen(num: string): { len: number; dir: "asc" | "desc" | "none" } {
+  let asc = 1, desc = 1, maxAsc = 1, maxDesc = 1;
   for (let i = 1; i < num.length; i++) {
     const diff = Number(num[i]) - Number(num[i - 1]);
-    asc = diff === 1 ? asc + 1 : 1;
+    asc  = diff ===  1 ? asc  + 1 : 1;
     desc = diff === -1 ? desc + 1 : 1;
-    if (asc >= minLen || desc >= minLen) return true;
+    if (asc  > maxAsc)  maxAsc  = asc;
+    if (desc > maxDesc) maxDesc = desc;
   }
-  return false;
+  if (maxAsc >= maxDesc) return { len: maxAsc, dir: maxAsc > 1 ? "asc" : "none" };
+  return { len: maxDesc, dir: "desc" };
 }
 
+/** To'liq palindrom (masalan: 123454321) */
+function isPalindrome(num: string): boolean {
+  return num === num.split("").reverse().join("");
+}
+
+/** Bir xil juftliklar takrorlash (masalan: 112233445) */
 function isRepeatingPairs(num: string): boolean {
-  if (num.length < 6 || num.length % 2 !== 0) return false;
+  if (num.length % 2 !== 0) return false;
   for (let i = 0; i < num.length; i += 2) {
     if (num[i] !== num[i + 1]) return false;
   }
   return true;
 }
 
-function isPalindrome(num: string): boolean {
-  return num.length >= 7 && num === num.split("").reverse().join("");
-}
-
+/** ABABABAB… almashinuvchi pattern */
 function hasAlternatingPattern(num: string): boolean {
   if (num.length < 6) return false;
-  const a = num[0];
-  const b = num[1];
+  const a = num[0], b = num[1];
   if (a === b) return false;
   for (let i = 0; i < num.length; i++) {
     if (num[i] !== (i % 2 === 0 ? a : b)) return false;
@@ -106,57 +123,188 @@ function hasAlternatingPattern(num: string): boolean {
   return true;
 }
 
-/** Trailing/leading run bo'lmasa ham chiroyli deb hisoblanadigan patternlar */
-export function hasSpecialPrettyPattern(number: string): boolean {
-  if (runLengthFromEnd(number) >= 4 || runLengthFromStart(number) >= 4) return true;
-  return (
-    isSequentialRun(number) ||
-    isRepeatingPairs(number) ||
-    isPalindrome(number) ||
-    hasAlternatingPattern(number)
-  );
+/** ABCABCABC… takroriy pattern */
+function repeatingSubstringLen(num: string): number {
+  for (let pLen = 2; pLen <= num.length / 2; pLen++) {
+    if (num.length % pLen !== 0) continue;
+    const pat = num.slice(0, pLen);
+    let ok = true;
+    for (let i = pLen; i < num.length; i += pLen) {
+      if (num.slice(i, i + pLen) !== pat) { ok = false; break; }
+    }
+    if (ok) return pLen;
+  }
+  return 0;
 }
 
-function applyPlusVariants(base: VanityTier, trailing: number, leading: number): VanityTier {
-  if (base === "vip" || base === "bronze" || base === "free") return base;
+/** 100…000 shaklidagi dumaloq raqam */
+function isRoundNumber(num: string): boolean {
+  // Ko'pi bilan bitta nolmas raqam, qolganlari 0
+  const nonZero = num.replace(/0/g, "").length;
+  return nonZero === 1 && num.includes("0");
+}
 
-  const canPlus = trailing >= 5 && leading >= 3;
-  if (!canPlus) return base;
+/** Mirror: ABCCBA yoki ABCBA markaziy simmetriya */
+function hasMirrorHalf(num: string): boolean {
+  const half = Math.floor(num.length / 2);
+  const left = num.slice(0, half);
+  const right = num.slice(num.length - half);
+  return left === right.split("").reverse().join("");
+}
 
-  if (leading >= 4) {
-    if (base === "silver") return "silver_plus_plus";
-    if (base === "gold") return "gold_plus_plus";
-    if (base === "platinum") return "platinum_plus_plus";
-    if (base === "platinum_premium") return "platinum_premium_plus_plus";
+// ──────────────────────────────────────────────
+//  Asosiy scoring va tasnif
+// ──────────────────────────────────────────────
+
+interface PatternResult {
+  score: number;
+  tier: VanityTier;
+  pattern?: string;
+}
+
+/** Raqamni to'liq tahlil qilish — ball va tier qaytaradi */
+function analyzeNumber(num: string): PatternResult {
+  const trailing = runLengthFromEnd(num);
+  const leading  = runLengthFromStart(num);
+  const internal = maxInternalRun(num);
+  const len = num.length; // 9
+
+  // ——— Barcha raqamlar bir xil: 111111111, 999999999
+  if (trailing === len) {
+    return { score: 100, tier: "vip", pattern: `${num[0].repeat(len)}` };
   }
 
-  if (base === "silver") return "silver_plus";
-  if (base === "gold") return "gold_plus";
-  if (base === "platinum") return "platinum_plus";
-  if (base === "platinum_premium") return "platinum_premium_plus";
+  // ——— Ketma-ket barcha raqamlar: 123456789, 987654321
+  const seq = sequenceRunLen(num);
+  if (seq.len === len) {
+    return { score: 98, tier: "vip", pattern: seq.dir === "asc" ? "123456789" : "987654321" };
+  }
 
-  return base;
+  // ——— 8 ta bir xil oxirida: X11111111
+  if (trailing === 8) {
+    return { score: 95, tier: "platinum_premium_plus_plus", pattern: `trailing×8` };
+  }
+
+  // ——— 8 ta bir xil boshida: 11111111X
+  if (leading === 8) {
+    return { score: 93, tier: "platinum_premium_plus", pattern: `leading×8` };
+  }
+
+  // ——— 7 ta bir xil oxirida
+  if (trailing === 7) {
+    const tier: VanityTier = leading >= 3 ? "platinum_plus_plus" : "platinum";
+    return { score: 88, tier, pattern: `trailing×7` };
+  }
+
+  // ——— 7 ta bir xil boshida
+  if (leading === 7) {
+    return { score: 85, tier: "platinum_premium", pattern: `leading×7` };
+  }
+
+  // ——— Palindrom 9 ta raqam: 123454321
+  if (isPalindrome(num)) {
+    return { score: 82, tier: "platinum_plus", pattern: "palindrome" };
+  }
+
+  // ——— 6 ta bir xil oxirida
+  if (trailing === 6) {
+    const tier: VanityTier = leading >= 3 ? "gold_plus_plus" : "gold";
+    return { score: 78, tier, pattern: `trailing×6` };
+  }
+
+  // ——— 6 ta bir xil boshida
+  if (leading === 6) {
+    return { score: 75, tier: "gold_plus", pattern: `leading×6` };
+  }
+
+  // ——— Ketma-ket 7+ ta raqam (masalan: 1234567XX)
+  if (seq.len >= 7) {
+    return { score: 72, tier: "gold_plus", pattern: `seq×${seq.len}` };
+  }
+
+  // ——— Takroriy 3 xonali blok: 123123123
+  const repLen = repeatingSubstringLen(num);
+  if (repLen === 3) {
+    return { score: 70, tier: "gold", pattern: `repeat${num.slice(0, 3)}` };
+  }
+
+  // ——— 5 ta bir xil oxirida
+  if (trailing === 5) {
+    const tier: VanityTier = leading >= 3 ? "silver_plus_plus" : "silver";
+    return { score: 62, tier, pattern: `trailing×5` };
+  }
+
+  // ——— 5 ta bir xil boshida
+  if (leading === 5) {
+    return { score: 60, tier: "silver_plus", pattern: `leading×5` };
+  }
+
+  // ——— Ketma-ket 6 ta raqam
+  if (seq.len >= 6) {
+    return { score: 58, tier: "silver_plus", pattern: `seq×${seq.len}` };
+  }
+
+  // ——— Juft-juft takroriy: 112233445
+  if (isRepeatingPairs(num)) {
+    return { score: 55, tier: "silver", pattern: "pairs" };
+  }
+
+  // ——— Almashinuvchi: 121212121
+  if (hasAlternatingPattern(num)) {
+    return { score: 52, tier: "silver", pattern: "alternating" };
+  }
+
+  // ——— Mirror: ABCXCBA yoki boshqa
+  if (hasMirrorHalf(num)) {
+    return { score: 48, tier: "silver", pattern: "mirror" };
+  }
+
+  // ——— Takroriy 2 xonali blok: 121212123 (to'liq emas)
+  if (repLen === 2) {
+    return { score: 45, tier: "bronze", pattern: `repeat${num.slice(0, 2)}` };
+  }
+
+  // ——— Dumaloq raqam: 100000000, 500000000
+  if (isRoundNumber(num)) {
+    return { score: 42, tier: "bronze", pattern: "round" };
+  }
+
+  // ——— 4 ta bir xil oxirida
+  if (trailing >= 4) {
+    return { score: 38, tier: "bronze", pattern: `trailing×${trailing}` };
+  }
+
+  // ——— 4 ta bir xil boshida
+  if (leading >= 4) {
+    return { score: 35, tier: "bronze", pattern: `leading×${leading}` };
+  }
+
+  // ——— 5+ ta bir xil biror joyida (ichida)
+  if (internal >= 5) {
+    return { score: 32, tier: "bronze", pattern: `run×${internal}` };
+  }
+
+  // ——— Ketma-ket 5 ta
+  if (seq.len >= 5) {
+    return { score: 30, tier: "bronze", pattern: `seq×${seq.len}` };
+  }
+
+  // Oddiy raqam
+  return { score: 0, tier: "free", pattern: undefined };
 }
+
+// ──────────────────────────────────────────────
+//  Tashqi API
+// ──────────────────────────────────────────────
 
 export function classifyVanityNumber(raw: string): VanityQuote | null {
   const number = raw.replace(/\D/g, "");
   if (!/^[1-9]\d{8}$/.test(number)) return null;
 
   const trailing = runLengthFromEnd(number);
-  const leading = runLengthFromStart(number);
-  let tier = baseTierFromTrailing(trailing);
-
-  if (tier === "free") {
-    if (!hasSpecialPrettyPattern(number)) {
-      return { number, price: 0, tier: "free", pretty: false, trailingRun: trailing, leadingRun: leading };
-    }
-    tier = "bronze";
-  } else {
-    tier = applyPlusVariants(tier, trailing, leading);
-  }
-
-  const priceSom = TIER_PRICE_SOM[tier];
-  const price = tier === "free" ? 0 : toVanityUsdPrice(priceSom);
+  const leading  = runLengthFromStart(number);
+  const { score, tier, pattern } = analyzeNumber(number);
+  const price = TIER_PRICE_USD[tier] ?? 0;
 
   return {
     number,
@@ -164,7 +312,9 @@ export function classifyVanityNumber(raw: string): VanityQuote | null {
     tier,
     pretty: tier !== "free",
     trailingRun: trailing,
-    leadingRun: leading,
+    leadingRun:  leading,
+    pattern,
+    score,
   };
 }
 
@@ -175,24 +325,28 @@ export function quoteVanityNumber(raw: string): VanityQuote | null {
 
 export function formatVanityPrice(priceUsd: number, freeLabel = "Bepul"): string {
   if (priceUsd <= 0) return freeLabel;
-  return formatUsd(priceUsd);
+  return `$${priceUsd.toLocaleString("en-US")}`;
 }
 
 export function formatTierLabel(tier: string, ui: Record<string, string>): string {
-  const key = `tier_${tier}` as keyof typeof ui;
-  const label = ui[key as string];
+  const key = `tier_${tier}`;
+  const label = ui[key];
   if (typeof label === "string") return label;
   return tier.replace(/_/g, " ");
 }
 
-/** Katalog filtri — har chip faqat o'z oilasidagi tierlarni ko'rsatadi */
+export function hasSpecialPrettyPattern(number: string): boolean {
+  return classifyVanityNumber(number)?.pretty ?? false;
+}
+
+/** Katalog filtri */
 export const TIER_FILTER_GROUPS: Record<string, VanityTier[]> = {
-  bronze: ["bronze"],
-  silver: ["silver", "silver_plus", "silver_plus_plus"],
-  gold: ["gold", "gold_plus", "gold_plus_plus"],
-  platinum: ["platinum", "platinum_plus", "platinum_plus_plus"],
+  bronze:           ["bronze"],
+  silver:           ["silver", "silver_plus", "silver_plus_plus"],
+  gold:             ["gold", "gold_plus", "gold_plus_plus"],
+  platinum:         ["platinum", "platinum_plus", "platinum_plus_plus"],
   platinum_premium: ["platinum_premium", "platinum_premium_plus", "platinum_premium_plus_plus"],
-  vip: ["vip"],
+  vip:              ["vip"],
 };
 
 export const CATALOG_TIER_FILTERS = ["all", "bronze", "silver", "gold", "platinum", "platinum_premium", "vip"] as const;
@@ -203,7 +357,12 @@ export function tiersForFilter(filter: string): VanityTier[] | null {
 }
 
 export function allVanityTiers(): VanityTier[] {
-  return Object.keys(TIER_PRICE_SOM) as VanityTier[];
+  return Object.keys(TIER_PRICE_USD) as VanityTier[];
 }
 
-export { toVanityUsdPrice } from "@/lib/vanity-currency";
+/** Narxni USD da qaytaradi (vanity-currency o'rniga to'g'ridan-to'g'ri) */
+export function toVanityUsdPrice(tier: VanityTier): number {
+  return TIER_PRICE_USD[tier] ?? 0;
+}
+
+export { formatVanityPrice as formatVanityPriceUsd };

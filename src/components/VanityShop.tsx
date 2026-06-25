@@ -280,18 +280,23 @@ export function VanityShop({ userLanguage, currentId }: VanityShopProps) {
                   key={n.id}
                   className={`flex items-center justify-between p-3 rounded-xl border bg-gradient-to-r ${TIER_COLORS[n.tier] || TIER_COLORS.silver}`}
                 >
-                  <div>
-                    <p className="font-mono font-bold text-lg">{formatTcallId(n.number)}</p>
-                    <p className="text-xs text-slate-500">{formatTierLabel(n.tier, ui)} · {formatVanityPrice(n.price, ui.tier_free)}</p>
+                  <div className="min-w-0 flex-1 mr-2">
+                    <p className="font-mono font-bold text-lg tracking-wider">{formatTcallId(n.number)}</p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {formatTierLabel(n.tier, ui)}
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => submitRequest({ numberId: n.id })}
-                    disabled={!!requesting || blocked}
-                    className="btn-primary text-sm py-2 px-4 min-h-0"
-                  >
-                    {requesting === n.id ? "..." : ui.buy}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold text-slate-800">{formatVanityPrice(n.price)}</span>
+                    <button
+                      type="button"
+                      onClick={() => submitRequest({ numberId: n.id })}
+                      disabled={!!requesting || blocked}
+                      className="btn-primary text-sm py-2 px-3 min-h-0"
+                    >
+                      {requesting === n.id ? "..." : ui.buy}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

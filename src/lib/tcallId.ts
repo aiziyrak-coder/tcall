@@ -62,25 +62,88 @@ export function generateVanityCatalog(): { number: string; price: number; tier: 
     map.set(num, { price: q.price, tier: q.tier });
   };
 
+  // ——— VIP: barcha bir xil + to'liq ketma-ket
   for (let d = 1; d <= 9; d++) tryAdd(String(d).repeat(9));
+  tryAdd("123456789"); // to'liq o'sish
+  tryAdd("987654321"); // to'liq kamayish
+  tryAdd("234567891");
+  tryAdd("345678912");
 
+  // ——— Trailing va leading runlar (4–8 ta)
   for (let d = 0; d <= 9; d++) {
     for (let trail = 4; trail <= 8; trail++) {
       const suffix = String(d).repeat(trail);
       const plen = 9 - trail;
 
-      for (let v = 0; v < 180; v++) {
+      for (let v = 0; v < 200; v++) {
         tryAdd(buildPrefix(plen, v, d) + suffix);
       }
 
-      if (plen >= 3) {
+      if (plen >= 2) {
         for (let lead = 1; lead <= 9; lead++) {
+          tryAdd(String(lead).repeat(Math.min(plen, 4)) + suffix.padStart(9 - Math.min(plen, 4), String(d)));
           tryAdd(String(lead).repeat(plen) + suffix);
-          for (let mid = 0; mid < 12; mid++) {
-            let p = String(lead).repeat(Math.max(1, plen - 2));
-            while (p.length < plen - 1) p += String((mid + p.length) % 10);
-            if (p.length >= plen - 1) {
-              tryAdd(p.slice(0, plen - 1) + String(d) + suffix.slice(1));
+        }
+      }
+    }
+  }
+
+  // ——— Palindromlar (9 xona): ABCDEDCBA
+  for (let a = 1; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      for (let c = 0; c <= 9; c++) {
+        for (let e = 0; e <= 9; e++) {
+          // ABCDEДCBA: a b c d e d c b a
+          for (let dd = 0; dd <= 9; dd++) {
+            const pal = `${a}${b}${c}${dd}${e}${dd}${c}${b}${a}`;
+            if (/^[1-9]\d{8}$/.test(pal)) tryAdd(pal);
+          }
+        }
+      }
+    }
+  }
+
+  // ——— Almashinuvchi patternlar: ABABABABА
+  for (let a = 1; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      if (a === b) continue;
+      const alt = (a + "" + b).repeat(5).slice(0, 9);
+      if (/^[1-9]\d{8}$/.test(alt)) tryAdd(alt);
+    }
+  }
+
+  // ——— Takroriy 3 xonali blok: 123123123
+  for (let a = 1; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      for (let c = 0; c <= 9; c++) {
+        const rep = `${a}${b}${c}`.repeat(3);
+        if (/^[1-9]\d{8}$/.test(rep)) tryAdd(rep);
+      }
+    }
+  }
+
+  // ——— Dumaloq raqamlar: 100000000, 200000000...
+  for (let d = 1; d <= 9; d++) {
+    tryAdd(d + "00000000");
+    tryAdd(d + "10000000");
+    tryAdd(d + "50000000");
+    tryAdd(d + "00000001");
+  }
+
+  // ——— Juft-juft: 112233445 → to'liq juftlar
+  for (let a = 1; a <= 9; a++) {
+    for (let b = 0; b <= 9; b++) {
+      for (let c = 0; c <= 9; c++) {
+        for (let d = 0; d <= 9; d++) {
+          // 8 xona: aabbccdd + nima?
+          if (a !== b || b === c) {
+            const pairs = `${a}${a}${b}${b}${c}${c}${d}${d}`;
+            // 8 xona, 1 qo'shib 9 ga
+            if (/^\d{8}$/.test(pairs)) {
+              for (let x = 1; x <= 9; x++) {
+                const n = x + pairs;
+                if (/^[1-9]\d{8}$/.test(n)) tryAdd(n);
+              }
             }
           }
         }
@@ -88,15 +151,20 @@ export function generateVanityCatalog(): { number: string; price: number; tier: 
     }
   }
 
-  const extras = [
-    "901234567", "987654321", "912345678", "909090909", "901010101",
-    "900123456", "911223344", "900888888", "900777777", "900555555",
-    "911111111", "922222222", "933333333", "944444444", "955555555",
-    "966666666", "977777777", "988888888", "999999999", "111111111",
-    "122222222", "133333333", "144444444", "155555555", "166666666",
-    "177777777", "188888888", "199999999", "111111112", "222222221",
+  // ——— Maxsus sevimlil raqamlar
+  const specials = [
+    "900000000", "901234567", "912345678", "123456789", "987654321",
+    "123123123", "456456456", "789789789", "121212121", "131313131",
+    "141414141", "151515151", "212121212", "313131313", "414141414",
+    "123321123", "321123321", "456654456", "789987789",
+    "111111119", "111111118", "111111117", "222222221", "333333331",
+    "100000001", "200000002", "300000003", "400000004", "500000005",
+    "600000006", "700000007", "800000008", "900000009",
+    "112233445", "556677889", "998877665", "123456780",
+    "900111111", "901111111", "911111110", "990000009",
+    "100100100", "200200200", "123123124", "987987987",
   ];
-  for (const n of extras) tryAdd(n);
+  for (const n of specials) tryAdd(n);
 
   return Array.from(map.entries())
     .map(([number, meta]) => ({ number, ...meta }))
@@ -105,6 +173,7 @@ export function generateVanityCatalog(): { number: string; price: number; tier: 
 
 export async function seedVanityNumbers() {
   const catalog = generateVanityCatalog();
+  // Narxlarni ham yangilaymiz (yangi tizim uchun)
   for (const v of catalog) {
     await prisma.vanityNumber.upsert({
       where: { number: v.number },
@@ -113,3 +182,4 @@ export async function seedVanityNumbers() {
     });
   }
 }
+
