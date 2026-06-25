@@ -22,6 +22,7 @@ model User {
   telegramChatId  String?
   telegramLinkCode String? @unique
   telegramLinkExpires DateTime?
+  referredById    String?
   age             Int?
   city            String?
   country         String?

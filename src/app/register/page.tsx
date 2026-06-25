@@ -33,10 +33,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const ref = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null;
       const res = await apiFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(ref ? { ...form, ref } : form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);

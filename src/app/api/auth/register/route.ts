@@ -11,6 +11,7 @@ const schema = z.object({
   password: z.string().min(6).max(128),
   name: z.string().min(2).max(80).transform((n) => n.trim()),
   language: z.string().refine((l) => LANGUAGES.some((lang) => lang.code === l)),
+  ref: z.string().trim().max(32).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -35,6 +36,16 @@ export async function POST(req: NextRequest) {
     const tcallId = await generateUniqueTcallId();
     const hashed = await hashPassword(data.password);
 
+    // Resolve referral code (a referrer's Tcall ID) into the referrer's user id.
+    let referredById: string | null = null;
+    if (data.ref) {
+      const refCode = data.ref.replace(/\D/g, "");
+      if (refCode) {
+        const referrer = await prisma.user.findUnique({ where: { tcallId: refCode }, select: { id: true } });
+        if (referrer) referredById = referrer.id;
+      }
+    }
+
     const user = await prisma.user.create({
       data: {
         email: data.email,
@@ -44,6 +55,7 @@ export async function POST(req: NextRequest) {
         tcallId,
         translationMode: "text",
         status: "available",
+        referredById,
       },
     });
 

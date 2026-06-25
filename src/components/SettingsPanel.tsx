@@ -19,9 +19,11 @@ import {
   Send,
   Lock,
   ScanFace,
+  Gift,
 } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { FaceCapture } from "@/components/FaceCapture";
+import { InviteModal } from "@/components/InviteModal";
 import { setCachedPinEnabled } from "@/lib/app-lock";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
 import { LANGUAGES } from "@/lib/languages";
@@ -195,6 +197,9 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  // Invite friends
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     apiFetch("/api/user/settings")
@@ -776,6 +781,15 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </button>
 
+        <button type="button" className="settings-nav-item" onClick={() => setInviteOpen(true)}>
+          <span className="settings-nav-icon"><Gift className="w-4 h-4" /></span>
+          <span className="settings-nav-text">
+            <strong>Do&apos;stlarni taklif qilish</strong>
+            <small>Havola va QR orqali ulashing</small>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </button>
+
         <button type="button" className="settings-nav-item" onClick={() => setSection("security")}>
           <span className="settings-nav-icon"><Shield className="w-4 h-4" /></span>
           <span className="settings-nav-text">
@@ -1329,6 +1343,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         onCancel={() => setFaceMode(null)}
       />
     )}
+    {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
     </>
   );
 }
