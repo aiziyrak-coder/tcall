@@ -140,30 +140,41 @@ export async function PATCH(req: NextRequest) {
     const sender = await prisma.user.findUnique({ where: { tcallId: senderTcallId } });
     if (!sender) return NextResponse.json({ error: "Topilmadi" }, { status: 404 });
 
+    // Race condition: agar allaqachon do'st bo'lsa — 200 qaytaramiz
+    const alreadyFriend = await prisma.contact.findFirst({
+      where: { ownerId: session.userId, tcallId: senderTcallId },
+    });
+    if (alreadyFriend) return NextResponse.json({ ok: true, accepted: true, alreadyFriends: true });
+
     const request = await prisma.friendRequest.findUnique({
       where: { senderId_receiverId: { senderId: sender.id, receiverId: session.userId } },
     });
     if (!request || request.status !== "pending") {
-      return NextResponse.json({ error: "So'rov topilmadi" }, { status: 404 });
+      return NextResponse.json({ error: "So'rov topilmadi yoki allaqachon hal qilingan" }, { status: 404 });
     }
 
     if (accept) {
-      await prisma.$transaction([
-        prisma.friendRequest.update({
-          where: { id: request.id },
-          data: { status: "accepted", resolvedAt: new Date() },
-        }),
-        prisma.contact.upsert({
-          where: { ownerId_tcallId: { ownerId: session.userId, tcallId: senderTcallId } },
-          create: { ownerId: session.userId, name: sender.name, tcallId: senderTcallId },
-          update: { name: sender.name },
-        }),
-        prisma.contact.upsert({
-          where: { ownerId_tcallId: { ownerId: sender.id, tcallId: session.tcallId! } },
-          create: { ownerId: sender.id, name: session.name, tcallId: session.tcallId! },
-          update: {},
-        }),
-      ]);
+      try {
+        await prisma.$transaction([
+          prisma.friendRequest.update({
+            where: { id: request.id },
+            data: { status: "accepted", resolvedAt: new Date() },
+          }),
+          prisma.contact.upsert({
+            where: { ownerId_tcallId: { ownerId: session.userId, tcallId: senderTcallId } },
+            create: { ownerId: session.userId, name: sender.name, tcallId: senderTcallId },
+            update: { name: sender.name },
+          }),
+          prisma.contact.upsert({
+            where: { ownerId_tcallId: { ownerId: sender.id, tcallId: session.tcallId! } },
+            create: { ownerId: sender.id, name: session.name, tcallId: session.tcallId! },
+            update: {},
+          }),
+        ]);
+      } catch (txErr) {
+        // Unique constraint — allaqachon do'st
+        console.warn("Friend accept tx:", txErr);
+      }
       emitToUser(sender.id, "friend-accepted", {
         friend: { id: session.userId, name: session.name, tcallId: session.tcallId },
       });

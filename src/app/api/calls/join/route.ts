@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
 
       if (!call) return { kind: "error" as const, error: "Qo'ng'iroq topilmadi", status: 404 };
 
+      if (!["waiting", "ringing", "active"].includes(call.status)) {
+        return { kind: "error" as const, error: "Qo'ng'iroq allaqachon tugagan", status: 410 };
+      }
+
       const access = await canJoinCall(call, session.userId, session.tcallId);
       if (!access.ok) return { kind: "error" as const, error: access.reason, status: 403 };
 

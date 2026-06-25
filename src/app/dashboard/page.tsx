@@ -138,9 +138,11 @@ function DashboardInner({
       .then((d) => {
         if (d.calls) {
           setCalls(d.calls);
+          // "missed" = ring timed out (user was callee, didn't answer)
+          // "rejected" means user rejected = not missed, intentional
           const missedIncoming = d.calls.filter(
             (c: CallRecord) =>
-              (c.status === "missed" || c.status === "rejected") &&
+              c.status === "missed" &&
               c.calleeTcallId === user.tcallId
           ).length;
           setMissedCount(missedIncoming);
@@ -207,7 +209,7 @@ function DashboardInner({
       setTimeout(() => setCopied(false), 2000);
     } else {
       setCopyError(ui.copyFailed);
-      setTimeout(() => setCopyError(""), 2500);
+      setTimeout(() => setCopyError(""), 4000);
     }
   };
 

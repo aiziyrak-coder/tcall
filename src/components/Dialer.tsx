@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Phone, Delete } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { formatTcallId } from "@/lib/tcallId";
@@ -48,30 +48,45 @@ export function Dialer({ userLanguage }: DialerProps) {
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
+  const lookupAbortRef = useRef<AbortController | null>(null);
+
   const refreshLookup = useCallback(async (id: string) => {
+    // Oldingi so'rovni bekor qilamiz — stale result muammosini oldini olamiz
+    lookupAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    lookupAbortRef.current = ctrl;
+
     setLookupLoading(true);
     try {
-      const r = await apiFetch(`/api/users/lookup?tcallId=${id}`);
+      const r = await apiFetch(`/api/users/lookup?tcallId=${id}`, { signal: ctrl.signal } as RequestInit);
+      if (ctrl.signal.aborted) return;
       const d = await r.json();
+      if (ctrl.signal.aborted) return;
       if (d.found && d.user) {
         setLookupUser(mapLookupUser(d.user));
         if (d.user.blockedYou) setError(ui.blocked);
         else setError("");
       } else {
         setLookupUser(null);
+        if (r.ok) setError(ui.numberNotFound);
       }
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      setLookupUser(null);
     } finally {
-      setLookupLoading(false);
+      if (!ctrl.signal.aborted) setLookupLoading(false);
     }
-  }, [ui.blocked]);
+  }, [ui.blocked, ui.numberNotFound]);
 
   useEffect(() => {
     if (digits.length !== 9) {
+      lookupAbortRef.current?.abort();
       setLookupUser(null);
       setLookupLoading(false);
+      setError("");
       return;
     }
-    const timer = setTimeout(() => void refreshLookup(digits), 250);
+    const timer = setTimeout(() => void refreshLookup(digits), 300);
     return () => clearTimeout(timer);
   }, [digits, refreshLookup]);
 
@@ -170,13 +185,31 @@ export function Dialer({ userLanguage }: DialerProps) {
                   new CustomEvent("tcall:open-chat", { detail: { tcallId: lookupUser.tcallId } })
                 );
               }}
-              onAddFriend={() =>
+              onSendFriendRequest={() =>
                 runAction(async () => {
-                  await apiFetch("/api/contacts", {
+                  const r = await apiFetch("/api/friend-requests", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: lookupUser.name, tcallId: lookupUser.tcallId }),
+                    body: JSON.stringify({ tcallId: lookupUser.tcallId, name: lookupUser.name }),
                   });
+                  if (!r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    throw new Error((d as { error?: string }).error || ui.chatActionFailed);
+                  }
+                })
+              }
+              onAcceptFriendRequest={() =>
+                runAction(async () => {
+                  await apiFetch("/api/friend-requests", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ senderTcallId: lookupUser.tcallId, accept: true }),
+                  });
+                })
+              }
+              onCancelFriendRequest={() =>
+                runAction(async () => {
+                  await apiFetch(`/api/friend-requests?tcallId=${lookupUser.tcallId}`, { method: "DELETE" });
                 })
               }
               onBlock={() =>

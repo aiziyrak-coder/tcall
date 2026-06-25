@@ -36,7 +36,7 @@ export async function POST(
 
   try {
     const data = sendSchema.parse(await req.json());
-    if (data.type === "text" && !data.text?.trim()) {
+    if (data.type === "text" && (!data.text || !data.text.trim())) {
       return NextResponse.json({ error: "Xabar bo'sh" }, { status: 400 });
     }
     if (data.type !== "text" && !data.mediaUrl) {

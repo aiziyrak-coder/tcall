@@ -45,7 +45,11 @@ export function AudioCallRoom() {
     if (!activeCall || leaveHandledRef.current) return;
     leaveHandledRef.current = true;
     playCallEndTone();
-    router.replace("/dashboard");
+    try {
+      router.replace("/dashboard");
+    } catch {
+      window.location.href = "/dashboard";
+    }
   }, [activeCall, router]);
 
   const handleTap = useCallback(() => {

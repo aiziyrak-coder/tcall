@@ -863,6 +863,7 @@ export function useCall({
       } catch (err) {
         console.error("Call session error:", err);
         sessionStartedRef.current = false;
+        wakeLockRef.current?.release().catch(() => {});
         if (mounted) {
           setCallError("room_error");
           setCallStatus("error");

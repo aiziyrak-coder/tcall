@@ -108,6 +108,12 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     setUploading(true);
     setError("");
     try {
+      if (!file.type.startsWith("image/") && !file.name.match(/\.(heic|heif)$/i)) {
+        throw new Error("Faqat rasm fayli yuklash mumkin (JPG, PNG, HEIC...)");
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        throw new Error("Rasm hajmi 15MB dan oshmasligi kerak");
+      }
       const prepared = await prepareAvatarFile(file);
       const fd = new FormData();
       fd.append("file", prepared);
@@ -136,7 +142,8 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     setSaving(true);
     setError("");
     try {
-      const ageNum = form.age.trim() ? Number(form.age) : null;
+      const rawAge = form.age.replace(/\D/g, "").trim();
+      const ageNum = rawAge ? Math.max(13, Math.min(120, Number(rawAge))) : null;
       const res = await apiFetch("/api/user/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -252,9 +259,12 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
                   <input
                     className="input-field-compact"
                     value={form[key]}
-                    onChange={(e) => setField(key, e.target.value)}
+                    onChange={(e) =>
+                      setField(key, key === "age" ? e.target.value.replace(/\D/g, "").slice(0, 3) : e.target.value)
+                    }
                     maxLength={max}
                     inputMode={key === "age" ? "numeric" : undefined}
+                    pattern={key === "age" ? "[0-9]*" : undefined}
                   />
                 )}
               </label>
@@ -327,7 +337,7 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
                     <button
                       type="button"
                       className="btn-compact flex-1 rounded-xl bg-red-500 text-white font-semibold disabled:opacity-40"
-                      disabled={logoutPhrase !== ui.logoutTypePhrase || loggingOut}
+                      disabled={logoutPhrase.trim() !== (ui.logoutTypePhrase as string).trim() || loggingOut}
                       onClick={() => {
                         setLoggingOut(true);
                         void logout();

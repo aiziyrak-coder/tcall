@@ -210,8 +210,21 @@ export function ChatMessenger({
   }, [activeId, onThreadChange]);
 
   useEffect(() => {
-    return () => onThreadChange?.(false);
+    return () => {
+      onThreadChange?.(false);
+    };
   }, [onThreadChange]);
+
+  // Komponent yopilganda typing holati tozalansin
+  useEffect(() => {
+    return () => {
+      const socket = getSocket();
+      if (socket?.connected && activeIdRef.current) {
+        socket.emit("chat-typing-stop", { conversationId: activeIdRef.current });
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!uploadError) return;
@@ -528,15 +541,21 @@ export function ChatMessenger({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  const deleteMessage = async (messageId: string) => {
-    if (!activeId) return;
-    if (!window.confirm(ui.chatConfirmDeleteMessage)) return;
-    const r = await apiFetch(`/api/chat/conversations/${activeId}/messages/${messageId}`, {
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const deleteMessage = (messageId: string) => {
+    setPendingDeleteId(messageId);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!activeId || !pendingDeleteId) return;
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    const r = await apiFetch(`/api/chat/conversations/${activeId}/messages/${id}`, {
       method: "DELETE",
     });
     if (!r.ok) {
       setActionError(ui.chatActionFailed);
-      return;
     }
   };
 
@@ -576,6 +595,20 @@ export function ChatMessenger({
   const uploadAndSend = async (file: File) => {
     if (!activeId || uploading) return;
     setUploadError("");
+
+    const allowedTypes = ["image/", "video/", "application/pdf", "application/zip", "text/"];
+    const isAllowed = allowedTypes.some((t) => file.type.startsWith(t));
+    if (!isAllowed && !file.type) {
+      // type bo'lmasa ham o'tkazamiz — brauzer aniqlay olmagan bo'lishi mumkin
+    } else if (!isAllowed) {
+      setUploadError("Ushbu fayl turi qo'llab-quvvatlanmaydi");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setUploadError("Fayl hajmi 50MB dan oshmasligi kerak");
+      return;
+    }
+
     setUploading(true);
     try {
       const fd = new FormData();
@@ -1135,12 +1168,12 @@ export function ChatMessenger({
               setShowRenameGroup(true);
             }}
             onLeave={() => {
-              if (window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
+              if (typeof window !== "undefined" && window.confirm(isGroup ? ui.chatConfirmLeave : ui.chatConfirmDeleteChat)) {
                 void leaveChat(false);
               }
             }}
             onDeleteGroup={() => {
-              if (window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
+              if (typeof window !== "undefined" && window.confirm(ui.chatConfirmDeleteGroup)) void leaveChat(true);
             }}
             onViewProfile={
               !isGroup && partner?.tcallId ? () => setShowPartnerProfile(true) : undefined
@@ -1388,6 +1421,23 @@ export function ChatMessenger({
         </div>
       )}
       </div>
+
+      {pendingDeleteId && (
+        <div className="ios-modal-overlay" onClick={() => setPendingDeleteId(null)}>
+          <div className="ios-modal-panel max-w-xs" onClick={(e) => e.stopPropagation()}>
+            <p className="font-semibold text-center mb-1">{ui.chatDeleteMessage}</p>
+            <p className="text-sm text-slate-500 text-center mb-4">{ui.chatConfirmDeleteMessage}</p>
+            <div className="flex gap-3">
+              <button type="button" className="btn-secondary btn-compact flex-1" onClick={() => setPendingDeleteId(null)}>
+                {ui.logoutCancel}
+              </button>
+              <button type="button" className="btn-compact flex-1 bg-red-500 text-white rounded-xl font-semibold" onClick={() => void confirmDeleteMessage()}>
+                {ui.chatDeleteMessage}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
