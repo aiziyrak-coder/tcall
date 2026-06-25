@@ -66,7 +66,7 @@ export function ChatGroupMembersPanel({
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">
                     {m.name}
-                    {isMe && " (siz)"}
+                    {isMe && ` (${ui.chatYou})`}
                   </p>
                   {m.tcallId && (
                     <p className="text-xs text-slate-500 font-mono">{formatTcallId(m.tcallId)}</p>

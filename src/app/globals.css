@@ -1950,6 +1950,63 @@ body.has-mini-call .chat-app-thread .chat-composer {
   @apply text-green-600;
 }
 
+.chat-peer-status-typing {
+  @apply text-brand-600 italic;
+}
+
+.chat-messages-wrap {
+  @apply relative flex-1 min-h-0 flex flex-col;
+}
+
+.chat-load-older {
+  @apply flex justify-center py-2;
+}
+
+.chat-date-separator {
+  @apply self-center text-[11px] font-semibold text-slate-500 bg-white/80 backdrop-blur px-3 py-1 rounded-full my-1;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+
+.chat-scroll-down-btn {
+  @apply absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-brand-700 bg-white border border-brand-200 shadow-lg touch-manipulation;
+}
+
+.chat-list-search {
+  @apply flex items-center gap-2 mx-4 mb-3 px-3 py-2 rounded-xl bg-slate-100 border border-black/[0.04];
+}
+
+.chat-list-search-input {
+  @apply flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400;
+}
+
+.chat-bubble-deleted .chat-bubble {
+  @apply opacity-75;
+}
+
+.chat-bubble-text-deleted {
+  @apply italic opacity-80;
+}
+
+.chat-media-audio {
+  @apply w-full min-w-[12rem] max-w-full h-10;
+}
+
+.chat-msg-delete-btn {
+  @apply inline-flex text-slate-400 opacity-60 touch-manipulation p-0.5;
+}
+
+.chat-msg-actions {
+  @apply self-end mt-1 mr-1;
+}
+
+.chat-msg-action-danger {
+  @apply flex items-center gap-1.5 text-xs text-red-600 bg-white border border-red-100 rounded-lg px-2.5 py-1.5 shadow-sm touch-manipulation;
+}
+
+.chat-bubble-meta-mine .chat-msg-delete-btn {
+  @apply text-slate-300;
+}
+
 .chat-media-image {
   @apply rounded-xl max-w-full max-h-56 object-cover mb-1;
 }

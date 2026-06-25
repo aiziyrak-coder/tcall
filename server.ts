@@ -30,6 +30,8 @@ import {
 import { broadcastUserPresence } from "./src/lib/presence";
 import { seedVanityNumbers } from "./src/lib/tcallId";
 import { migrateChatMemberRoles } from "./src/lib/chat-migrate";
+import { migrateDirectConversationKeys } from "./src/lib/chat-migrate-direct";
+import { assertMember } from "./src/lib/chat-service";
 import { getAllowedOrigins, getPublicApiUrl, getPublicAppUrl } from "./src/lib/domains";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -82,6 +84,7 @@ app.prepare().then(async () => {
 
   void seedVanityNumbers().catch((e) => console.error("Vanity seed error:", e));
   await migrateChatMemberRoles().catch((e) => console.error("Chat role migrate error:", e));
+  await migrateDirectConversationKeys().catch((e) => console.error("Direct key migrate error:", e));
 
   setInterval(() => {
     expireStaleRingingCalls()
@@ -133,6 +136,7 @@ app.prepare().then(async () => {
     const session = getSession(socket)!;
     let currentRoom: string | null = null;
     let currentUser: RoomUser | null = null;
+    const typingTimers = new Map<string, NodeJS.Timeout>();
 
     registerUserSocket(session.userId, socket.id);
     socket.join(`user:${session.userId}`);
@@ -468,7 +472,68 @@ app.prepare().then(async () => {
       }
     });
 
+    socket.on("chat-typing", async ({ conversationId }: { conversationId?: string }) => {
+      if (!conversationId) return;
+      try {
+        await assertMember(conversationId, session.userId);
+        const others = await prisma.conversationMember.findMany({
+          where: { conversationId, NOT: { userId: session.userId } },
+          select: { userId: true },
+        });
+        const payload = {
+          conversationId,
+          userId: session.userId,
+          typing: true,
+        };
+        for (const o of others) {
+          emitToUser(o.userId, "chat-typing", payload);
+        }
+        const key = `${conversationId}:${session.userId}`;
+        const prev = typingTimers.get(key);
+        if (prev) clearTimeout(prev);
+        typingTimers.set(
+          key,
+          setTimeout(() => {
+            typingTimers.delete(key);
+            for (const o of others) {
+              emitToUser(o.userId, "chat-typing", { ...payload, typing: false });
+            }
+          }, 3500)
+        );
+      } catch {
+        // ignore
+      }
+    });
+
+    socket.on("chat-typing-stop", async ({ conversationId }: { conversationId?: string }) => {
+      if (!conversationId) return;
+      try {
+        await assertMember(conversationId, session.userId);
+        const key = `${conversationId}:${session.userId}`;
+        const prev = typingTimers.get(key);
+        if (prev) {
+          clearTimeout(prev);
+          typingTimers.delete(key);
+        }
+        const others = await prisma.conversationMember.findMany({
+          where: { conversationId, NOT: { userId: session.userId } },
+          select: { userId: true },
+        });
+        for (const o of others) {
+          emitToUser(o.userId, "chat-typing", {
+            conversationId,
+            userId: session.userId,
+            typing: false,
+          });
+        }
+      } catch {
+        // ignore
+      }
+    });
+
     socket.on("disconnect", () => {
+      for (const t of typingTimers.values()) clearTimeout(t);
+      typingTimers.clear();
       unregisterUserSocket(session.userId, socket.id);
       if (!isUserOnline(session.userId)) {
         void broadcastUserPresence(session.userId, false).catch((e) =>

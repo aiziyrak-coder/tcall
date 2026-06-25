@@ -255,6 +255,31 @@ export function CallProvider({ user, children }: CallProviderProps) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("tcall:chat-message", { detail: data }));
           window.dispatchEvent(new CustomEvent("tcall:quick-message"));
+
+          const detail = data as {
+            conversationId?: string;
+            message?: { sender?: { name?: string }; displayText?: string | null; originalText?: string | null };
+          };
+          if (
+            document.visibilityState === "hidden" &&
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted" &&
+            detail.message
+          ) {
+            const body =
+              detail.message.displayText ||
+              detail.message.originalText ||
+              "Yangi xabar";
+            try {
+              new Notification(detail.message.sender?.name || "Tcall", {
+                body,
+                tag: detail.conversationId || "chat",
+                icon: "/icons/icon-192.png",
+              });
+            } catch {
+              // ignore
+            }
+          }
         }
       });
 
@@ -267,6 +292,18 @@ export function CallProvider({ user, children }: CallProviderProps) {
       socket.on("user-presence", (data: unknown) => {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("tcall:chat-presence", { detail: data }));
+        }
+      });
+
+      socket.on("chat-typing", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-typing", { detail: data }));
+        }
+      });
+
+      socket.on("chat-message-deleted", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-message-deleted", { detail: data }));
         }
       });
     }, 150);

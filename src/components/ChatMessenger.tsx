@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, Fragment } from "react";
 import {
   ArrowLeft,
+  ArrowDown,
   Check,
   CheckCheck,
   ImagePlus,
@@ -11,8 +12,10 @@ import {
   Paperclip,
   Phone,
   Plus,
+  Search,
   Send,
   Smile,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -30,6 +33,7 @@ import { GroupAvatar, UserAvatar } from "@/components/UserAvatar";
 import { TcallLogo } from "@/components/TcallLogo";
 import { applyReadStatusAfterPeerRead } from "@/lib/chat-read-status";
 import { peerStatusLabel } from "@/lib/format-last-seen";
+import { formatChatDateLabel, sameChatDay } from "@/lib/chat-date";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -50,12 +54,7 @@ export interface ChatMessageItem {
   sender: { id: string; name: string; tcallId: string | null; language: string };
   hasTranslation: boolean;
   readStatus?: "sent" | "read";
-}
-
-interface PeerPresence {
-  userId: string;
-  online: boolean;
-  lastSeenAt: string | null;
+  deleted?: boolean;
 }
 
 interface ConversationItem {
@@ -68,8 +67,15 @@ interface ConversationItem {
   updatedAt: string;
   peerOnline?: boolean;
   peerLastSeenAt?: string | null;
+  lastPreview?: string;
   lastMessage: ChatMessageItem | null;
   members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; language?: string; role?: string }[];
+}
+
+interface PeerPresence {
+  userId: string;
+  online: boolean;
+  lastSeenAt: string | null;
 }
 
 interface ChatMessengerProps {
@@ -92,11 +98,17 @@ export function ChatMessenger({
   onOpenHandled,
 }: ChatMessengerProps) {
   const ui = useUI(userLanguage);
-  const { dial } = useCallContext();
+  const { dial, getSocket } = useCallContext();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [peerPresence, setPeerPresence] = useState<PeerPresence | null>(null);
+  const [peerTyping, setPeerTyping] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  const [conversationType, setConversationType] = useState<string>("direct");
   const [loading, setLoading] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [text, setText] = useState("");
@@ -120,8 +132,14 @@ export function ChatMessenger({
   const groupAvatarRef = useRef<HTMLInputElement>(null);
   const [actionError, setActionError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const activeIdRef = useRef<string | null>(null);
+  const atBottomRef = useRef(true);
+  const typingEmitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<HTMLInputElement>(null);
+
+  activeIdRef.current = activeId;
 
   const activeConv = conversations.find((c) => c.id === activeId);
 
@@ -177,9 +195,29 @@ export function ChatMessenger({
       setActiveId(id);
       setLoadingMsgs(true);
       setShowEmoji(false);
+      setHasMore(false);
+      setPeerTyping(false);
+      atBottomRef.current = true;
+
+      const conv = conversations.find((c) => c.id === id);
+      setConversationType(conv?.type ?? "direct");
+
+      const savedDraft = typeof window !== "undefined" ? localStorage.getItem(`tcall:draft:${id}`) : null;
+      setText(savedDraft || "");
+
       const r = await apiFetch(`/api/chat/conversations/${id}`);
       const d = await r.json();
-      setMessages(d.messages || []);
+
+      if (activeIdRef.current !== id) return;
+
+      const fetched: ChatMessageItem[] = d.messages || [];
+      setMessages((prev) => {
+        const ids = new Set(fetched.map((m) => m.id));
+        const extra = prev.filter((m) => !ids.has(m.id));
+        return [...fetched, ...extra].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      });
+      setHasMore(!!d.hasMore);
+
       if (d.peer) {
         setPeerPresence(d.peer);
         setConversations((prev) =>
@@ -203,8 +241,36 @@ export function ChatMessenger({
       );
       onUnreadChange?.();
     },
-    [onUnreadChange]
+    [onUnreadChange, conversations]
   );
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeId || loadingOlder || !hasMore || messages.length === 0) return;
+    setLoadingOlder(true);
+    const cursor = messages[0].createdAt;
+    const el = messagesRef.current;
+    const prevHeight = el?.scrollHeight ?? 0;
+
+    try {
+      const r = await apiFetch(`/api/chat/conversations/${activeId}?cursor=${encodeURIComponent(cursor)}`);
+      const d = await r.json();
+      if (activeIdRef.current !== activeId) return;
+
+      const older: ChatMessageItem[] = d.messages || [];
+      setHasMore(!!d.hasMore);
+      setMessages((prev) => {
+        const ids = new Set(prev.map((m) => m.id));
+        const merged = [...older.filter((m) => !ids.has(m.id)), ...prev];
+        return merged.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      });
+
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = el.scrollHeight - prevHeight;
+      });
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [activeId, loadingOlder, hasMore, messages]);
 
   const startDirectChat = useCallback(
     async (tcallId: string) => {
@@ -272,12 +338,63 @@ export function ChatMessenger({
         conversationId: string;
         readerId: string;
         readAt: string;
+        conversationType?: string;
       };
       if (!detail?.conversationId || detail.conversationId !== activeId) return;
-      setMessages((prev) => applyReadStatusAfterPeerRead(prev, detail.readerId, detail.readAt, userId));
+      setMessages((prev) =>
+        applyReadStatusAfterPeerRead(
+          prev,
+          detail.readerId,
+          detail.readAt,
+          userId,
+          detail.conversationType
+        )
+      );
     };
     window.addEventListener("tcall:chat-read", onRead);
     return () => window.removeEventListener("tcall:chat-read", onRead);
+  }, [activeId, userId]);
+
+  useEffect(() => {
+    const onDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { conversationId: string; messageId: string };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === detail.messageId
+            ? {
+                ...m,
+                type: "text",
+                originalText: null,
+                displayText: ui.chatMessageDeleted,
+                mediaUrl: null,
+                mediaMime: null,
+                mediaName: null,
+                deleted: true,
+                hasTranslation: false,
+              }
+            : m
+        )
+      );
+      void loadConversations();
+    };
+    window.addEventListener("tcall:chat-message-deleted", onDeleted);
+    return () => window.removeEventListener("tcall:chat-message-deleted", onDeleted);
+  }, [activeId, loadConversations, ui.chatMessageDeleted]);
+
+  useEffect(() => {
+    const onTyping = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        conversationId: string;
+        userId: string;
+        typing: boolean;
+      };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      if (detail.userId === userId) return;
+      setPeerTyping(detail.typing);
+    };
+    window.addEventListener("tcall:chat-typing", onTyping);
+    return () => window.removeEventListener("tcall:chat-typing", onTyping);
   }, [activeId, userId]);
 
   useEffect(() => {
@@ -307,8 +424,58 @@ export function ChatMessenger({
   }, [peerPresence?.userId, userId]);
 
   useEffect(() => {
+    if (!atBottomRef.current) return;
+    bottomRef.current?.scrollIntoView({ behavior: loadingOlder ? "auto" : "smooth" });
+  }, [messages, loadingOlder]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    if (text.trim()) localStorage.setItem(`tcall:draft:${activeId}`, text);
+    else localStorage.removeItem(`tcall:draft:${activeId}`);
+  }, [text, activeId]);
+
+  const emitTyping = useCallback(() => {
+    if (!activeId) return;
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    socket.emit("chat-typing", { conversationId: activeId });
+  }, [activeId, getSocket]);
+
+  const stopTyping = useCallback(() => {
+    if (!activeId) return;
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    socket.emit("chat-typing-stop", { conversationId: activeId });
+  }, [activeId, getSocket]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesRef.current;
+    if (!el) return;
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+    atBottomRef.current = dist < 80;
+    setShowScrollDown(dist > 120);
+    if (el.scrollTop < 80 && hasMore && !loadingOlder) {
+      void loadOlderMessages();
+    }
+  }, [hasMore, loadingOlder, loadOlderMessages]);
+
+  const scrollToBottom = useCallback(() => {
+    atBottomRef.current = true;
+    setShowScrollDown(false);
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, []);
+
+  const deleteMessage = async (messageId: string) => {
+    if (!activeId) return;
+    if (!window.confirm(ui.chatConfirmDeleteMessage)) return;
+    const r = await apiFetch(`/api/chat/conversations/${activeId}/messages/${messageId}`, {
+      method: "DELETE",
+    });
+    if (!r.ok) {
+      setActionError(ui.chatActionFailed);
+      return;
+    }
+  };
 
   const sendText = async () => {
     if (!activeId || !text.trim() || sending) return;
@@ -323,6 +490,8 @@ export function ChatMessenger({
       if (res.ok) {
         setText("");
         setShowEmoji(false);
+        localStorage.removeItem(`tcall:draft:${activeId}`);
+        stopTyping();
         if (d.message) {
           setMessages((prev) =>
             prev.some((m) => m.id === d.message.id) ? prev : [...prev, d.message]
@@ -551,11 +720,13 @@ export function ChatMessenger({
     const peerIsOnline = !isGroup && (peerPresence?.online ?? activeConv.peerOnline ?? false);
     const peerStatusText =
       !isGroup && partner
-        ? peerStatusLabel(
-            peerIsOnline,
-            peerPresence?.lastSeenAt ?? activeConv.peerLastSeenAt ?? null,
-            ui
-          )
+        ? peerTyping
+          ? ui.chatTyping.replace("{name}", partner.name)
+          : peerStatusLabel(
+              peerIsOnline,
+              peerPresence?.lastSeenAt ?? activeConv.peerLastSeenAt ?? null,
+              ui
+            )
         : null;
     return (
       <div className="chat-app chat-app-thread">
@@ -611,7 +782,11 @@ export function ChatMessenger({
               >
                 <p className="chat-thread-title">{activeConv.title}</p>
                 {peerStatusText && (
-                  <p className={`chat-peer-status ${peerIsOnline ? "chat-peer-status-online" : ""}`}>
+                  <p
+                    className={`chat-peer-status ${
+                      peerIsOnline && !peerTyping ? "chat-peer-status-online" : ""
+                    } ${peerTyping ? "chat-peer-status-typing" : ""}`}
+                  >
                     {peerStatusText}
                   </p>
                 )}
@@ -642,17 +817,46 @@ export function ChatMessenger({
 
         {actionError && <div className="chat-upload-error mx-5 mt-2">{actionError}</div>}
 
-        <div className="chat-messages">
+        <div className="chat-messages-wrap">
+        <div className="chat-messages" ref={messagesRef} onScroll={handleMessagesScroll}>
+          {loadingOlder && (
+            <div className="chat-load-older">
+              <TcallLogo size="xs" animate />
+            </div>
+          )}
           {loadingMsgs ? (
             <div className="chat-loading-inline"><TcallLogo size="xs" animate /></div>
           ) : messages.length === 0 ? (
             <p className="chat-empty-hint">{ui.chatEmptyThread}</p>
           ) : (
-            messages.map((m) => (
-              <MessageBubble key={m.id} msg={m} isMine={m.sender.id === userId} ui={ui} />
-            ))
+            messages.map((m, i) => {
+              const prev = messages[i - 1];
+              const showDate = !prev || !sameChatDay(prev.createdAt, m.createdAt);
+              return (
+                <Fragment key={m.id}>
+                  {showDate && (
+                    <div className="chat-date-separator">
+                      {formatChatDateLabel(m.createdAt, userLanguage)}
+                    </div>
+                  )}
+                  <MessageBubble
+                    msg={m}
+                    isMine={m.sender.id === userId}
+                    ui={ui}
+                    onDelete={m.sender.id === userId && !m.deleted ? () => void deleteMessage(m.id) : undefined}
+                  />
+                </Fragment>
+              );
+            })
           )}
           <div ref={bottomRef} />
+        </div>
+        {showScrollDown && (
+          <button type="button" className="chat-scroll-down-btn" onClick={scrollToBottom}>
+            <ArrowDown className="w-4 h-4" />
+            <span>{ui.chatNewMessages}</span>
+          </button>
+        )}
         </div>
 
         <div className="chat-composer">
@@ -703,7 +907,12 @@ export function ChatMessenger({
               className="chat-input"
               placeholder={ui.typeMessage}
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (typingEmitRef.current) clearTimeout(typingEmitRef.current);
+                typingEmitRef.current = setTimeout(() => emitTyping(), 400);
+              }}
+              onBlur={() => stopTyping()}
               rows={1}
               maxLength={2000}
               onKeyDown={(e) => {
@@ -856,6 +1065,17 @@ export function ChatMessenger({
         </button>
       </div>
 
+      <div className="chat-list-search">
+        <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <input
+          type="search"
+          className="chat-list-search-input"
+          placeholder={ui.chatSearchPlaceholder}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
       {conversations.length === 0 ? (
         <div className="ios-empty-state">
           <MessageSquare className="w-10 h-10 text-slate-300 mb-2" />
@@ -864,7 +1084,14 @@ export function ChatMessenger({
         </div>
       ) : (
         <ul className="chat-conv-list">
-          {conversations.map((c) => (
+          {conversations
+            .filter((c) => {
+              const q = searchQuery.trim().toLowerCase();
+              if (!q) return true;
+              const preview = (c.lastPreview || c.lastMessage?.displayText || "").toLowerCase();
+              return c.title.toLowerCase().includes(q) || preview.includes(q);
+            })
+            .map((c) => (
             <li key={c.id}>
               <button type="button" className="chat-conv-item" onClick={() => void openConversation(c.id)}>
                 {c.type === "group" ? (
@@ -898,7 +1125,10 @@ export function ChatMessenger({
                     )}
                   </div>
                   <p className="text-sm text-slate-500 truncate">
-                    {c.lastMessage?.displayText || c.lastMessage?.originalText || "..."}
+                    {c.lastPreview ||
+                      c.lastMessage?.displayText ||
+                      c.lastMessage?.originalText ||
+                      "..."}
                   </p>
                 </div>
                 {c.unreadCount > 0 && <span className="chat-unread-badge">{c.unreadCount > 9 ? "9+" : c.unreadCount}</span>}
@@ -968,26 +1198,46 @@ function MessageBubble({
   msg,
   isMine,
   ui,
+  onDelete,
 }: {
   msg: ChatMessageItem;
   isMine: boolean;
   ui: Record<string, string>;
+  onDelete?: () => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
-  const body = showOriginal ? msg.originalText : msg.displayText;
+  const [showActions, setShowActions] = useState(false);
+  const body = msg.deleted ? msg.displayText : showOriginal ? msg.originalText : msg.displayText;
   const mediaSrc = resolveChatMediaUrl(msg.mediaUrl);
-  const isImage = msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/"));
-  const isVideo = msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/"));
+  const isImage =
+    !msg.deleted &&
+    (msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/")));
+  const isVideo =
+    !msg.deleted &&
+    (msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/")));
+  const isAudio =
+    !msg.deleted &&
+    (msg.type === "file" && !!msg.mediaMime?.startsWith("audio/"));
   const sourceLang = msg.sourceLang ? getLanguage(msg.sourceLang) : null;
 
   return (
-    <div className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"}`}>
+    <div
+      className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${
+        msg.deleted ? "chat-bubble-deleted" : ""
+      }`}
+      onContextMenu={(e) => {
+        if (onDelete) {
+          e.preventDefault();
+          setShowActions((v) => !v);
+        }
+      }}
+    >
       {!isMine && msg.sender.name && (
         <p className="chat-bubble-sender">{msg.sender.name}</p>
       )}
       <div className={`chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`}>
-        {msg.hasTranslation && sourceLang && !showOriginal && (
+        {msg.hasTranslation && sourceLang && !showOriginal && !msg.deleted && (
           <p className="chat-translation-badge">
             {sourceLang.flag} {ui.chatTranslatedFrom}
           </p>
@@ -1014,13 +1264,20 @@ function MessageBubble({
             </a>
           </video>
         )}
-        {msg.type === "file" && mediaSrc && !isImage && !isVideo && (
+        {isAudio && mediaSrc && (
+          <audio src={mediaSrc} controls className="chat-media-audio" preload="metadata" />
+        )}
+        {msg.type === "file" && mediaSrc && !isImage && !isVideo && !isAudio && (
           <a href={mediaSrc} target="_blank" rel="noopener noreferrer" className="chat-file-link">
             📎 {msg.mediaName || ui.chatFile}
           </a>
         )}
-        {body && <p className="chat-bubble-text whitespace-pre-wrap">{body}</p>}
-        {msg.hasTranslation && msg.originalText && (
+        {body && (
+          <p className={`chat-bubble-text whitespace-pre-wrap ${msg.deleted ? "chat-bubble-text-deleted" : ""}`}>
+            {body}
+          </p>
+        )}
+        {msg.hasTranslation && msg.originalText && !msg.deleted && (
           <button
             type="button"
             className="chat-view-original"
@@ -1034,7 +1291,7 @@ function MessageBubble({
         <span className="chat-bubble-time">
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
-        {isMine && msg.readStatus && (
+        {isMine && msg.readStatus && !msg.deleted && (
           <span
             className={`chat-msg-status ${msg.readStatus === "read" ? "chat-msg-status-read" : ""}`}
             aria-label={msg.readStatus === "read" ? ui.chatMessageRead : ui.chatMessageSent}
@@ -1046,7 +1303,25 @@ function MessageBubble({
             )}
           </span>
         )}
+        {onDelete && (
+          <button
+            type="button"
+            className="chat-msg-delete-btn"
+            aria-label={ui.chatDeleteMessage}
+            onClick={() => setShowActions((v) => !v)}
+          >
+            <MoreVertical className="w-3 h-3" />
+          </button>
+        )}
       </div>
+      {showActions && onDelete && (
+        <div className="chat-msg-actions">
+          <button type="button" className="chat-msg-action-danger" onClick={onDelete}>
+            <Trash2 className="w-3.5 h-3.5" />
+            {ui.chatDeleteMessage}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

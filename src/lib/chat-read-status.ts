@@ -27,8 +27,11 @@ export function applyReadStatusAfterPeerRead<T extends {
   messages: T[],
   readerId: string,
   readAtIso: string,
-  viewerId: string
+  viewerId: string,
+  conversationType?: string
 ): T[] {
+  if (conversationType && conversationType !== "direct") return messages;
+
   const readAt = new Date(readAtIso).getTime();
   if (readerId === viewerId) return messages;
 

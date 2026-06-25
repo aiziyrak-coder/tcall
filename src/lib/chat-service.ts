@@ -7,6 +7,13 @@ import { emitToUser } from "./socket-io";
 import { computeMessageReadStatus, type MessageReadStatus } from "./chat-read-status";
 import { isUserOnline } from "./socket-io";
 
+import { formatMessagePreview } from "./chat-preview";
+import { getUI } from "./languages";
+
+export function makeDirectKey(userIdA: string, userIdB: string): string {
+  return [userIdA, userIdB].sort().join(":");
+}
+
 export type ChatMessageType = "text" | "image" | "video" | "file";
 
 export interface SendMessageInput {
@@ -36,29 +43,72 @@ export async function isBlockedBetween(userIdA: string, tcallIdA: string, userId
 export type MemberRole = "owner" | "admin" | "member";
 
 export async function findOrCreateDirectConversation(userIdA: string, userIdB: string) {
-  const existing = await prisma.conversation.findMany({
-    where: {
-      type: "direct",
-      members: { some: { userId: userIdA } },
-    },
-    include: { members: { select: { userId: true } } },
+  const directKey = makeDirectKey(userIdA, userIdB);
+
+  let conv = await prisma.conversation.findUnique({
+    where: { directKey },
+    select: { id: true },
   });
 
-  const match = existing.find(
-    (c) => c.members.length === 2 && c.members.some((m) => m.userId === userIdB)
-  );
-  if (match) return match.id;
+  if (!conv) {
+    const legacy = await prisma.conversation.findMany({
+      where: {
+        type: "direct",
+        OR: [
+          { AND: [{ members: { some: { userId: userIdA } } }, { members: { some: { userId: userIdB } } }] },
+          {
+            AND: [
+              { members: { some: { userId: userIdA } } },
+              { messages: { some: { senderId: userIdB } } },
+            ],
+          },
+          {
+            AND: [
+              { members: { some: { userId: userIdB } } },
+              { messages: { some: { senderId: userIdA } } },
+            ],
+          },
+        ],
+      },
+      select: { id: true, directKey: true },
+      take: 1,
+    });
+    if (legacy[0]) {
+      if (!legacy[0].directKey) {
+        await prisma.conversation.update({
+          where: { id: legacy[0].id },
+          data: { directKey },
+        });
+      }
+      conv = { id: legacy[0].id };
+    }
+  }
 
-  const conv = await prisma.conversation.create({
+  if (conv) {
+    for (const uid of [userIdA, userIdB]) {
+      await prisma.conversationMember.upsert({
+        where: { conversationId_userId: { conversationId: conv.id, userId: uid } },
+        create: { conversationId: conv.id, userId: uid, role: "member" },
+        update: { hiddenAt: null },
+      });
+    }
+    return conv.id;
+  }
+
+  const created = await prisma.conversation.create({
     data: {
       type: "direct",
+      directKey,
       createdById: userIdA,
       members: {
-        create: [{ userId: userIdA, role: "member" }, { userId: userIdB, role: "member" }],
+        create: [
+          { userId: userIdA, role: "member" },
+          { userId: userIdB, role: "member" },
+        ],
       },
     },
   });
-  return conv.id;
+  return created.id;
 }
 
 export async function createGroupConversation(
@@ -293,6 +343,15 @@ export async function sendChatMessage(input: SendMessageInput) {
     data: { updatedAt: new Date() },
   });
 
+  await prisma.conversationMember.updateMany({
+    where: {
+      conversationId: input.conversationId,
+      userId: { not: input.senderId },
+      hiddenAt: { not: null },
+    },
+    data: { hiddenAt: null },
+  });
+
   const payload = {
     conversationId: input.conversationId,
     message: formatMessage(msg, translations, sourceLang),
@@ -327,12 +386,38 @@ export function formatMessageForUser(
     mediaMime: string | null;
     mediaName: string | null;
     mediaSize: number | null;
+    deletedAt?: Date | null;
     createdAt: Date;
     sender: { id: string; name: string; tcallId: string | null; language: string };
   },
   translations: { targetLang: string; text: string }[],
   userLang: string
 ) {
+  if (msg.deletedAt) {
+    const ui = getUI(userLang);
+    return {
+      id: msg.id,
+      type: "text" as const,
+      originalText: null,
+      sourceLang: null,
+      displayText: ui.chatMessageDeleted,
+      mediaUrl: null,
+      mediaMime: null,
+      mediaName: null,
+      mediaSize: null,
+      createdAt: msg.createdAt.toISOString(),
+      sender: {
+        id: msg.sender.id,
+        name: msg.sender.name,
+        tcallId: msg.sender.tcallId,
+        language: msg.sender.language,
+      },
+      hasTranslation: false,
+      deleted: true,
+      readStatus: undefined as MessageReadStatus | undefined,
+    };
+  }
+
   const translation = translations.find((t) => t.targetLang === userLang);
   return {
     id: msg.id,
@@ -371,6 +456,7 @@ function formatMessage(
 }
 
 export async function getConversationsForUser(userId: string, userLang: string) {
+  const ui = getUI(userLang);
   const memberships = await prisma.conversationMember.findMany({
     where: { userId },
     include: {
@@ -395,9 +481,12 @@ export async function getConversationsForUser(userId: string, userLang: string) 
 
   let unreadTotal = 0;
 
-  const conversations = await Promise.all(
+  const conversations = (
+    await Promise.all(
     memberships.map(async (m) => {
       const conv = m.conversation;
+      if (m.hiddenAt && conv.updatedAt <= m.hiddenAt) return null;
+
       const lastMsg = conv.messages[0];
       const lastReadAt = m.lastReadAt ?? new Date(0);
 
@@ -425,17 +514,29 @@ export async function getConversationsForUser(userId: string, userLang: string) 
 
       const title =
         conv.type === "group"
-          ? conv.name || "Guruh"
+          ? conv.name || ui.chatDefaultGroup
           : otherMembers[0]?.name || otherMembers[0]?.tcallId || "?";
 
-      let lastPreview = "";
-      if (lastMsg) {
-        const tr = lastMsg.translations.find((t) => t.targetLang === userLang);
-        lastPreview = tr?.text ?? lastMsg.originalText ?? "";
-        if (lastMsg.type === "image") lastPreview = "📷 " + (lastPreview || "Rasm");
-        if (lastMsg.type === "video") lastPreview = "🎬 " + (lastPreview || "Video");
-        if (lastMsg.type === "file") lastPreview = "📎 " + (lastMsg.mediaName || "Fayl");
-      }
+      const lastMessage = lastMsg
+        ? formatMessageForUser(
+            { ...lastMsg, sender: lastMsg.sender },
+            lastMsg.translations.map((t) => ({ targetLang: t.targetLang, text: t.text })),
+            userLang
+          )
+        : null;
+
+      const lastPreview = lastMessage
+        ? formatMessagePreview(
+            {
+              type: lastMsg!.type,
+              originalText: lastMsg!.originalText,
+              mediaName: lastMsg!.mediaName,
+              displayText: lastMessage.displayText,
+              deleted: lastMessage.deleted,
+            },
+            userLang
+          )
+        : "";
 
       return {
         id: conv.id,
@@ -451,20 +552,16 @@ export async function getConversationsForUser(userId: string, userLang: string) 
           avatar: cm.user.avatar,
           role: (cm.role as MemberRole) || "member",
         })),
-        lastMessage: lastMsg
-          ? formatMessageForUser(
-              { ...lastMsg, sender: lastMsg.sender },
-              lastMsg.translations.map((t) => ({ targetLang: t.targetLang, text: t.text })),
-              userLang
-            )
-          : null,
+        lastMessage,
+        lastPreview,
         unreadCount,
         updatedAt: conv.updatedAt.toISOString(),
         peerOnline,
         peerLastSeenAt,
       };
     })
-  );
+  )
+  ).filter((c): c is NonNullable<typeof c> => c !== null);
 
   return { conversations, unreadTotal };
 }
@@ -478,7 +575,6 @@ export async function getMessagesForConversation(
   return getMessagesForConversationWithBackfill(conversationId, userId, userLang, cursor);
 }
 
-/** Xabarlar ro'yxati — yetishmayotgan tarjimalarni backfill qiladi */
 export async function getMessagesForConversationWithBackfill(
   conversationId: string,
   userId: string,
@@ -486,6 +582,12 @@ export async function getMessagesForConversationWithBackfill(
   cursor?: string
 ) {
   await assertMember(conversationId, userId);
+
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true },
+  });
+  const isDirect = conv?.type === "direct";
 
   const members = await prisma.conversationMember.findMany({
     where: { conversationId },
@@ -505,6 +607,7 @@ export async function getMessagesForConversationWithBackfill(
     },
   });
 
+  const hasMore = messages.length === 50;
   const ordered = messages.reverse();
   const formatted = [];
 
@@ -514,7 +617,7 @@ export async function getMessagesForConversationWithBackfill(
       text: t.text,
     }));
 
-    if (m.originalText && m.sourceLang) {
+    if (m.originalText && m.sourceLang && !m.deletedAt) {
       translations = await backfillTranslationForUser(
         m.id,
         m.originalText,
@@ -526,11 +629,11 @@ export async function getMessagesForConversationWithBackfill(
 
     formatted.push({
       ...formatMessageForUser(m, translations, userLang),
-      readStatus: computeMessageReadStatus(m, members, userId),
+      readStatus: isDirect ? computeMessageReadStatus(m, members, userId) : undefined,
     });
   }
 
-  return formatted;
+  return { messages: formatted, hasMore };
 }
 
 export async function markConversationRead(conversationId: string, userId: string) {
@@ -538,6 +641,11 @@ export async function markConversationRead(conversationId: string, userId: strin
   await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId, userId } },
     data: { lastReadAt: readAt },
+  });
+
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { type: true },
   });
 
   const others = await prisma.conversationMember.findMany({
@@ -549,6 +657,7 @@ export async function markConversationRead(conversationId: string, userId: strin
     conversationId,
     readerId: userId,
     readAt: readAt.toISOString(),
+    conversationType: conv?.type ?? "direct",
   };
 
   for (const o of others) {
@@ -557,6 +666,35 @@ export async function markConversationRead(conversationId: string, userId: strin
   emitToUser(userId, "chat-read", payload);
 
   return readAt;
+}
+
+export async function deleteChatMessage(
+  conversationId: string,
+  messageId: string,
+  userId: string
+) {
+  await assertMember(conversationId, userId);
+  const msg = await prisma.chatMessage.findUnique({ where: { id: messageId } });
+  if (!msg || msg.conversationId !== conversationId) throw new Error("NOT_FOUND");
+  if (msg.senderId !== userId) throw new Error("FORBIDDEN");
+  if (msg.deletedAt) return { ok: true };
+
+  await prisma.chatMessage.update({
+    where: { id: messageId },
+    data: { deletedAt: new Date() },
+  });
+
+  const members = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    include: { user: { select: { language: true } } },
+  });
+
+  const payload = { conversationId, messageId };
+  for (const m of members) {
+    emitToUser(m.userId, "chat-message-deleted", payload);
+  }
+
+  return { ok: true };
 }
 
 export async function leaveConversation(
@@ -571,21 +709,20 @@ export async function leaveConversation(
   if (!conv) throw new Error("NOT_FOUND");
   await assertMember(conversationId, userId);
 
-  if (opts?.purgeGroup && conv.type === "group" && conv.createdById === userId) {
-    await prisma.conversation.delete({ where: { id: conversationId } });
-    return { purged: true as const };
+  if (conv.type === "group") {
+    if (opts?.purgeGroup && conv.createdById === userId) {
+      await prisma.conversation.delete({ where: { id: conversationId } });
+      return { purged: true as const };
+    }
+    return removeMemberFromGroup(conversationId, userId, userId);
   }
 
-  await prisma.conversationMember.delete({
+  await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId, userId } },
+    data: { hiddenAt: new Date() },
   });
 
-  const remaining = await prisma.conversationMember.count({ where: { conversationId } });
-  if (remaining === 0) {
-    await prisma.conversation.delete({ where: { id: conversationId } });
-  }
-
-  return { left: true as const };
+  return { left: true as const, hidden: true as const };
 }
 
 export async function addMembersToGroup(

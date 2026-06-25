@@ -22,14 +22,14 @@ export async function GET(
     await assertMember(params.id, session.userId);
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
     const userLang = await getUserLanguage(session.userId, session.language || "uz");
-    const messages = await getMessagesForConversation(
+    const result = await getMessagesForConversation(
       params.id,
       session.userId,
       userLang,
       cursor
     );
     const peer = await getDirectPeerPresence(params.id, session.userId);
-    return NextResponse.json({ messages, peer });
+    return NextResponse.json({ messages: result.messages, hasMore: result.hasMore, peer });
   } catch {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }
