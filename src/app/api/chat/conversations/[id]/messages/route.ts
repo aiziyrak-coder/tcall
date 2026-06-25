@@ -60,7 +60,10 @@ export async function POST(
       mediaSize: data.mediaSize,
     });
 
-    const message = formatMessageForUser(result.msg, result.translations, viewerLang);
+    const message = {
+      ...formatMessageForUser(result.msg, result.translations, viewerLang),
+      readStatus: "sent" as const,
+    };
 
     return NextResponse.json({
       ok: true,

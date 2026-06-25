@@ -1914,7 +1914,40 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .chat-bubble-time {
-  @apply text-[10px] text-slate-400 mt-1 px-2;
+  @apply text-[10px] text-slate-400;
+}
+
+.chat-bubble-meta {
+  @apply flex items-center gap-1 mt-1 px-2;
+}
+
+.chat-bubble-meta-mine {
+  @apply flex-row-reverse;
+}
+
+.chat-msg-status {
+  @apply inline-flex text-slate-400;
+}
+
+.chat-msg-status-read {
+  @apply text-sky-500;
+}
+
+.chat-avatar-wrap {
+  @apply relative shrink-0;
+}
+
+.chat-online-dot {
+  @apply absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white;
+  background: #34c759;
+}
+
+.chat-peer-status {
+  @apply text-xs text-slate-500 mt-0.5 truncate;
+}
+
+.chat-peer-status-online {
+  @apply text-green-600;
 }
 
 .chat-media-image {

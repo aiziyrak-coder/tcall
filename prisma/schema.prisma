@@ -31,6 +31,7 @@ model User {
   about           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  lastSeenAt      DateTime?
 
   hostedCalls       Call[]            @relation("HostCalls")
   callLogs          CallParticipant[]

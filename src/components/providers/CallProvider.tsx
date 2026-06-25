@@ -257,6 +257,18 @@ export function CallProvider({ user, children }: CallProviderProps) {
           window.dispatchEvent(new CustomEvent("tcall:quick-message"));
         }
       });
+
+      socket.on("chat-read", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-read", { detail: data }));
+        }
+      });
+
+      socket.on("user-presence", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-presence", { detail: data }));
+        }
+      });
     }, 150);
 
     const onVisible = () => {

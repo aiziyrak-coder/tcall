@@ -25,7 +25,9 @@ import {
   registerUserSocket,
   unregisterUserSocket,
   emitToUser,
+  isUserOnline,
 } from "./src/lib/socket-io";
+import { broadcastUserPresence } from "./src/lib/presence";
 import { seedVanityNumbers } from "./src/lib/tcallId";
 import { migrateChatMemberRoles } from "./src/lib/chat-migrate";
 import { getAllowedOrigins, getPublicApiUrl, getPublicAppUrl } from "./src/lib/domains";
@@ -134,6 +136,9 @@ app.prepare().then(async () => {
 
     registerUserSocket(session.userId, socket.id);
     socket.join(`user:${session.userId}`);
+    void broadcastUserPresence(session.userId, true).catch((e) =>
+      console.error("presence online error:", e)
+    );
 
     try {
       if (session.tcallId) {
@@ -465,6 +470,11 @@ app.prepare().then(async () => {
 
     socket.on("disconnect", () => {
       unregisterUserSocket(session.userId, socket.id);
+      if (!isUserOnline(session.userId)) {
+        void broadcastUserPresence(session.userId, false).catch((e) =>
+          console.error("presence offline error:", e)
+        );
+      }
 
       if (currentRoom) {
         const room = rooms.get(currentRoom);

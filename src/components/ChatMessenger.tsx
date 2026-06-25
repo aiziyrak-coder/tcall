@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Check,
+  CheckCheck,
   ImagePlus,
   MessageSquare,
   MoreVertical,
@@ -26,6 +28,8 @@ import { ChatThreadMenuSheet } from "@/components/ChatThreadMenuSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { GroupAvatar, UserAvatar } from "@/components/UserAvatar";
 import { TcallLogo } from "@/components/TcallLogo";
+import { applyReadStatusAfterPeerRead } from "@/lib/chat-read-status";
+import { peerStatusLabel } from "@/lib/format-last-seen";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -45,6 +49,13 @@ export interface ChatMessageItem {
   createdAt: string;
   sender: { id: string; name: string; tcallId: string | null; language: string };
   hasTranslation: boolean;
+  readStatus?: "sent" | "read";
+}
+
+interface PeerPresence {
+  userId: string;
+  online: boolean;
+  lastSeenAt: string | null;
 }
 
 interface ConversationItem {
@@ -55,6 +66,8 @@ interface ConversationItem {
   createdById?: string;
   unreadCount: number;
   updatedAt: string;
+  peerOnline?: boolean;
+  peerLastSeenAt?: string | null;
   lastMessage: ChatMessageItem | null;
   members: { userId: string; name: string; tcallId: string | null; avatar?: string | null; language?: string; role?: string }[];
 }
@@ -83,6 +96,7 @@ export function ChatMessenger({
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const [peerPresence, setPeerPresence] = useState<PeerPresence | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [text, setText] = useState("");
@@ -133,6 +147,7 @@ export function ChatMessenger({
 
   const closeThread = useCallback(() => {
     setActiveId(null);
+    setPeerPresence(null);
     setShowManage(false);
     setShowAddMembers(false);
     setShowMembers(false);
@@ -165,6 +180,22 @@ export function ChatMessenger({
       const r = await apiFetch(`/api/chat/conversations/${id}`);
       const d = await r.json();
       setMessages(d.messages || []);
+      if (d.peer) {
+        setPeerPresence(d.peer);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? {
+                  ...c,
+                  peerOnline: d.peer.online,
+                  peerLastSeenAt: d.peer.lastSeenAt,
+                }
+              : c
+          )
+        );
+      } else {
+        setPeerPresence(null);
+      }
       setLoadingMsgs(false);
       await apiFetch(`/api/chat/conversations/${id}`, { method: "PATCH" });
       setConversations((prev) =>
@@ -221,14 +252,59 @@ export function ChatMessenger({
       if (detail.conversationId === activeId) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === detail.message.id)) return prev;
-          return [...prev, detail.message];
+          const incoming = detail.message;
+          const message =
+            incoming.sender.id === userId && !incoming.readStatus
+              ? { ...incoming, readStatus: "sent" as const }
+              : incoming;
+          return [...prev, message];
         });
         void apiFetch(`/api/chat/conversations/${detail.conversationId}`, { method: "PATCH" });
       }
     };
     window.addEventListener("tcall:chat-message", onChat);
     return () => window.removeEventListener("tcall:chat-message", onChat);
-  }, [activeId, loadConversations]);
+  }, [activeId, loadConversations, userId]);
+
+  useEffect(() => {
+    const onRead = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        conversationId: string;
+        readerId: string;
+        readAt: string;
+      };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      setMessages((prev) => applyReadStatusAfterPeerRead(prev, detail.readerId, detail.readAt, userId));
+    };
+    window.addEventListener("tcall:chat-read", onRead);
+    return () => window.removeEventListener("tcall:chat-read", onRead);
+  }, [activeId, userId]);
+
+  useEffect(() => {
+    const onPresence = (e: Event) => {
+      const detail = (e as CustomEvent).detail as PeerPresence;
+      if (!detail?.userId) return;
+
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (c.type !== "direct") return c;
+          const peer = c.members.find((m) => m.userId !== userId);
+          if (peer?.userId !== detail.userId) return c;
+          return {
+            ...c,
+            peerOnline: detail.online,
+            peerLastSeenAt: detail.lastSeenAt,
+          };
+        })
+      );
+
+      if (peerPresence?.userId === detail.userId) {
+        setPeerPresence(detail);
+      }
+    };
+    window.addEventListener("tcall:chat-presence", onPresence);
+    return () => window.removeEventListener("tcall:chat-presence", onPresence);
+  }, [peerPresence?.userId, userId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -472,6 +548,15 @@ export function ChatMessenger({
     const myMember = activeConv.members.find((m) => m.userId === userId);
     const myRole = myMember?.role || (isGroupCreator ? "owner" : "member");
     const canManageGroup = myRole === "owner" || myRole === "admin";
+    const peerIsOnline = !isGroup && (peerPresence?.online ?? activeConv.peerOnline ?? false);
+    const peerStatusText =
+      !isGroup && partner
+        ? peerStatusLabel(
+            peerIsOnline,
+            peerPresence?.lastSeenAt ?? activeConv.peerLastSeenAt ?? null,
+            ui
+          )
+        : null;
     return (
       <div className="chat-app chat-app-thread">
         <div className="chat-thread">
@@ -493,12 +578,15 @@ export function ChatMessenger({
                 isGroup
               />
             ) : partner ? (
-              <UserAvatar
-                userId={partner.userId}
-                name={partner.name}
-                avatar={partner.avatar}
-                size="md"
-              />
+              <div className="chat-avatar-wrap">
+                <UserAvatar
+                  userId={partner.userId}
+                  name={partner.name}
+                  avatar={partner.avatar}
+                  size="md"
+                />
+                {peerIsOnline && <span className="chat-online-dot" aria-hidden />}
+              </div>
             ) : (
               <div className="chat-thread-avatar">{activeConv.title.slice(0, 2).toUpperCase()}</div>
             )}
@@ -522,15 +610,15 @@ export function ChatMessenger({
                 onClick={() => partner?.tcallId && setShowPartnerProfile(true)}
               >
                 <p className="chat-thread-title">{activeConv.title}</p>
-                {partner?.tcallId && (
-                  <>
-                    <p className="chat-thread-sub">{formatTcallId(partner.tcallId)}</p>
-                    {partner.language && partner.language !== userLanguage && (
-                      <p className="text-[10px] text-brand-600 mt-0.5">
-                        {getLanguage(partner.language).flag} {ui.chatTranslationAuto}
-                      </p>
-                    )}
-                  </>
+                {peerStatusText && (
+                  <p className={`chat-peer-status ${peerIsOnline ? "chat-peer-status-online" : ""}`}>
+                    {peerStatusText}
+                  </p>
+                )}
+                {partner?.language && partner.language !== userLanguage && (
+                  <p className="text-[10px] text-brand-600 mt-0.5">
+                    {getLanguage(partner.language).flag} {ui.chatTranslationAuto}
+                  </p>
                 )}
               </button>
             )}
@@ -791,7 +879,10 @@ export function ChatMessenger({
                   (() => {
                     const p = c.members.find((m) => m.userId !== userId);
                     return p ? (
-                      <UserAvatar userId={p.userId} name={p.name} avatar={p.avatar} size="md" />
+                      <div className="chat-avatar-wrap">
+                        <UserAvatar userId={p.userId} name={p.name} avatar={p.avatar} size="md" />
+                        {c.peerOnline && <span className="chat-online-dot" aria-hidden />}
+                      </div>
                     ) : (
                       <div className="chat-conv-avatar">{c.title.slice(0, 2).toUpperCase()}</div>
                     );
@@ -939,9 +1030,23 @@ function MessageBubble({
           </button>
         )}
       </div>
-      <span className="chat-bubble-time">
-        {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-      </span>
+      <div className={`chat-bubble-meta ${isMine ? "chat-bubble-meta-mine" : ""}`}>
+        <span className="chat-bubble-time">
+          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
+        {isMine && msg.readStatus && (
+          <span
+            className={`chat-msg-status ${msg.readStatus === "read" ? "chat-msg-status-read" : ""}`}
+            aria-label={msg.readStatus === "read" ? ui.chatMessageRead : ui.chatMessageSent}
+          >
+            {msg.readStatus === "read" ? (
+              <CheckCheck className="w-3.5 h-3.5" strokeWidth={2.25} />
+            ) : (
+              <Check className="w-3.5 h-3.5" strokeWidth={2.25} />
+            )}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

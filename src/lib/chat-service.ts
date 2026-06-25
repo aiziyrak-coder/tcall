@@ -4,6 +4,8 @@ import {
   ensureMessageTranslations,
 } from "./chat-translate";
 import { emitToUser } from "./socket-io";
+import { computeMessageReadStatus, type MessageReadStatus } from "./chat-read-status";
+import { isUserOnline } from "./socket-io";
 
 export type ChatMessageType = "text" | "image" | "video" | "file";
 
@@ -306,7 +308,10 @@ export async function sendChatMessage(input: SendMessageInput) {
 
   emitToUser(input.senderId, "chat-message", {
     ...payload,
-    message: formatMessageForUser(msg, translations, sourceLang),
+    message: {
+      ...formatMessageForUser(msg, translations, sourceLang),
+      readStatus: "sent" as const,
+    },
   });
 
   return { msg, translations };
@@ -353,6 +358,7 @@ export function formatMessageForUser(
       msg.sourceLang !== userLang &&
       translation.text.trim() !== (msg.originalText || "").trim()
     ),
+    readStatus: undefined as MessageReadStatus | undefined,
   };
 }
 
@@ -405,6 +411,18 @@ export async function getConversationsForUser(userId: string, userLang: string) 
       unreadTotal += unreadCount;
 
       const otherMembers = conv.members.filter((cm) => cm.userId !== userId).map((cm) => cm.user);
+      const peerUser = conv.type === "direct" ? otherMembers[0] : null;
+      let peerOnline = false;
+      let peerLastSeenAt: string | null = null;
+      if (peerUser) {
+        peerOnline = isUserOnline(peerUser.id);
+        const peerRow = await prisma.user.findUnique({
+          where: { id: peerUser.id },
+          select: { lastSeenAt: true },
+        });
+        peerLastSeenAt = peerRow?.lastSeenAt?.toISOString() ?? null;
+      }
+
       const title =
         conv.type === "group"
           ? conv.name || "Guruh"
@@ -442,6 +460,8 @@ export async function getConversationsForUser(userId: string, userLang: string) 
           : null,
         unreadCount,
         updatedAt: conv.updatedAt.toISOString(),
+        peerOnline,
+        peerLastSeenAt,
       };
     })
   );
@@ -466,6 +486,11 @@ export async function getMessagesForConversationWithBackfill(
   cursor?: string
 ) {
   await assertMember(conversationId, userId);
+
+  const members = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    select: { userId: true, lastReadAt: true },
+  });
 
   const messages = await prisma.chatMessage.findMany({
     where: {
@@ -499,17 +524,39 @@ export async function getMessagesForConversationWithBackfill(
       );
     }
 
-    formatted.push(formatMessageForUser(m, translations, userLang));
+    formatted.push({
+      ...formatMessageForUser(m, translations, userLang),
+      readStatus: computeMessageReadStatus(m, members, userId),
+    });
   }
 
   return formatted;
 }
 
 export async function markConversationRead(conversationId: string, userId: string) {
+  const readAt = new Date();
   await prisma.conversationMember.update({
     where: { conversationId_userId: { conversationId, userId } },
-    data: { lastReadAt: new Date() },
+    data: { lastReadAt: readAt },
   });
+
+  const others = await prisma.conversationMember.findMany({
+    where: { conversationId, NOT: { userId } },
+    select: { userId: true },
+  });
+
+  const payload = {
+    conversationId,
+    readerId: userId,
+    readAt: readAt.toISOString(),
+  };
+
+  for (const o of others) {
+    emitToUser(o.userId, "chat-read", payload);
+  }
+  emitToUser(userId, "chat-read", payload);
+
+  return readAt;
 }
 
 export async function leaveConversation(

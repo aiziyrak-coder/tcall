@@ -8,6 +8,7 @@ import {
   markConversationRead,
   updateGroupName,
 } from "@/lib/chat-service";
+import { getDirectPeerPresence } from "@/lib/presence";
 import { getUserLanguage } from "@/lib/chat-translate";
 
 export async function GET(
@@ -27,7 +28,8 @@ export async function GET(
       userLang,
       cursor
     );
-    return NextResponse.json({ messages });
+    const peer = await getDirectPeerPresence(params.id, session.userId);
+    return NextResponse.json({ messages, peer });
   } catch {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }
