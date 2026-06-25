@@ -4,12 +4,39 @@ import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { purgeUsersByIds, purgeTestUsers, countTestUsers } from "@/lib/admin-cleanup";
+import { parseUserAgent, lookupIpLocation } from "@/lib/device-geo";
 
 export async function GET(req: NextRequest) {
   const session = await getAdminSession(req);
   if (!session) return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
+
+  // Bitta foydalanuvchining to'liq ma'lumoti
+  const detailId = searchParams.get("userId");
+  if (detailId) {
+    const user = await prisma.user.findUnique({
+      where: { id: detailId },
+      select: {
+        id: true, name: true, email: true, tcallId: true, language: true, status: true,
+        bio: true, about: true, age: true, city: true, country: true, address: true,
+        workplace: true, education: true, graduatedFrom: true, profession: true,
+        interests: true, skills: true, telegramUsername: true, avatar: true,
+        createdAt: true, lastSeenAt: true, lastLoginAt: true, lastLoginIp: true, lastUserAgent: true,
+        subscription: { select: { plan: true, status: true, expiresAt: true, price: true } },
+        vanityNumber: { select: { number: true, tier: true } },
+        bans: { where: { active: true }, select: { id: true, reason: true, expiresAt: true, createdAt: true } },
+        _count: { select: { hostedCalls: true, chatMessagesSent: true, contacts: true } },
+      },
+    });
+    if (!user) return NextResponse.json({ error: "Foydalanuvchi topilmadi" }, { status: 404 });
+
+    const device = parseUserAgent(user.lastUserAgent);
+    const location = await lookupIpLocation(user.lastLoginIp);
+
+    return NextResponse.json({ user, device, location });
+  }
+
   const q = searchParams.get("q")?.trim() || "";
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const limit = 25;

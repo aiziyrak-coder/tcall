@@ -6,7 +6,7 @@ import {
   Users, CreditCard, Phone, MessageSquare, ShieldAlert, BarChart3,
   Search, Check, X, Trash2, Lock, Ban, Crown, ChevronLeft, ChevronRight,
   RefreshCw, LogOut, ShieldCheck, Sparkles, Eye, UserPlus, AlertTriangle, Wallet,
-  Headset, Send,
+  Headset, Send, MapPin, Smartphone, Globe, Loader2,
 } from "lucide-react";
 import { formatTcallId } from "@/lib/tcallId";
 import { formatVanityPrice, formatTierLabel } from "@/lib/vanity-pricing";
@@ -87,8 +87,24 @@ interface Report {
 
 interface Conversation {
   id: string; type: string; name: string | null; updatedAt: string;
-  members: { user: { name: string; email: string; tcallId: string | null } }[];
+  members: { user: { id: string; name: string; email: string; tcallId: string | null } }[];
   messages: { originalText: string | null; createdAt: string }[];
+}
+
+interface UserDetail {
+  user: {
+    id: string; name: string; email: string; tcallId: string | null; language: string; status: string;
+    bio: string | null; about: string | null; age: number | null; city: string | null; country: string | null;
+    address: string | null; workplace: string | null; education: string | null; graduatedFrom: string | null;
+    profession: string | null; interests: string | null; skills: string | null; telegramUsername: string | null;
+    createdAt: string; lastSeenAt: string | null; lastLoginAt: string | null; lastLoginIp: string | null; lastUserAgent: string | null;
+    subscription: { plan: string; status: string; expiresAt: string | null; price: number } | null;
+    vanityNumber: { number: string; tier: string } | null;
+    bans: { id: string; reason: string; expiresAt: string | null; createdAt: string }[];
+    _count: { hostedCalls: number; chatMessagesSent: number; contacts: number };
+  };
+  device: { browser: string; os: string; deviceType: string; isNativeApp: boolean; raw: string };
+  location: { country: string | null; region: string | null; city: string | null; lat: number | null; lon: number | null; isp: string | null } | null;
 }
 
 function adminFetch(path: string, init?: RequestInit) {
@@ -121,6 +137,8 @@ export default function AdminPage() {
   const [replyText, setReplyText] = useState("");
   const [supportUnread, setSupportUnread] = useState(0);
   const [supportSending, setSupportSending] = useState(false);
+  const [detail, setDetail] = useState<UserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [vanityReqs, setVanityReqs] = useState<VanityReq[]>([]);
   const [vanitySubTab, setVanitySubTab] = useState<"requests" | "catalog">("requests");
   const [catalog, setCatalog] = useState<VanityCatalogItem[]>([]);
@@ -319,6 +337,19 @@ export default function AdminPage() {
   };
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(""), 3000); };
+
+  const openUserDetail = async (userId: string) => {
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const r = await adminFetch(`/api/admin/users?userId=${userId}`);
+      const d = await r.json();
+      if (r.ok) setDetail(d);
+      else setError(d.error || "Xatolik");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const reviewPayment = async (paymentId: string, action: "approve" | "reject") => {
     setError("");
@@ -594,7 +625,9 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-slate-800">
                       {users.map((u) => (
                         <tr key={u.id} className="hover:bg-slate-800/50">
-                          <td className="px-4 py-3 text-white font-medium">{u.name}</td>
+                          <td className="px-4 py-3">
+                            <button type="button" onClick={() => void openUserDetail(u.id)} className="text-white font-medium hover:text-brand-400 hover:underline">{u.name}</button>
+                          </td>
                           <td className="px-4 py-3 text-slate-300">{u.email}</td>
                           <td className="px-4 py-3 font-mono text-slate-300">{u.tcallId ? formatTcallId(u.tcallId) : "—"}</td>
                           <td className="px-4 py-3">
@@ -984,8 +1017,20 @@ export default function AdminPage() {
                   <tbody className="divide-y divide-slate-800">
                     {chats.map((c) => (
                       <tr key={c.id} className="hover:bg-slate-800/50">
-                        <td className="px-4 py-3 text-white">{c.name || (c.type === "direct" ? "To'g'ridan" : "Guruh")}</td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{c.members.slice(0, 3).map(m => m.user.name).join(", ")}</td>
+                        <td className="px-4 py-3 text-white">
+                          {c.type === "group"
+                            ? (c.name || "Guruh")
+                            : c.members.map(m => m.user.name).join(" · ") || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          <div className="flex flex-wrap gap-1.5">
+                            {c.members.slice(0, 4).map((m) => (
+                              <button key={m.user.id} type="button" onClick={() => void openUserDetail(m.user.id)} className="text-brand-400 hover:text-brand-300 hover:underline">
+                                {m.user.name}
+                              </button>
+                            ))}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-slate-400 text-xs max-w-[200px] truncate">{c.messages[0]?.originalText || "—"}</td>
                         <td className="px-4 py-3">
                           <button type="button" onClick={() => void inspectChat(c.id)} className="flex items-center gap-1.5 text-brand-400 hover:text-brand-300 text-sm">
@@ -1006,8 +1051,18 @@ export default function AdminPage() {
                 <ChevronLeft className="w-4 h-4" /> Suhbatlar ro'yxatiga qaytish
               </button>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-4">
-                <p className="text-white font-semibold">{chatInspect.conv?.name || "To'g'ridan suhbat"}</p>
-                <p className="text-slate-400 text-sm mt-1">Ishtirokchilar: {chatInspect.conv?.members.map(m => m.user.name).join(", ")}</p>
+                <p className="text-white font-semibold">
+                  {chatInspect.conv?.type === "group" ? (chatInspect.conv?.name || "Guruh") : (chatInspect.conv?.members.map(m => m.user.name).join(" · ") || "Suhbat")}
+                </p>
+                <p className="text-slate-400 text-sm mt-2 mb-1">Ishtirokchilar (bosib ma'lumotini ko'ring):</p>
+                <div className="flex flex-wrap gap-2">
+                  {chatInspect.conv?.members.map((m) => (
+                    <button key={m.user.id} type="button" onClick={() => void openUserDetail(m.user.id)}
+                      className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-brand-300 px-3 py-1.5 rounded-xl text-sm">
+                      <Eye className="w-3.5 h-3.5" /> {m.user.name} {m.user.tcallId ? <span className="text-slate-500 font-mono text-xs">{formatTcallId(m.user.tcallId)}</span> : null}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {chatInspect.messages.map((m) => (
@@ -1213,6 +1268,100 @@ export default function AdminPage() {
               <button type="button" onClick={() => setEditNum(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium">Bekor</button>
               <button type="button" onClick={() => void saveNum()} disabled={busy} className="flex-1 bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-xl text-sm font-medium disabled:opacity-50">Saqlash</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* User detail modal */}
+      {(detail || detailLoading) && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setDetail(null); }}>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {detailLoading || !detail ? (
+              <div className="p-10 flex items-center justify-center text-slate-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
+            ) : (() => {
+              const u = detail.user;
+              const profileFields: { label: string; value: string | number | null | undefined }[] = [
+                { label: "Yosh", value: u.age }, { label: "Shahar", value: u.city }, { label: "Mamlakat", value: u.country },
+                { label: "Manzil", value: u.address }, { label: "Ish joyi", value: u.workplace }, { label: "Ta'lim", value: u.education },
+                { label: "Bitirgan", value: u.graduatedFrom }, { label: "Kasb", value: u.profession }, { label: "Telegram", value: u.telegramUsername ? "@" + u.telegramUsername : null },
+                { label: "Qiziqishlar", value: u.interests }, { label: "Ko'nikmalar", value: u.skills }, { label: "Holat xabari", value: u.bio }, { label: "O'zi haqida", value: u.about },
+              ];
+              return (
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{u.name}</h3>
+                      <p className="text-slate-400 text-sm">{u.email}</p>
+                      <p className="text-brand-400 font-mono mt-1">{u.tcallId ? formatTcallId(u.tcallId) : "ID yo'q"}</p>
+                    </div>
+                    <button type="button" onClick={() => setDetail(null)} className="text-slate-400 hover:text-white"><X className="w-5 h-5" /></button>
+                  </div>
+
+                  {/* Qurilma va joylashuv */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3">
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5 mb-1"><Smartphone className="w-3.5 h-3.5" /> Qurilma</p>
+                      <p className="text-white text-sm font-medium">{detail.device.os} · {detail.device.browser}</p>
+                      <p className="text-slate-500 text-xs mt-0.5">{detail.device.isNativeApp ? "📱 Tcall ilovasi" : detail.device.deviceType}</p>
+                    </div>
+                    <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3">
+                      <p className="text-xs text-slate-400 flex items-center gap-1.5 mb-1"><MapPin className="w-3.5 h-3.5" /> Joylashuv (IP)</p>
+                      {detail.location ? (
+                        <>
+                          <p className="text-white text-sm font-medium">{[detail.location.city, detail.location.region, detail.location.country].filter(Boolean).join(", ") || "Noma'lum"}</p>
+                          {detail.location.lat != null && detail.location.lon != null && (
+                            <a href={`https://maps.google.com/?q=${detail.location.lat},${detail.location.lon}`} target="_blank" rel="noreferrer" className="text-brand-400 text-xs hover:underline flex items-center gap-1 mt-0.5"><Globe className="w-3 h-3" /> Xaritada ko'rish</a>
+                          )}
+                          {detail.location.isp && <p className="text-slate-500 text-xs mt-0.5">{detail.location.isp}</p>}
+                        </>
+                      ) : (
+                        <p className="text-slate-500 text-sm">{u.lastLoginIp ? "Aniqlanmadi" : "Ma'lumot yo'q"}</p>
+                      )}
+                      <p className="text-slate-500 text-xs mt-1 font-mono">IP: {u.lastLoginIp || "—"}</p>
+                    </div>
+                  </div>
+
+                  {/* Asosiy */}
+                  <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
+                    <div className="bg-slate-800/40 rounded-xl p-3"><p className="text-slate-400 text-xs">Ro'yxatdan</p><p className="text-white">{new Date(u.createdAt).toLocaleDateString()}</p></div>
+                    <div className="bg-slate-800/40 rounded-xl p-3"><p className="text-slate-400 text-xs">Oxirgi faollik</p><p className="text-white">{u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString() : "—"}</p></div>
+                    <div className="bg-slate-800/40 rounded-xl p-3"><p className="text-slate-400 text-xs">Oxirgi kirish</p><p className="text-white">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "—"}</p></div>
+                  </div>
+
+                  {/* Obuna / faollik */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-slate-800/40 rounded-xl p-3">
+                      <p className="text-slate-400 text-xs mb-1">Obuna</p>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${PLAN_COLORS[u.subscription?.plan || "free"]}`}>{u.subscription?.plan || "free"}</span>
+                      {u.subscription?.expiresAt && <p className="text-slate-500 text-xs mt-1">{new Date(u.subscription.expiresAt).toLocaleDateString()} gacha</p>}
+                      {u.vanityNumber && <p className="text-purple-300 text-xs mt-1">✨ {formatTcallId(u.vanityNumber.number)} ({u.vanityNumber.tier})</p>}
+                      {u.bans.length > 0 && <p className="text-red-400 text-xs mt-1">⛔ Banlangan: {u.bans[0].reason}</p>}
+                    </div>
+                    <div className="bg-slate-800/40 rounded-xl p-3">
+                      <p className="text-slate-400 text-xs mb-1">Faollik</p>
+                      <p className="text-white text-sm">📞 {u._count.hostedCalls} qo'ng'iroq · 💬 {u._count.chatMessagesSent} xabar · 👥 {u._count.contacts} kontakt</p>
+                      <p className="text-slate-500 text-xs mt-1">Til: {u.language} · Status: {u.status}</p>
+                    </div>
+                  </div>
+
+                  {/* Profil */}
+                  <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">Profil ma'lumotlari</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    {profileFields.map((f) => (
+                      <div key={f.label} className="flex justify-between gap-2 border-b border-slate-800 pb-1">
+                        <span className="text-slate-500">{f.label}</span>
+                        <span className={f.value ? "text-white text-right" : "text-slate-600 text-right italic"}>{f.value || "kiritilmagan"}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 mt-5">
+                    <button type="button" onClick={() => { const id = u.id; setDetail(null); setTab("users"); setTimeout(() => { const found = users.find(x => x.id === id); if (found) { setActionUser(found); setActionType("set_subscription"); } }, 50); }} className="flex-1 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 py-2 rounded-xl text-sm font-medium">Obuna boshqarish</button>
+                    <button type="button" onClick={() => setDetail(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-sm font-medium">Yopish</button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

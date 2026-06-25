@@ -36,6 +36,12 @@ export async function POST(req: NextRequest) {
       await prisma.user.update({ where: { id: user.id }, data: { tcallId } });
     }
 
+    // Qurilma / IP kuzatuvi (best-effort)
+    const userAgent = (req.headers.get("user-agent") || "").slice(0, 400);
+    void prisma.user
+      .update({ where: { id: user.id }, data: { lastLoginAt: new Date(), lastLoginIp: ip, lastUserAgent: userAgent } })
+      .catch(() => {});
+
     const persistent =
       req.headers.get("x-tcall-native") === "1" || data.remember === true;
 

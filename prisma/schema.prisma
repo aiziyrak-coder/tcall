@@ -34,6 +34,9 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   lastSeenAt      DateTime?
+  lastLoginAt     DateTime?
+  lastLoginIp     String?
+  lastUserAgent   String?
 
   hostedCalls       Call[]            @relation("HostCalls")
   callLogs          CallParticipant[]

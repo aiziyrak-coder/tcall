@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       prisma.conversation.findUnique({
         where: { id: conversationId },
         include: {
-          members: { include: { user: { select: { name: true, email: true, tcallId: true } } } },
+          members: { include: { user: { select: { id: true, name: true, email: true, tcallId: true } } } },
         },
       }),
       prisma.chatMessage.findMany({
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       skip: (page - 1) * limit,
       take: limit,
       include: {
-        members: { include: { user: { select: { name: true, email: true, tcallId: true } } }, take: 5 },
+        members: { include: { user: { select: { id: true, name: true, email: true, tcallId: true } } }, take: 5 },
         messages: { take: 1, orderBy: { createdAt: "desc" }, select: { originalText: true, createdAt: true } },
       },
     }),
