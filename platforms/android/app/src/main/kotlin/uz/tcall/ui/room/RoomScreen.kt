@@ -70,10 +70,10 @@ fun RoomScreen(
         item {
             IosListCard {
                 Box(
-                    Modifier.clip(RoundedCornerShape(99.dp)).background(Color(0x1A6366F1))
+                    Modifier.clip(RoundedCornerShape(99.dp)).background(TcallColors.AccentMuted)
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 ) {
-                    Text("✨ ${ui.aiTranslation}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.Brand600)
+                    Text("✨ ${ui.aiTranslation}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.AccentDark)
                 }
                 Spacer(Modifier.height(10.dp))
                 Text(ui.roomTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TcallColors.Slate900)
@@ -91,8 +91,8 @@ fun RoomScreen(
             item {
                 IosListCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x1A007AFF)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Add, null, tint = TcallColors.IosBlue)
+                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(TcallColors.AccentMuted), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Add, null, tint = TcallColors.Accent)
                         }
                         Column(Modifier.padding(start = 12.dp)) {
                             Text(ui.createRoom, fontWeight = FontWeight.Bold, fontSize = 17.sp)
@@ -111,7 +111,7 @@ fun RoomScreen(
             item {
                 IosListCard {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.People, null, tint = TcallColors.Brand600, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.People, null, tint = TcallColors.AccentDark, modifier = Modifier.size(18.dp))
                         Text(ui.roomReady, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.Slate500)
                     }
                     Text(
@@ -119,14 +119,14 @@ fun RoomScreen(
                         fontSize = 28.sp,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        color = TcallColors.IosBlue,
+                        color = TcallColors.Accent,
                         letterSpacing = 4.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                     )
 
                     Box(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0x0F6366F1)).padding(12.dp),
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TcallColors.AccentSoft.copy(alpha = 0.35f)).padding(12.dp),
                     ) {
                         Column {
                             Text(ui.inRoom, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TcallColors.Slate500, letterSpacing = 1.sp)
@@ -140,10 +140,10 @@ fun RoomScreen(
                                     }
                                     if (p.isHost == true) {
                                         Box(
-                                            Modifier.clip(RoundedCornerShape(99.dp)).background(Color(0x1A6366F1))
+                                            Modifier.clip(RoundedCornerShape(99.dp)).background(TcallColors.AccentMuted)
                                                 .padding(horizontal = 8.dp, vertical = 3.dp),
                                         ) {
-                                            Text(ui.roomOwner, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TcallColors.Brand600)
+                                            Text(ui.roomOwner, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TcallColors.AccentDark)
                                         }
                                     }
                                 }
@@ -171,25 +171,25 @@ fun RoomScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
                             Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color.White)
-                                .border(1.dp, Color(0x26007AFF), RoundedCornerShape(12.dp))
+                                .border(1.dp, TcallColors.AccentBorderSoft, RoundedCornerShape(12.dp))
                                 .clickable { copyText(context, state.roomLink); viewModel.markCopied() }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(if (state.copied) Icons.Default.Check else Icons.Default.ContentCopy, null, tint = if (state.copied) TcallColors.CallGreen else TcallColors.IosBlue, modifier = Modifier.size(16.dp))
-                                Text(if (state.copied) ui.copied else ui.copyLink, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlue, fontSize = 14.sp)
+                                Icon(if (state.copied) Icons.Default.Check else Icons.Default.ContentCopy, null, tint = if (state.copied) TcallColors.CallGreen else TcallColors.Accent, modifier = Modifier.size(16.dp))
+                                Text(if (state.copied) ui.copied else ui.copyLink, fontWeight = FontWeight.SemiBold, color = TcallColors.Accent, fontSize = 14.sp)
                             }
                         }
                         Box(
-                            Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color(0x1A007AFF))
+                            Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TcallColors.AccentMuted)
                                 .clickable { shareLink(context, state.roomLink, ui.shareLink) }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Share, null, tint = TcallColors.IosBlue, modifier = Modifier.size(16.dp))
-                                Text(ui.shareLink, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlue, fontSize = 14.sp)
+                                Icon(Icons.Default.Share, null, tint = TcallColors.Accent, modifier = Modifier.size(16.dp))
+                                Text(ui.shareLink, fontWeight = FontWeight.SemiBold, color = TcallColors.Accent, fontSize = 14.sp)
                             }
                         }
                     }
@@ -203,7 +203,7 @@ fun RoomScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         ui.createNewRoom,
-                        color = TcallColors.IosBlue,
+                        color = TcallColors.Accent,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.fillMaxWidth().clickable { viewModel.createNewRoom() },
@@ -216,8 +216,8 @@ fun RoomScreen(
         item {
             IosListCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Color(0x1A6366F1)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.AutoMirrored.Filled.Login, null, tint = TcallColors.Brand600)
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(TcallColors.AccentMuted), contentAlignment = Alignment.Center) {
+                        Icon(Icons.AutoMirrored.Filled.Login, null, tint = TcallColors.AccentDark)
                     }
                     Column(Modifier.padding(start = 12.dp)) {
                         Text(ui.join, fontWeight = FontWeight.Bold, fontSize = 17.sp)

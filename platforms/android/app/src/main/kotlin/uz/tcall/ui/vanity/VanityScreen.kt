@@ -72,7 +72,7 @@ fun VanityScreen(viewModel: VanityViewModel, ui: TcallUiStrings, onBack: () -> U
                 IosListCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(0x1A6366F1)),
+                            Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(TcallColors.AccentMuted),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Default.Star, null, tint = TcallColors.Brand600, modifier = Modifier.size(18.dp))
@@ -87,7 +87,7 @@ fun VanityScreen(viewModel: VanityViewModel, ui: TcallUiStrings, onBack: () -> U
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0x1A6366F1))
+                            .background(TcallColors.AccentMuted)
                             .padding(14.dp),
                     ) {
                         Column {

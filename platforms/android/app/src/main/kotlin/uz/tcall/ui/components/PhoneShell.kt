@@ -32,6 +32,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +41,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -52,10 +55,10 @@ import androidx.compose.material.icons.filled.Translate
 import uz.tcall.ui.strings.TcallUiStrings
 import uz.tcall.ui.strings.tabLabel
 import uz.tcall.ui.strings.uiStrings
-import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.TcallColors
+import uz.tcall.ui.theme.TcallGlass
 import uz.tcall.ui.theme.TcallGlassBar
-import uz.tcall.ui.theme.TcallGlassSurface
+import uz.tcall.ui.theme.TcallMotion
 import uz.tcall.ui.theme.formatTcallId
 
 enum class PhoneTab(val label: String, val icon: ImageVector, val center: Boolean = false) {
@@ -186,13 +189,13 @@ private fun PhoneHeader(
                 showPageTitle -> IosPageTitle(tabTitle)
             }
             Spacer(Modifier.weight(1f))
-            IosIconButton(Icons.Default.HeadsetMic, onOpenSupport, tint = TcallColors.IosBlue)
+            IosIconButton(Icons.Default.HeadsetMic, onOpenSupport, tint = TcallColors.Accent)
             Box {
                 IosIconButton(Icons.Default.MoreVert, { menuOpen = true }, tint = TcallColors.TextPrimary)
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
                         text = { Text(ui.numbers, color = TcallColors.TextPrimary, fontWeight = FontWeight.Medium) },
-                        leadingIcon = { Icon(Icons.Default.Star, null, tint = TcallColors.IosBlue) },
+                        leadingIcon = { Icon(Icons.Default.Star, null, tint = TcallColors.Accent) },
                         onClick = { menuOpen = false; onOpenVanity() },
                     )
                     DropdownMenuItem(
@@ -216,9 +219,9 @@ fun TcallAvatar(name: String, size: androidx.compose.ui.unit.Dp = 40.dp) {
     Box(
         Modifier
             .size(size)
-            .shadow(4.dp, CircleShape, spotColor = TcallColors.IosBlue.copy(0.25f))
+            .shadow(6.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.35f))
             .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(TcallColors.BrandPurple, TcallColors.IosBlue))),
+            .background(TcallColors.WarmAccentGradient),
         contentAlignment = Alignment.Center,
     ) {
         Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.38f).sp)
@@ -232,17 +235,28 @@ private fun LiquidTabBar(
     badges: Map<PhoneTab, Int>,
     ui: TcallUiStrings,
 ) {
-    TcallGlassSurface(
-        modifier = Modifier.fillMaxWidth(),
-        level = GlassLevel.Bar,
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        elevation = 12.dp,
-    ) {
+    val barShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    Box(Modifier.fillMaxWidth()) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .shadow(16.dp, barShape, spotColor = TcallColors.Accent.copy(0.22f))
+                .clip(barShape)
+                .background(TcallColors.TabBarBg)
+                .border(0.5.dp, TcallGlass.hairline, barShape)
+                .drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.White.copy(0.55f), Color.Transparent),
+                        ),
+                    )
+                },
+        )
         Row(
             Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
+                .padding(top = 22.dp, bottom = 10.dp, start = 4.dp, end = 4.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -277,7 +291,12 @@ private fun TabItem(
     badge: Int,
     onClick: () -> Unit,
 ) {
-    val color = if (selected) TcallColors.IosBlue else TcallColors.TabInactive
+    val color = if (selected) TcallColors.Accent else TcallColors.TabInactive
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.1f else 1f,
+        animationSpec = TcallMotion.tabSpring,
+        label = "tabIconScale",
+    )
     Column(
         modifier = Modifier
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
@@ -287,16 +306,21 @@ private fun TabItem(
         if (selected) {
             Box(
                 Modifier
-                    .size(width = 22.dp, height = 3.dp)
+                    .size(width = 24.dp, height = 3.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(TcallColors.IosBlue),
+                    .background(TcallColors.AccentGradient),
             )
         } else {
             Spacer(Modifier.height(3.dp))
         }
         Spacer(Modifier.height(4.dp))
         Box(contentAlignment = Alignment.Center) {
-            Icon(tab.icon, contentDescription = label, tint = color, modifier = Modifier.size(23.dp))
+            Icon(
+                tab.icon,
+                contentDescription = label,
+                tint = color,
+                modifier = Modifier.size(23.dp).scale(iconScale),
+            )
             if (badge > 0) {
                 TabBadge(badge, Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp))
             }
@@ -320,34 +344,40 @@ private fun CenterTabItem(
     badge: Int,
     onClick: () -> Unit,
 ) {
+    val btnScale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = TcallMotion.tabSpring,
+        label = "centerTabScale",
+    )
     Column(
         modifier = Modifier
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .offset(y = (-10).dp),
+            .offset(y = (-18).dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Box(
                 Modifier
-                    .size(56.dp)
-                    .shadow(12.dp, CircleShape, spotColor = TcallColors.IosBlue.copy(alpha = 0.45f))
+                    .size(60.dp)
+                    .scale(btnScale)
+                    .shadow(18.dp, CircleShape, spotColor = TcallColors.Accent.copy(alpha = 0.5f))
                     .clip(CircleShape)
                     .background(TcallColors.CenterBtnGradient)
-                    .border(1.5.dp, Color.White.copy(alpha = 0.35f), CircleShape),
+                    .border(2.dp, Brush.linearGradient(listOf(TcallColors.Warm.copy(0.7f), TcallColors.Accent.copy(0.4f))), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(tab.icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(28.dp))
+                Icon(tab.icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(30.dp))
             }
             if (badge > 0) {
                 TabBadge(badge, Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp))
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             label,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = if (selected) TcallColors.IosBlue else TcallColors.TabInactive,
+            color = if (selected) TcallColors.AccentDark else TcallColors.TabInactive,
         )
     }
 }

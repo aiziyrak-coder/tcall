@@ -62,12 +62,8 @@ fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
     Row(
         modifier
             .clip(PillShape)
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0x26007AFF), Color(0x1A5856D6)),
-                ),
-            )
-            .border(0.5.dp, Color(0x33007AFF), PillShape)
+            .background(TcallColors.AccentGradientSoft)
+            .border(0.5.dp, TcallColors.AccentBorderSoft, PillShape)
             .padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -79,9 +75,9 @@ fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
                 .background(TcallColors.GlassSheet),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(tab.icon, null, tint = TcallColors.IosBlue, modifier = Modifier.size(14.dp))
+            Icon(tab.icon, null, tint = TcallColors.Accent, modifier = Modifier.size(14.dp))
         }
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlueDark)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.AccentDark)
     }
 }
 
@@ -145,11 +141,11 @@ fun GradientPrimaryButton(
         modifier
             .fillMaxWidth()
             .height(48.dp)
-            .shadow(if (enabled) 6.dp else 0.dp, RoundedCornerShape(14.dp), spotColor = TcallColors.Brand600.copy(0.35f))
+            .shadow(if (enabled) 8.dp else 0.dp, RoundedCornerShape(14.dp), spotColor = TcallColors.Accent.copy(0.4f))
             .clip(RoundedCornerShape(14.dp))
             .background(
-                if (enabled) Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF4F46E5)))
-                else Brush.linearGradient(listOf(Color(0x806366F1), Color(0x804F46E5))),
+                if (enabled) TcallColors.AccentGradient
+                else Brush.linearGradient(listOf(TcallColors.Accent.copy(0.5f), TcallColors.AccentDark.copy(0.5f))),
             )
             .clickable(enabled = enabled && !loading, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -165,16 +161,16 @@ fun RowScope.ChatActionButton(text: String, icon: ImageVector, onClick: () -> Un
         modifier
             .weight(1f)
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0x26007AFF))
-            .border(0.5.dp, Color(0x40007AFF), RoundedCornerShape(16.dp))
+            .background(TcallColors.AccentSoft)
+            .border(0.5.dp, TcallColors.AccentBorderSoft, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 13.dp, horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = TcallColors.IosBlue, modifier = Modifier.size(17.dp))
+        Icon(icon, null, tint = TcallColors.Accent, modifier = Modifier.size(17.dp))
         Spacer(Modifier.size(6.dp))
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlueDark)
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.AccentDark)
     }
 }
 
@@ -270,7 +266,7 @@ fun ChatConvCard(
                     if (unread > 0) {
                         Box(
                             Modifier
-                                .background(TcallColors.Brand600, CircleShape)
+                                .background(TcallColors.AccentGradient, CircleShape)
                                 .padding(horizontal = 7.dp, vertical = 2.dp),
                         ) {
                             Text(
@@ -317,7 +313,7 @@ fun DialSubTabBar(
                     Text(
                         label,
                         fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
-                        color = if (active) TcallColors.IosBlue else TcallColors.TextSecondary,
+                        color = if (active) TcallColors.Accent else TcallColors.TextSecondary,
                         fontSize = 14.sp,
                     )
                 }
@@ -342,7 +338,7 @@ fun FilterChipRow(
             Box(
                 Modifier
                     .clip(PillShape)
-                    .background(if (active) TcallColors.Brand600 else Color(0x1A1C1C1E))
+                    .background(if (active) TcallColors.Accent else Color(0x1414201E))
                     .border(0.5.dp, if (active) Color.Transparent else TcallColors.GlassHairline, PillShape)
                     .clickable { onSelect(id) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -363,9 +359,9 @@ fun GreenCallButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled:
     Box(
         modifier
             .size(44.dp)
-            .shadow(6.dp, CircleShape, spotColor = TcallColors.CallGreen.copy(0.4f))
+            .shadow(8.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.45f))
             .clip(CircleShape)
-            .background(if (enabled) TcallColors.CallGreen else TcallColors.CallGreen.copy(0.45f))
+            .background(if (enabled) TcallColors.AccentGradient else Brush.linearGradient(listOf(TcallColors.Accent.copy(0.45f), TcallColors.AccentDark.copy(0.45f))))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

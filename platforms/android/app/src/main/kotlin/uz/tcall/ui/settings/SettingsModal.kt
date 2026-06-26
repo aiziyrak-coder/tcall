@@ -163,7 +163,7 @@ private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onCl
             .border(1.dp, Color(0x0F000000), RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x1A6366F1)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(TcallColors.AccentMuted), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = TcallColors.Brand600, modifier = Modifier.size(20.dp))
         }
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {

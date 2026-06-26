@@ -15,10 +15,11 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 private val LightColors = lightColorScheme(
-    primary = TcallColors.IosBlue,
+    primary = TcallColors.Accent,
     onPrimary = Color.White,
-    secondary = TcallColors.BrandPurple,
-    onSecondary = Color.White,
+    secondary = TcallColors.Warm,
+    onSecondary = TcallColors.TextPrimary,
+    tertiary = TcallColors.Slate,
     background = TcallColors.BgPrimary,
     onBackground = TcallColors.TextPrimary,
     surface = TcallColors.BgElevated,

@@ -80,7 +80,7 @@ fun SupportChatModal(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(44.dp).clip(CircleShape).background(Color(0x266366F1)),
+                            Modifier.size(44.dp).clip(CircleShape).background(TcallColors.AccentSoft),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Default.HeadsetMic, null, tint = TcallColors.Brand600)

@@ -88,28 +88,28 @@ private val pages = listOf(
         Icons.Default.AutoAwesome,
         "Tcall ga xush kelibsiz",
         "Dunyo bilan o'z tilingizda gaplashing. 9 xonali Tcall raqamingiz bilan audio qo'ng'iroq qiling.",
-        gradient = listOf(Color(0x336366F1), Color(0x1A5856D6), Color.Transparent),
+        gradient = listOf(Color(0x3340E0D0), Color(0x1AFFE4B5), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Language,
         "Real-time tarjima",
         "70+ til. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.",
-        gradient = listOf(Color(0x3334C759), Color(0x1A007AFF), Color.Transparent),
+        gradient = listOf(Color(0x33FFE4B5), Color(0x1A40E0D0), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Phone,
         "Qo'ng'iroq va xabar",
         "Yuqori sifatli audio qo'ng'iroq va chat — hammasi avtomatik tarjima bilan.",
-        gradient = listOf(Color(0x333B82F6), Color(0x1A5856D6), Color.Transparent),
+        gradient = listOf(Color(0x3340E0D0), Color(0x1A708090), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Shield,
         "Xavfsiz va shaxsiy",
         "PIN qulf, yuz orqali tiklash va himoyalangan muloqot.",
-        gradient = listOf(Color(0x338B5CF6), Color(0x1A6366F1), Color.Transparent),
+        gradient = listOf(Color(0x33708090), Color(0x1A40E0D0), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.PERMISSION,
@@ -119,7 +119,7 @@ private val pages = listOf(
         reason = "Ilova yopiq bo'lsa ham qo'ng'iroqni o'tkazib yubormaslik va tez javob berish uchun bildirishnomalar kerak.",
         permission = Manifest.permission.POST_NOTIFICATIONS,
         minSdk = 33,
-        gradient = listOf(Color(0x33F59E0B), Color(0x1A6366F1), Color.Transparent),
+        gradient = listOf(Color(0x33FFE4B5), Color(0x1A708090), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.PERMISSION,
@@ -128,7 +128,7 @@ private val pages = listOf(
         "Ovozli qo'ng'iroq va jonli tarjima uchun mikrofoningizdan foydalanamiz.",
         reason = "Suhbatdosh sizni eshitishi va tarjima tizimi ovozingizni qayta ishlashi uchun ruxsat zarur.",
         permission = Manifest.permission.RECORD_AUDIO,
-        gradient = listOf(Color(0x3334C759), Color(0x1A007AFF), Color.Transparent),
+        gradient = listOf(Color(0x3340E0D0), Color(0x1AFFE4B5), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.PERMISSION,
@@ -137,7 +137,7 @@ private val pages = listOf(
         "Video qo'ng'iroq va PIN tiklashda yuzni tanish uchun.",
         reason = "Xavfsizlik: PIN unutganda yuz orqali hisobni tiklash va video muloqot uchun kamera kerak.",
         permission = Manifest.permission.CAMERA,
-        gradient = listOf(Color(0x338B5CF6), Color(0x1A3B82F6), Color.Transparent),
+        gradient = listOf(Color(0x33FFE4B5), Color(0x1A40E0D0), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.PERMISSION,
@@ -146,7 +146,7 @@ private val pages = listOf(
         "Vaqt mintaqasi va xavfsizlik xizmatlari uchun.",
         reason = "Mahalliy vaqt va mintaqangizni aniqlash, shuningdek favqulodda holatda joylashuvni ulashish uchun GPS ishlatiladi.",
         permission = Manifest.permission.ACCESS_FINE_LOCATION,
-        gradient = listOf(Color(0x33EF4444), Color(0x1A6366F1), Color.Transparent),
+        gradient = listOf(Color(0x33708090), Color(0x1AFFE4B5), Color.Transparent),
     ),
 )
 
@@ -376,7 +376,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 .size(if (pagerState.currentPage == i) 10.dp else 8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (pagerState.currentPage == i) TcallColors.IosBlue else Color(0x80334155),
+                                    if (pagerState.currentPage == i) TcallColors.Accent else TcallColors.Slate.copy(0.45f),
                                 ),
                         )
                     }

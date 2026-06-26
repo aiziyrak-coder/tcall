@@ -103,7 +103,7 @@ fun FriendsScreen(
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF4F46E5))))
+                        .background(TcallColors.AccentGradient)
                         .clickable { /* search triggers on 9 digits */ }
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
