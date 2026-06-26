@@ -25,8 +25,8 @@ export function AppHome() {
     router.replace(user ? "/dashboard" : "/login");
   }, [booted, loading, showOnboarding, user, router]);
 
-  if (!booted || (loading && !showOnboarding)) {
-    return <AppSplash message="Tcall" />;
+  if (!booted) {
+    return <AppSplash />;
   }
 
   if (showOnboarding) {
@@ -34,6 +34,7 @@ export function AppHome() {
       <NativeOnboarding
         onComplete={() => {
           completeOnboarding();
+          setShowOnboarding(false);
           void requestAppFullscreen();
           router.replace(user ? "/dashboard" : "/login");
         }}
@@ -41,5 +42,9 @@ export function AppHome() {
     );
   }
 
-  return <AppSplash message="Tcall" />;
+  if (loading) {
+    return <AppSplash />;
+  }
+
+  return <AppSplash />;
 }

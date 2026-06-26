@@ -64,9 +64,9 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
-import uz.tcall.ui.components.TcallLogo
-import uz.tcall.ui.components.TcallLogoVariant
 import uz.tcall.ui.components.TcallPrimaryButton
+import uz.tcall.ui.splash.CosmicBrandTitle
+import uz.tcall.ui.splash.CosmicStarfield
 import uz.tcall.ui.theme.TcallColors
 
 private enum class PageKind { FEATURE, PERMISSION }
@@ -234,12 +234,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         return "Ruxsat berish"
     }
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(TcallColors.BgPrimary),
-    ) {
-        val currentGradient = pages.getOrElse(pagerState.currentPage) { pages.last() }.gradient
+    val currentGradient = pages.getOrElse(pagerState.currentPage) { pages.last() }.gradient
+
+    Box(Modifier.fillMaxSize()) {
+        CosmicStarfield(Modifier.fillMaxSize())
         Box(
             Modifier
                 .fillMaxSize()
@@ -258,7 +256,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     TextButton(onClick = onComplete) {
                         Text(
                             "O'tish",
-                            color = TcallColors.Ink,
+                            color = Color(0xFFFFE8D6),
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                         )
@@ -272,16 +270,17 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                TcallLogo(
-                    variant = TcallLogoVariant.Full,
-                    width = 200.dp,
-                    showPlate = false,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+                CosmicBrandTitle(
+                    compact = true,
+                    animate = false,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                 )
 
                 HorizontalPager(
                     state = pagerState,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
                 ) { pageIndex ->
                     val page = pages[pageIndex]
                     Column(
@@ -291,8 +290,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        if (page.kind == PageKind.PERMISSION) {
-                            Box(
+                        Box(
                             Modifier
                                 .size(72.dp)
                                 .shadow(8.dp, RoundedCornerShape(24.dp))
@@ -308,71 +306,70 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             )
                         }
                         Spacer(Modifier.height(20.dp))
-                        }
 
                         Text(
-                        page.title,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TcallColors.TextPrimary,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 32.sp,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        page.desc,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TcallColors.TextSecondary,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 24.sp,
-                    )
-
-                    if (page.kind == PageKind.PERMISSION) {
-                        Spacer(Modifier.height(16.dp))
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(TcallColors.GlassSheet)
-                                .clickable { requestPermission(page) }
-                                .padding(16.dp),
-                        ) {
-                            Column {
-                                Text(
-                                    "Nima uchun kerak?",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = TcallColors.TextPrimary,
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    page.reason,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = TcallColors.TextSecondary,
-                                    lineHeight = 20.sp,
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(20.dp))
-                        TcallPrimaryButton(
-                            text = permissionButtonLabel(page),
-                            onClick = { requestPermission(page) },
-                            enabled = page.permission == null ||
-                                grantedMap[page.permission] != true,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Tugmani bosing — tizim ruxsat oynasi chiqadi",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TcallColors.TextMuted,
+                            page.title,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFE8D6),
                             textAlign = TextAlign.Center,
+                            lineHeight = 32.sp,
                         )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            page.desc,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xCCDDD6F3),
+                            textAlign = TextAlign.Center,
+                            lineHeight = 24.sp,
+                        )
+
+                        if (page.kind == PageKind.PERMISSION) {
+                            Spacer(Modifier.height(16.dp))
+                            Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(TcallColors.GlassSheet)
+                                    .clickable { requestPermission(page) }
+                                    .padding(16.dp),
+                            ) {
+                                Column {
+                                    Text(
+                                        "Nima uchun kerak?",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFFFFE8D6),
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        page.reason,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xCCDDD6F3),
+                                        lineHeight = 20.sp,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(20.dp))
+                            TcallPrimaryButton(
+                                text = permissionButtonLabel(page),
+                                onClick = { requestPermission(page) },
+                                enabled = page.permission == null ||
+                                    grantedMap[page.permission] != true,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Tugmani bosing — tizim ruxsat oynasi chiqadi",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0x99C4B5FF),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
                     }
                 }
-            }
             }
 
             Column(

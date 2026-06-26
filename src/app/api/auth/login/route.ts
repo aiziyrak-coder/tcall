@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
       translationMode: user.translationMode,
     };
 
-    const responseBody: { user: typeof userPayload; token?: string } = { user: userPayload };
-    if (req.headers.get("x-tcall-native") === "1") {
-      responseBody.token = token;
-    }
+    const responseBody: { user: typeof userPayload; token: string } = {
+      user: userPayload,
+      token,
+    };
 
     return jsonWithSession(responseBody, token, 200, persistent);
   } catch (err) {

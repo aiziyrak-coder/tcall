@@ -15,7 +15,6 @@ import {
   Check,
   type LucideIcon,
 } from "lucide-react";
-import { TcallLogo } from "@/components/TcallLogo";
 import { detectDeviceLanguage } from "@/lib/locale-detect";
 
 type PermItem = { icon: LucideIcon; label: string; reason: string };
@@ -192,7 +191,8 @@ export function NativeOnboarding({ onComplete }: NativeOnboardingProps) {
         }}
       >
         <div className="native-onboarding-logo">
-          <TcallLogo size="md" variant="icon" />
+          <div className="cosmic-brand-title text-[2rem]">TCall</div>
+          <div className="cosmic-brand-subtitle text-xs mt-2">Translate Calling System</div>
         </div>
 
         {isPermsSlide ? (

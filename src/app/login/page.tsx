@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
+import { cacheToken } from "@/lib/auth-cache";
 import { isNativeApp } from "@/lib/native-app";
 import { loadRememberedLogin, saveRememberMe } from "@/lib/remember-login";
 import { AppSplash } from "@/components/AppSplash";
@@ -49,6 +50,7 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (data.token) cacheToken(data.token);
       setUser(data.user);
       router.replace(redirect);
     } catch (err) {

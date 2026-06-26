@@ -34,10 +34,15 @@ export async function GET(req: NextRequest) {
 
     if (session.tcallId !== user.tcallId || session.translationMode !== user.translationMode || session.language !== user.language) {
       const token = await createToken(freshUser);
-      return jsonWithSession({ user: freshUser }, token);
+      return jsonWithSession({ user: freshUser, token }, token);
     }
 
-    return NextResponse.json({ user: freshUser });
+    const token =
+      req.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim() ||
+      req.cookies.get("session")?.value ||
+      null;
+
+    return NextResponse.json({ user: freshUser, ...(token ? { token } : {}) });
   } catch {
     return jsonClearSession({ user: null });
   }

@@ -1,4 +1,4 @@
-const ONBOARDING_KEY = "tcall:onboarding-v1";
+const ONBOARDING_KEY = "tcall:onboarding-v2";
 
 export function hasCompletedOnboarding(): boolean {
   if (typeof window === "undefined") return true;

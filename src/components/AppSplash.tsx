@@ -1,24 +1,23 @@
 "use client";
 
-import { TcallLogo } from "@/components/TcallLogo";
-
 interface AppSplashProps {
   fullscreen?: boolean;
   message?: string;
 }
 
-export function AppSplash({ fullscreen = true, message }: AppSplashProps) {
+export function AppSplash({ fullscreen = true }: AppSplashProps) {
   return (
     <div
       className={
         fullscreen
-          ? "app-splash app-splash-full"
-          : "app-splash app-splash-inline"
+          ? "app-splash app-splash-full app-splash-cosmic"
+          : "app-splash app-splash-inline app-splash-cosmic"
       }
       role="status"
       aria-live="polite"
     >
-      <TcallLogo size="splash" animate layout="horizontal" subtitle={message} />
+      <div className="cosmic-brand-title">TCall</div>
+      <div className="cosmic-brand-subtitle">Translate Calling System</div>
     </div>
   );
 }

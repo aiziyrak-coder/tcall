@@ -69,7 +69,7 @@ fun TcallAppRoot(
     }
 
     when {
-        authState.loading || onboardingDone == null -> {
+        onboardingDone == null -> {
             AppSplashScreen()
         }
         authState.user != null -> {
@@ -92,6 +92,9 @@ fun TcallAppRoot(
                     }
                 },
             )
+        }
+        authState.loading -> {
+            AppSplashScreen()
         }
         else -> when (authState.screen) {
             AuthScreen.REGISTER -> RegisterScreen(

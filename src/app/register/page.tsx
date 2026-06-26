@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
 import { detectDeviceLanguage } from "@/lib/locale-detect";
 import { useAuth } from "@/hooks/useAuth";
+import { cacheToken } from "@/lib/auth-cache";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { PasswordField } from "@/components/auth/PasswordField";
@@ -41,6 +42,7 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      if (data.token) cacheToken(data.token);
       setUser(data.user);
       router.replace("/dashboard");
     } catch (err) {

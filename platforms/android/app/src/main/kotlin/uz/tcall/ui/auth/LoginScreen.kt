@@ -39,11 +39,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.tcall.ui.components.TcallAuthCard
-import uz.tcall.ui.components.TcallLogo
-import uz.tcall.ui.components.TcallLogoLayout
-import uz.tcall.ui.components.TcallLogoVariant
 import uz.tcall.ui.components.TcallPrimaryButton
 import uz.tcall.ui.components.TcallTextField
+import uz.tcall.ui.splash.CosmicBrandTitle
 import uz.tcall.ui.theme.TcallColors
 
 @Composable
@@ -81,12 +79,7 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                TcallLogo(
-                    variant = TcallLogoVariant.Full,
-                    layout = TcallLogoLayout.Vertical,
-                    width = 240.dp,
-                    showPlate = false,
-                )
+                CosmicBrandTitle(compact = true, animate = false)
                 Spacer(Modifier.height(20.dp))
                 Text(
                     "Kirish",

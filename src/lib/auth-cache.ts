@@ -2,6 +2,7 @@ import { isNativeApp } from "@/lib/native-app";
 import type { User } from "@/components/providers/AuthProvider";
 
 export const USER_CACHE_KEY = "tcall:user";
+export const TOKEN_CACHE_KEY = "tcall:token";
 
 function storage(): Storage | null {
   if (typeof window === "undefined") return null;
@@ -23,6 +24,16 @@ export function readCachedUser(): User | null {
   }
 }
 
+export function readCachedToken(): string | null {
+  const s = storage();
+  if (!s) return null;
+  try {
+    return s.getItem(TOKEN_CACHE_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function cacheUser(user: User | null) {
   const s = storage();
   if (!s) return;
@@ -32,4 +43,20 @@ export function cacheUser(user: User | null) {
   } catch {
     /* ignore */
   }
+}
+
+export function cacheToken(token: string | null) {
+  const s = storage();
+  if (!s) return;
+  try {
+    if (token) s.setItem(TOKEN_CACHE_KEY, token);
+    else s.removeItem(TOKEN_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearAuthCache() {
+  cacheUser(null);
+  cacheToken(null);
 }

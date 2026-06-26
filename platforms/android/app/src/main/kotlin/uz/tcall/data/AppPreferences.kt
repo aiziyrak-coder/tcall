@@ -13,7 +13,7 @@ import kotlinx.coroutines.runBlocking
 private val Context.prefsStore by preferencesDataStore(name = "tcall_prefs")
 
 class AppPreferences(private val context: Context) {
-    private val onboardingKey = booleanPreferencesKey("onboarding_v1")
+    private val onboardingKey = booleanPreferencesKey("onboarding_v2")
     private val rememberedEmailKey = stringPreferencesKey("remembered_email")
 
     val onboardingComplete: Flow<Boolean> = context.prefsStore.data.map { prefs ->

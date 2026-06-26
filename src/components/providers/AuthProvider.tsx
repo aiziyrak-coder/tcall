@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { apiFetch } from "@/lib/api";
-import { cacheUser, readCachedUser } from "@/lib/auth-cache";
+import { cacheUser, readCachedUser, cacheToken, clearAuthCache, readCachedToken } from "@/lib/auth-cache";
 import { isNativeApp } from "@/lib/native-app";
 
 export interface User {
@@ -43,24 +43,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshGenRef.current += 1;
     setUserState(next);
     cacheUser(next);
+    if (!next) cacheToken(null);
   }, []);
 
   const refreshSession = useCallback(async () => {
     const gen = ++refreshGenRef.current;
+    const cached = readCachedUser();
     try {
       const r = await apiFetch("/api/auth/session");
-      if (gen !== refreshGenRef.current) return null;
-      if (!r.ok) throw new Error("Session yuklanmadi");
+      if (gen !== refreshGenRef.current) return cached;
+      if (!r.ok) {
+        if (r.status === 401 || r.status === 403) {
+          clearAuthCache();
+          setUserState(null);
+          return null;
+        }
+        if (cached && readCachedToken()) return cached;
+        throw new Error("Session yuklanmadi");
+      }
       const d = await r.json();
-      if (gen !== refreshGenRef.current) return null;
+      if (gen !== refreshGenRef.current) return cached;
       setUserState(d.user ?? null);
       cacheUser(d.user ?? null);
+      if (d.token) cacheToken(d.token);
       setError(null);
       return d.user ?? null;
     } catch (e) {
-      if (gen !== refreshGenRef.current) return null;
-      const cached = readCachedUser();
-      if (!cached) {
+      if (gen !== refreshGenRef.current) return cached;
+      if (!cached || !readCachedToken()) {
         setUserState(null);
         cacheUser(null);
       }
@@ -77,9 +87,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await apiFetch("/api/auth/session", { method: "DELETE" });
-    setUser(null);
+    clearAuthCache();
+    setUserState(null);
     window.location.href = isNativeApp() ? "/login" : "/";
-  }, [setUser]);
+  }, []);
 
   return (
     <AuthContext.Provider

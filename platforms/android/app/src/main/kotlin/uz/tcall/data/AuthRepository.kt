@@ -81,9 +81,11 @@ class AuthRepository(
         }
     }
 
+    suspend fun cachedUser(): UserDto? = sessionStore.currentUser.first()
+
     suspend fun restoreSession(): UserDto? {
         if (sessionStore.getTokenSync().isNullOrBlank()) return null
-        val cached = sessionStore.currentUser.first()
+        val cached = cachedUser()
         return try {
             val response = api.session()
             val user = response.body()?.user

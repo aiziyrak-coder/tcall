@@ -34,10 +34,8 @@ import uz.tcall.ui.components.GradientPrimaryButton
 import uz.tcall.ui.components.LanguagePickerRow
 import uz.tcall.ui.components.LanguagePickerSheet
 import uz.tcall.ui.components.TcallAuthCard
-import uz.tcall.ui.components.TcallLogo
-import uz.tcall.ui.components.TcallLogoLayout
-import uz.tcall.ui.components.TcallLogoVariant
 import uz.tcall.ui.components.TcallTextField
+import uz.tcall.ui.splash.CosmicBrandTitle
 import uz.tcall.ui.theme.TcallColors
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -165,12 +163,7 @@ private fun AuthScaffold(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                TcallLogo(
-                    variant = TcallLogoVariant.Full,
-                    layout = TcallLogoLayout.Vertical,
-                    width = 240.dp,
-                    showPlate = false,
-                )
+                CosmicBrandTitle(compact = true, animate = false)
                 Spacer(Modifier.height(20.dp))
                 Text(
                     title,

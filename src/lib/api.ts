@@ -5,6 +5,7 @@ import {
   isWebAppHost,
 } from "@/lib/domains";
 import { fetchWithRetry } from "@/lib/network-resilience";
+import { readCachedToken } from "@/lib/auth-cache";
 
 /** Frontend URL (public site) */
 export function getAppUrl(): string {
@@ -35,6 +36,10 @@ export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
     window.Capacitor?.isNativePlatform?.()
   ) {
     headers.set("X-Tcall-Native", "1");
+  }
+  const token = readCachedToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
   return fetchWithRetry(apiUrl(path), { ...init, headers, credentials: "include" });
 }

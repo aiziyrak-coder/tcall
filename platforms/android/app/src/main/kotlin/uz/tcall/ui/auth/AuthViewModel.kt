@@ -31,9 +31,14 @@ class AuthViewModel(
 
     init {
         viewModelScope.launch {
-            val user = authRepository.restoreSession()
             val token = authRepository.currentToken()
-            _state.value = AuthUiState(loading = false, user = user, token = token)
+            val cached = if (!token.isNullOrBlank()) authRepository.cachedUser() else null
+            if (cached != null && !token.isNullOrBlank()) {
+                _state.value = AuthUiState(loading = false, user = cached, token = token)
+            }
+            val user = authRepository.restoreSession() ?: cached
+            val freshToken = authRepository.currentToken()
+            _state.value = AuthUiState(loading = false, user = user, token = freshToken)
         }
     }
 
