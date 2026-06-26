@@ -130,6 +130,7 @@ export function ChatMessenger({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [peerPresence, setPeerPresence] = useState<PeerPresence | null>(null);
   const [peerTyping, setPeerTyping] = useState(false);
+  const [peerDraft, setPeerDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [messageSearchMode, setMessageSearchMode] = useState(false);
   const [messageSearchResults, setMessageSearchResults] = useState<
@@ -565,10 +566,12 @@ export function ChatMessenger({
         conversationId: string;
         userId: string;
         typing: boolean;
+        draft?: string;
       };
       if (!detail?.conversationId || detail.conversationId !== activeId) return;
       if (detail.userId === userId) return;
       setPeerTyping(detail.typing);
+      setPeerDraft(detail.typing ? (detail.draft || "") : "");
     };
     window.addEventListener("tcall:chat-typing", onTyping);
     return () => window.removeEventListener("tcall:chat-typing", onTyping);
@@ -634,8 +637,8 @@ export function ChatMessenger({
     if (!activeId) return;
     const socket = getSocket();
     if (!socket?.connected) return;
-    socket.emit("chat-typing", { conversationId: activeId });
-  }, [activeId, getSocket]);
+    socket.emit("chat-typing", { conversationId: activeId, draft: text.slice(0, 500) });
+  }, [activeId, getSocket, text]);
 
   const stopTyping = useCallback(() => {
     if (!activeId) return;
@@ -1056,7 +1059,9 @@ export function ChatMessenger({
     const peerIsOnline = !isGroup && (peerPresence?.online ?? activeConv.peerOnline ?? false);
     const peerStatusText =
       !isGroup && partner
-        ? peerTyping
+        ? peerTyping && peerDraft.trim()
+          ? peerDraft.trim()
+          : peerTyping
           ? ui.chatTyping.replace("{name}", partner.name)
           : peerStatusLabel(
               peerIsOnline,

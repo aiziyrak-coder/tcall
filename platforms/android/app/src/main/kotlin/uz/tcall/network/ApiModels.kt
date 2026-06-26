@@ -41,6 +41,12 @@ data class ChatMemberDto(
     val language: String?,
 )
 
+data class ChatReplyPreviewDto(
+    val id: String,
+    @SerializedName("senderName") val senderName: String,
+    val preview: String,
+)
+
 data class ChatMessageDto(
     val id: String,
     val type: String,
@@ -54,6 +60,8 @@ data class ChatMessageDto(
     val createdAt: String,
     val sender: ChatSenderDto,
     val deleted: Boolean? = false,
+    val edited: Boolean? = false,
+    @SerializedName("replyTo") val replyTo: ChatReplyPreviewDto? = null,
     val readStatus: String? = null,
 )
 
@@ -92,6 +100,32 @@ data class SendMessageRequest(
     @SerializedName("mediaUrl") val mediaUrl: String? = null,
     @SerializedName("mediaMime") val mediaMime: String? = null,
     @SerializedName("mediaName") val mediaName: String? = null,
+    @SerializedName("replyToId") val replyToId: String? = null,
+)
+
+data class EditMessageRequest(val text: String)
+
+data class PinConversationRequest(
+    @SerializedName("conversationId") val conversationId: String,
+    val pinned: Boolean,
+)
+
+data class SocketChatTypingEvent(
+    val conversationId: String,
+    val userId: String,
+    val typing: Boolean,
+    val draft: String? = null,
+)
+
+data class SocketChatMessageDeletedEvent(
+    val conversationId: String,
+    @SerializedName("messageId") val messageId: String,
+)
+
+data class SocketChatMessageEditedEvent(
+    val conversationId: String,
+    @SerializedName("messageId") val messageId: String,
+    val message: ChatMessageDto,
 )
 
 data class SendMessageResponse(

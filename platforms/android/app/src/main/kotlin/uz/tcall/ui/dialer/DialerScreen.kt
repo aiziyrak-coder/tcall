@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.CallMade
@@ -39,18 +39,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.tcall.network.CallHistoryDto
 import uz.tcall.ui.components.DialSubTabBar
+import uz.tcall.ui.components.DialWaveform
 import uz.tcall.ui.components.FilterChipRow
+import uz.tcall.ui.components.GlassDialKey
 import uz.tcall.ui.components.GreenCallButton
 import uz.tcall.ui.components.IosSearchField
+import uz.tcall.ui.components.PremiumCallButton
 import uz.tcall.ui.components.TcallEmptyState
 import uz.tcall.ui.strings.TcallUiStrings
 import uz.tcall.ui.theme.TcallColors
+import uz.tcall.ui.theme.TcallGlassSurface
+import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.formatTcallId
 import uz.tcall.ui.util.formatCallDuration
 import uz.tcall.ui.util.formatShortTime
@@ -61,7 +68,7 @@ private val keyRows = listOf(
     listOf(DialKey("1"), DialKey("2", "ABC"), DialKey("3", "DEF")),
     listOf(DialKey("4", "GHI"), DialKey("5", "JKL"), DialKey("6", "MNO")),
     listOf(DialKey("7", "PQRS"), DialKey("8", "TUV"), DialKey("9", "WXYZ")),
-    listOf(DialKey(""), DialKey("0", "+"), DialKey("del")),
+    listOf(DialKey("*"), DialKey("0", "+"), DialKey("del")),
 )
 
 @Composable
@@ -75,12 +82,11 @@ fun DialerScreen(
     onDialTcallId: (String) -> Unit,
 ) {
     var subTab by remember { mutableStateOf("keypad") }
-    val dialState by viewModel.state.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f).fillMaxWidth()) {
             if (subTab == "keypad") {
-                KeypadContent(viewModel, dialState, ui, onCall, onMessage)
+                KeypadContent(viewModel, ui, onCall, onMessage)
             } else {
                 RecentsContent(recentsViewModel, ui, userTcallId, onDialTcallId)
             }
@@ -99,44 +105,64 @@ fun DialerScreen(
 @Composable
 private fun KeypadContent(
     viewModel: DialerViewModel,
-    state: DialerUiState,
     ui: TcallUiStrings,
     onCall: (String) -> Unit,
     onMessage: (String) -> Unit,
 ) {
+    val state by viewModel.state.collectAsState()
+    val canAct = !state.loading && state.digits.length == 9
+
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxSize().padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Spacer(Modifier.height(12.dp))
+        DialWaveform()
+        Spacer(Modifier.height(16.dp))
+
         Text(
             ui.dialNumber,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = TcallColors.TextSecondary,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            style = TextStyle(
+                brush = TcallColors.TitleGradient,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            ),
+            modifier = Modifier.fillMaxWidth(),
         )
         Text(
+            "Sifatli aloqa chegarasiz ✨",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = TcallColors.Slate,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+
+        Spacer(Modifier.height(20.dp))
+        Text(
             text = if (state.digits.isBlank()) "— — —" else formatTcallId(state.digits),
-            fontSize = 34.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 3.sp,
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 4.sp,
             fontFamily = FontFamily.Monospace,
-            color = TcallColors.TextPrimary,
+            color = TcallColors.Ink,
         )
         state.error?.let {
-            Text(it, color = TcallColors.Destructive, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+            Text(it, color = TcallColors.Destructive, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
         }
-        Spacer(Modifier.height(8.dp))
 
+        Spacer(Modifier.height(16.dp))
         keyRows.forEach { row ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
                 row.forEach { key ->
                     when (key.digit) {
-                        "" -> Spacer(Modifier.weight(1f).aspectRatio(1f))
-                        "del" -> Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        "del" -> Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
                             Box(
                                 Modifier
-                                    .size(44.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
@@ -145,55 +171,37 @@ private fun KeypadContent(
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Backspace, null, tint = TcallColors.TextSecondary)
+                                Icon(Icons.AutoMirrored.Filled.Backspace, null, tint = TcallColors.Ink, modifier = Modifier.size(26.dp))
                             }
                         }
-                        else -> IosDialKey(key.digit, key.letters, { viewModel.append(key.digit) }, Modifier.weight(1f))
+                        else -> GlassDialKey(key.digit, key.letters, { viewModel.append(key.digit) })
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+            PremiumCallButton(
+                onClick = { viewModel.dial(onCall) },
+                enabled = canAct,
+                loading = state.loading,
+                icon = Icons.Default.Call,
+            )
             Box(
                 Modifier
-                    .size(64.dp)
-                    .shadow(8.dp, CircleShape, spotColor = TcallColors.CallGreen.copy(alpha = 0.4f))
-                    .clip(CircleShape)
-                    .background(TcallColors.CallGreen)
-                    .clickable(
-                        enabled = !state.loading && state.digits.length == 9,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { viewModel.dial(onCall) },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.loading) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp, color = Color.White)
-                } else {
-                    Icon(Icons.Default.Call, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-            }
-            Box(
-                Modifier
-                    .size(52.dp)
-                    .shadow(4.dp, CircleShape, spotColor = TcallColors.IosBlue.copy(0.25f))
+                    .size(56.dp)
+                    .shadow(6.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.2f))
                     .clip(CircleShape)
                     .background(TcallColors.GlassSheet)
-                    .border(0.5.dp, TcallColors.GlassHairline, CircleShape)
-                    .clickable(
-                        enabled = !state.loading && state.digits.length == 9,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { viewModel.openChat(onMessage) },
-                    ),
+                    .border(1.dp, TcallColors.GlassHairline, CircleShape)
+                    .clickable(enabled = canAct, onClick = { viewModel.openChat(onMessage) }),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Default.Message, null, tint = TcallColors.IosBlue, modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Message, null, tint = TcallColors.AccentInk, modifier = Modifier.size(24.dp))
             }
         }
+        Spacer(Modifier.height(12.dp))
     }
 }
 
@@ -232,16 +240,16 @@ private fun RecentsContent(
     }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(ui.recents, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TcallColors.Slate900)
-        Spacer(Modifier.height(10.dp))
+        Text(ui.recents, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TcallColors.Ink)
+        Spacer(Modifier.height(12.dp))
         FilterChipRow(chips, state.filter, viewModel::setFilter)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         IosSearchField(state.search, viewModel::setSearch, ui.nameOrNumber)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
         when {
             state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = TcallColors.IosBlue)
+                CircularProgressIndicator(color = TcallColors.AccentInk)
             }
             filtered.isEmpty() -> TcallEmptyState(title = ui.recents, subtitle = ui.noCalls)
             else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -271,56 +279,28 @@ private fun RecentCallRow(
         isOutgoing -> Icons.AutoMirrored.Filled.CallMade
         else -> Icons.AutoMirrored.Filled.CallReceived
     }
-    val iconTint = if (isMissed) TcallColors.Destructive else TcallColors.Brand600
+    val iconTint = if (isMissed) TcallColors.Destructive else TcallColors.AccentInk
 
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0x12000000), androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    TcallGlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        level = GlassLevel.Card,
+        shape = RoundedCornerShape(28.dp),
+        elevation = 4.dp,
     ) {
-        Icon(icon, null, tint = iconTint, modifier = Modifier.size(20.dp))
-        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            Text(name, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TcallColors.Slate900)
-            Text(
-                "${formatTcallId(tcallId)} · ${formatCallDuration(call.durationSec)}",
-                fontSize = 12.sp,
-                color = TcallColors.Slate500,
-            )
-        }
-        Text(formatShortTime(call.createdAt) ?: "", fontSize = 12.sp, color = TcallColors.Slate500)
-        if (tcallId.isNotBlank()) {
-            Spacer(Modifier.size(8.dp))
-            GreenCallButton(onClick = { onDial(tcallId) })
-        }
-    }
-}
-
-@Composable
-private fun IosDialKey(
-    digit: String,
-    letters: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier
-            .aspectRatio(1f)
-            .padding(4.dp)
-            .shadow(2.dp, CircleShape)
-            .clip(CircleShape)
-            .background(TcallColors.GlassSheet)
-            .border(0.5.dp, TcallColors.GlassHairline, CircleShape)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(digit, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextPrimary)
-            if (letters.isNotBlank()) {
-                Text(letters, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextSecondary, letterSpacing = 1.sp)
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = iconTint, modifier = Modifier.size(22.dp))
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TcallColors.Ink)
+                Text(
+                    "${formatTcallId(tcallId)} · ${formatCallDuration(call.durationSec)}",
+                    fontSize = 13.sp,
+                    color = TcallColors.Slate,
+                )
+            }
+            Text(formatShortTime(call.createdAt) ?: "", fontSize = 12.sp, color = TcallColors.Slate)
+            if (tcallId.isNotBlank()) {
+                Spacer(Modifier.size(8.dp))
+                GreenCallButton(onClick = { onDial(tcallId) })
             }
         }
     }

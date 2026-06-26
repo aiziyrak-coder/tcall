@@ -159,7 +159,7 @@ private fun SettingsOverview(
 @Composable
 private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFF8FAFC))
+        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(TcallColors.SurfaceElevated)
             .border(1.dp, Color(0x0F000000), RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -187,7 +187,7 @@ private fun ProfileSection(state: SettingsUiState, vm: SettingsViewModel, ui: Tc
 private fun PreferencesSection(state: SettingsUiState, vm: SettingsViewModel, ui: TcallUiStrings) {
     listOf("uz" to "O'zbek", "ru" to "Русский", "en" to "English").forEach { (code, label) ->
         Row(Modifier.fillMaxWidth().clickable { vm.updateLanguage(code) }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(20.dp).clip(CircleShape).background(if (state.language == code) TcallColors.Brand600 else Color(0xFFE2E8F0)))
+            Box(Modifier.size(20.dp).clip(CircleShape).background(if (state.language == code) TcallColors.AccentDeep else TcallColors.SurfaceHighlight))
             Text(label, modifier = Modifier.padding(start = 10.dp))
         }
     }

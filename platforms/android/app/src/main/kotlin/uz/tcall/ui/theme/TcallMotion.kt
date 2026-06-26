@@ -11,41 +11,44 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.IntOffset
 
 object TcallMotion {
-    val tabSpring = spring<Float>(
+    val spring = spring<Float>(
         dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessMedium,
+        stiffness = Spring.StiffnessMediumLow,
     )
-
-    val pressSpring = spring<Float>(
-        dampingRatio = 0.72f,
-        stiffness = 520f,
-    )
-
-    val sheetSpring = spring<Float>(
-        dampingRatio = 0.86f,
-        stiffness = 420f,
-    )
-
-    val fadeTween = tween<Float>(durationMillis = 220)
-    val slideTween = tween<IntOffset>(durationMillis = 280)
+    val tabSpring = spring
+    val pressSpring = spring<Float>(dampingRatio = 0.68f, stiffness = 480f)
+    val fadeTween = tween<Float>(durationMillis = 320)
+    val slideTween = tween<IntOffset>(durationMillis = 380)
 }
 
 @Composable
-fun Modifier.tabSelectionScale(selected: Boolean): Modifier {
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1.08f else 1f,
-        animationSpec = TcallMotion.tabSpring,
-        label = "tabScale",
-    )
-    return this.scale(scale)
-}
-
-@Composable
-fun Modifier.pressScale(pressed: Boolean): Modifier {
+fun Modifier.tcallPressScale(pressed: Boolean): Modifier {
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.94f else 1f,
         animationSpec = TcallMotion.pressSpring,
         label = "pressScale",
     )
-    return this.scale(scale)
+    return scale(scale)
 }
+
+@Composable
+fun Modifier.tcallTabScale(selected: Boolean): Modifier {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.06f else 1f,
+        animationSpec = TcallMotion.spring,
+        label = "tabScale",
+    )
+    return scale(scale)
+}
+
+// Legacy aliases
+val tabSpring get() = TcallMotion.spring
+val pressSpring get() = TcallMotion.pressSpring
+val fadeTween get() = TcallMotion.fadeTween
+val slideTween get() = TcallMotion.slideTween
+
+@Composable
+fun Modifier.tabSelectionScale(selected: Boolean) = tcallTabScale(selected)
+
+@Composable
+fun Modifier.pressScale(pressed: Boolean) = tcallPressScale(pressed)

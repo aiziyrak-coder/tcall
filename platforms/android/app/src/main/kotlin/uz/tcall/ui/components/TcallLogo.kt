@@ -41,10 +41,11 @@ enum class TcallLogoVariant { Icon, Full }
 enum class TcallLogoLayout { Vertical, Horizontal }
 
 private const val LOGO_ASPECT = 743f / 159f
-private val LogoWhite = Color.White
+private val LogoPlate = Color(0xFFFFF5EE)
+private val LogoPlateBorder = Color(0x33FF6B35)
 private val LogoPlateShape = RoundedCornerShape(10.dp)
 
-/** Logo PNG chetlaridagi artefaktlarni yashirish uchun doim oq fon */
+/** Logo PNG chetlaridagi artefaktlarni yashirish uchun olov rangli fon */
 @Composable
 fun TcallLogoPlate(
     modifier: Modifier = Modifier,
@@ -57,8 +58,8 @@ fun TcallLogoPlate(
         modifier
             .then(if (elevated) Modifier.shadow(2.dp, shape, ambientColor = Color(0x14000000)) else Modifier)
             .clip(shape)
-            .background(LogoWhite)
-            .border(0.5.dp, Color(0x0F000000), shape)
+            .background(LogoPlate)
+            .border(0.5.dp, LogoPlateBorder, shape)
             .padding(padding),
         contentAlignment = Alignment.Center,
     ) {

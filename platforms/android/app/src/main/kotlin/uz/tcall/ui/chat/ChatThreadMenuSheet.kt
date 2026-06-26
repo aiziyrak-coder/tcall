@@ -19,6 +19,7 @@ import uz.tcall.ui.theme.TcallColors
 fun ChatThreadMenuSheet(
     open: Boolean,
     ui: TcallUiStrings,
+    pinned: Boolean = false,
     onDismiss: () -> Unit,
     onDeleteChat: () -> Unit,
     onPin: () -> Unit,
@@ -27,7 +28,7 @@ fun ChatThreadMenuSheet(
     IosBottomSheet(onDismiss = onDismiss) {
         Text("Chat menyusi", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TcallColors.TextPrimary)
         Spacer(Modifier.height(16.dp))
-        GradientPrimaryButton("Pin qilish", onClick = { onPin(); onDismiss() })
+        GradientPrimaryButton(if (pinned) "Pindan olib tashlash" else "Pin qilish", onClick = { onPin(); onDismiss() })
         Spacer(Modifier.height(8.dp))
         GradientPrimaryButton("Chatni o'chirish", onClick = { onDeleteChat(); onDismiss() })
     }

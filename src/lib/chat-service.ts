@@ -25,6 +25,7 @@ export interface SendMessageInput {
   mediaMime?: string;
   mediaName?: string;
   mediaSize?: number;
+  replyToId?: string;
 }
 
 export async function isBlockedBetween(userIdA: string, tcallIdA: string, userIdB: string, tcallIdB: string) {
@@ -304,6 +305,16 @@ export async function sendChatMessage(input: SendMessageInput) {
   const originalText = input.text?.trim() || null;
   const sourceLang = sender.language || input.sourceLang || "uz";
 
+  if (input.replyToId) {
+    const parent = await prisma.chatMessage.findUnique({
+      where: { id: input.replyToId },
+      select: { conversationId: true, deletedAt: true },
+    });
+    if (!parent || parent.conversationId !== input.conversationId || parent.deletedAt) {
+      throw new Error("INVALID_REPLY");
+    }
+  }
+
   const msg = await prisma.chatMessage.create({
     data: {
       conversationId: input.conversationId,
@@ -315,9 +326,19 @@ export async function sendChatMessage(input: SendMessageInput) {
       mediaMime: input.mediaMime,
       mediaName: input.mediaName,
       mediaSize: input.mediaSize,
+      replyToId: input.replyToId || null,
     },
     include: {
       sender: { select: { id: true, name: true, tcallId: true, language: true } },
+      replyTo: {
+        select: {
+          id: true,
+          type: true,
+          originalText: true,
+          deletedAt: true,
+          sender: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 
@@ -396,7 +417,16 @@ export function formatMessageForUser(
     mediaName: string | null;
     mediaSize: number | null;
     deletedAt?: Date | null;
+    editedAt?: Date | null;
     createdAt: Date;
+    replyToId?: string | null;
+    replyTo?: {
+      id: string;
+      type: string;
+      originalText: string | null;
+      deletedAt?: Date | null;
+      sender: { id: string; name: string };
+    } | null;
     sender: { id: string; name: string; tcallId: string | null; language: string };
   },
   translations: { targetLang: string; text: string }[],
@@ -423,11 +453,23 @@ export function formatMessageForUser(
       },
       hasTranslation: false,
       deleted: true,
+      edited: false,
+      replyTo: null,
       readStatus: undefined as MessageReadStatus | undefined,
     };
   }
 
   const translation = translations.find((t) => t.targetLang === userLang);
+  const replyPreview = msg.replyTo
+    ? {
+        id: msg.replyTo.id,
+        senderName: msg.replyTo.sender.name,
+        preview: msg.replyTo.deletedAt
+          ? getUI(userLang).chatMessageDeleted
+          : (msg.replyTo.originalText || "").slice(0, 200),
+      }
+    : null;
+
   return {
     id: msg.id,
     type: msg.type,
@@ -452,6 +494,8 @@ export function formatMessageForUser(
       msg.sourceLang !== userLang &&
       translation.text.trim() !== (msg.originalText || "").trim()
     ),
+    edited: !!msg.editedAt,
+    replyTo: replyPreview,
     readStatus: undefined as MessageReadStatus | undefined,
   };
 }
@@ -621,6 +665,15 @@ export async function getMessagesForConversationWithBackfill(
     include: {
       sender: { select: { id: true, name: true, tcallId: true, language: true } },
       translations: true,
+      replyTo: {
+        select: {
+          id: true,
+          type: true,
+          originalText: true,
+          deletedAt: true,
+          sender: { select: { id: true, name: true } },
+        },
+      },
     },
   });
 
@@ -712,6 +765,73 @@ export async function deleteChatMessage(
   }
 
   return { ok: true };
+}
+
+export async function editChatMessage(
+  conversationId: string,
+  messageId: string,
+  userId: string,
+  newText: string
+) {
+  await assertMember(conversationId, userId);
+  const trimmed = newText.trim();
+  if (!trimmed) throw new Error("EMPTY");
+
+  const msg = await prisma.chatMessage.findUnique({
+    where: { id: messageId },
+    include: {
+      sender: { select: { id: true, name: true, tcallId: true, language: true } },
+    },
+  });
+  if (!msg || msg.conversationId !== conversationId) throw new Error("NOT_FOUND");
+  if (msg.senderId !== userId) throw new Error("FORBIDDEN");
+  if (msg.deletedAt) throw new Error("NOT_FOUND");
+  if (msg.type !== "text") throw new Error("NOT_TEXT");
+
+  const sourceLang = msg.sourceLang || msg.sender.language || "uz";
+
+  const updated = await prisma.chatMessage.update({
+    where: { id: messageId },
+    data: { originalText: trimmed, editedAt: new Date(), sourceLang },
+    include: {
+      sender: { select: { id: true, name: true, tcallId: true, language: true } },
+      replyTo: {
+        select: {
+          id: true,
+          type: true,
+          originalText: true,
+          deletedAt: true,
+          sender: { select: { id: true, name: true } },
+        },
+      },
+    },
+  });
+
+  await prisma.messageTranslation.deleteMany({ where: { messageId } });
+
+  const members = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    include: { user: { select: { id: true, language: true } } },
+  });
+
+  const targetLangs = new Set(members.map((m) => m.user.language).filter(Boolean) as string[]);
+  targetLangs.add(sourceLang);
+  const translations = await ensureMessageTranslations(
+    messageId,
+    trimmed,
+    sourceLang,
+    targetLangs
+  );
+
+  const payload = { conversationId, messageId };
+  for (const m of members) {
+    emitToUser(m.userId, "chat-message-edited", {
+      ...payload,
+      message: formatMessageForUser(updated, translations, m.user.language || sourceLang),
+    });
+  }
+
+  return { msg: updated, translations };
 }
 
 export async function leaveConversation(

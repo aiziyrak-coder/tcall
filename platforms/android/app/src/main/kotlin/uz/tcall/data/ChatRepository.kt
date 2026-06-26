@@ -7,6 +7,7 @@ import uz.tcall.network.ChatMessageDto
 import uz.tcall.network.ConversationDto
 import uz.tcall.network.CreateDirectChatRequest
 import uz.tcall.network.CreateGroupChatRequest
+import uz.tcall.network.PinConversationRequest
 import uz.tcall.network.SendMessageRequest
 import uz.tcall.network.TcallApi
 import java.io.File
@@ -26,10 +27,34 @@ class ChatRepository(private val api: TcallApi) {
             res.body()?.messages ?: emptyList()
         }
 
-    suspend fun sendMessage(conversationId: String, text: String): Result<ChatMessageDto> = runCatching {
-        val res = api.sendMessage(conversationId, SendMessageRequest(type = "text", text = text.trim()))
+    suspend fun sendMessage(
+        conversationId: String,
+        text: String,
+        replyToId: String? = null,
+    ): Result<ChatMessageDto> = runCatching {
+        val res = api.sendMessage(
+            conversationId,
+            SendMessageRequest(type = "text", text = text.trim(), replyToId = replyToId),
+        )
         if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Yuborilmadi")
         res.body()?.message ?: throw Exception(res.body()?.error ?: "Xatolik")
+    }
+
+    suspend fun editMessage(conversationId: String, messageId: String, text: String): Result<ChatMessageDto> =
+        runCatching {
+            val res = api.editMessage(conversationId, messageId, uz.tcall.network.EditMessageRequest(text.trim()))
+            if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Tahrirlanmadi")
+            res.body()?.message ?: throw Exception(res.body()?.error ?: "Xatolik")
+        }
+
+    suspend fun deleteMessage(conversationId: String, messageId: String) = runCatching {
+        val res = api.deleteMessage(conversationId, messageId)
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "O'chirilmadi")
+    }
+
+    suspend fun pinConversation(conversationId: String, pinned: Boolean) = runCatching {
+        val res = api.pinConversation(PinConversationRequest(conversationId, pinned))
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Pin xatosi")
     }
 
     suspend fun uploadAndSend(conversationId: String, file: File, mime: String, displayName: String): Result<ChatMessageDto> =

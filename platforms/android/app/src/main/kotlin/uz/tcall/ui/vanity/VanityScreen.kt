@@ -140,7 +140,7 @@ fun VanityScreen(viewModel: VanityViewModel, ui: TcallUiStrings, onBack: () -> U
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0xFFFFF7ED))
+                            .background(TcallColors.SurfaceHighlight)
                             .border(1.dp, Color(0x1AF97316), RoundedCornerShape(14.dp))
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,

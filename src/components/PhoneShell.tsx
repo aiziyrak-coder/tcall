@@ -130,7 +130,7 @@ function BottomTabBar({
               >
                 <span className="liquid-tab-center-ring" aria-hidden />
                 <span className="liquid-tab-center-btn">
-                  <Icon className="w-[26px] h-[26px] text-white drop-shadow-sm" strokeWidth={2.0} />
+                  <Icon className="w-[22px] h-[22px] text-[var(--accent-ink)]" strokeWidth={2.2} />
                   {badge != null && badge > 0 && (
                     <span className="liquid-tab-badge liquid-tab-center-badge">
                       {badge > 9 ? "9+" : badge}

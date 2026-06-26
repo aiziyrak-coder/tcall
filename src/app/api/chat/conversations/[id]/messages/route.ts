@@ -18,6 +18,7 @@ const sendSchema = z.object({
   mediaMime: z.string().max(100).optional(),
   mediaName: z.string().max(200).optional(),
   mediaSize: z.number().int().positive().optional(),
+  replyToId: z.string().min(1).optional(),
 });
 
 export async function POST(
@@ -73,6 +74,7 @@ export async function POST(
       mediaMime: data.mediaMime,
       mediaName: data.mediaName,
       mediaSize: data.mediaSize,
+      replyToId: data.replyToId,
     });
 
     const message = {
@@ -95,6 +97,9 @@ export async function POST(
     }
     if (e instanceof Error && e.message === "BLOCKED") {
       return NextResponse.json({ error: "Bloklangan foydalanuvchiga xabar yuborib bo'lmaydi" }, { status: 403 });
+    }
+    if (e instanceof Error && e.message === "INVALID_REPLY") {
+      return NextResponse.json({ error: "Javob xabari topilmadi" }, { status: 400 });
     }
     console.error("Chat send error:", e);
     return NextResponse.json({ error: "Server xatosi" }, { status: 500 });

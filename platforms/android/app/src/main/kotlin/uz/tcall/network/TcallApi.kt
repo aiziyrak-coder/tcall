@@ -52,6 +52,19 @@ interface TcallApi {
         @Body body: SendMessageRequest,
     ): Response<SendMessageResponse>
 
+    @PATCH("/api/chat/conversations/{id}/messages/{messageId}")
+    suspend fun editMessage(
+        @Path("id") conversationId: String,
+        @Path("messageId") messageId: String,
+        @Body body: EditMessageRequest,
+    ): Response<SendMessageResponse>
+
+    @DELETE("/api/chat/conversations/{id}/messages/{messageId}")
+    suspend fun deleteMessage(
+        @Path("id") conversationId: String,
+        @Path("messageId") messageId: String,
+    ): Response<OkResponse>
+
     @Multipart
     @POST("/api/chat/upload")
     suspend fun uploadChatFile(@Part file: MultipartBody.Part): Response<ChatUploadResponse>
@@ -59,8 +72,8 @@ interface TcallApi {
     @DELETE("/api/chat/conversations/{id}")
     suspend fun deleteConversation(@Path("id") conversationId: String): Response<OkResponse>
 
-    @POST("/api/chat/pin")
-    suspend fun pinConversation(@Body body: Map<String, String>): Response<OkResponse>
+    @PATCH("/api/chat/pin")
+    suspend fun pinConversation(@Body body: PinConversationRequest): Response<OkResponse>
 
     @PATCH("/api/chat/conversations/{id}")
     suspend fun markRead(@Path("id") conversationId: String): Response<OkResponse>

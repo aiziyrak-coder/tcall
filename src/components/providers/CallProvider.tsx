@@ -334,6 +334,12 @@ export function CallProvider({ user, children }: CallProviderProps) {
         }
       });
 
+      socket.on("chat-message-edited", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-message-edited", { detail: data }));
+        }
+      });
+
       socket.on("message-reaction", (data: unknown) => {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("tcall:message-reaction", { detail: data }));

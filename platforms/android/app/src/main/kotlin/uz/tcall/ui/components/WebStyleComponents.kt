@@ -75,9 +75,9 @@ fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
                 .background(TcallColors.GlassSheet),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(tab.icon, null, tint = TcallColors.Accent, modifier = Modifier.size(14.dp))
+            Icon(tab.icon, null, tint = TcallColors.IconActive, modifier = Modifier.size(14.dp))
         }
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.AccentDark)
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary)
     }
 }
 
@@ -112,7 +112,7 @@ fun UserNumberChip(yourNumberLabel: String, number: String, modifier: Modifier =
 fun IosIconButton(
     icon: ImageVector,
     onClick: () -> Unit,
-    tint: Color = TcallColors.TextSecondary,
+    tint: Color = TcallColors.IconPrimary,
     modifier: Modifier = Modifier,
 ) {
     TcallGlassSurface(
@@ -151,7 +151,7 @@ fun GradientPrimaryButton(
         contentAlignment = Alignment.Center,
     ) {
         if (loading) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
-        else Text(text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        else Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
 
@@ -168,9 +168,9 @@ fun RowScope.ChatActionButton(text: String, icon: ImageVector, onClick: () -> Un
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = TcallColors.Accent, modifier = Modifier.size(17.dp))
+        Icon(icon, null, tint = TcallColors.IconActive, modifier = Modifier.size(17.dp))
         Spacer(Modifier.size(6.dp))
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.AccentDark)
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TcallColors.TextPrimary)
     }
 }
 
@@ -194,7 +194,7 @@ fun IosSearchField(
                 .padding(horizontal = 12.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Default.Search, null, tint = TcallColors.TextSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Search, null, tint = TcallColors.IconMuted, modifier = Modifier.size(18.dp))
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -313,7 +313,7 @@ fun DialSubTabBar(
                     Text(
                         label,
                         fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
-                        color = if (active) TcallColors.Accent else TcallColors.TextSecondary,
+                        color = if (active) TcallColors.IconActive else TcallColors.TextSecondary,
                         fontSize = 14.sp,
                     )
                 }
@@ -338,7 +338,7 @@ fun FilterChipRow(
             Box(
                 Modifier
                     .clip(PillShape)
-                    .background(if (active) TcallColors.Accent else Color(0x1414201E))
+                    .background(if (active) TcallColors.AccentInk else TcallColors.SurfaceHighlight)
                     .border(0.5.dp, if (active) Color.Transparent else TcallColors.GlassHairline, PillShape)
                     .clickable { onSelect(id) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -347,7 +347,7 @@ fun FilterChipRow(
                     label,
                     fontSize = 12.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (active) Color.White else TcallColors.TextPrimary,
+                    color = if (active) TcallColors.TextOnAccent else TcallColors.TextPrimary,
                 )
             }
         }

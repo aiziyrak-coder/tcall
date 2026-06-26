@@ -15,6 +15,9 @@ import uz.tcall.BuildConfig
 import uz.tcall.network.IncomingCallEvent
 import uz.tcall.network.RoomParticipantDto
 import uz.tcall.network.SocketChatMessageEvent
+import uz.tcall.network.SocketChatMessageDeletedEvent
+import uz.tcall.network.SocketChatMessageEditedEvent
+import uz.tcall.network.SocketChatTypingEvent
 import uz.tcall.network.UserDto
 import java.net.URI
 
@@ -30,6 +33,15 @@ class TcallSocketManager(private val gson: Gson = Gson()) {
 
     private val _chatMessage = MutableSharedFlow<SocketChatMessageEvent>(extraBufferCapacity = 8)
     val chatMessage: SharedFlow<SocketChatMessageEvent> = _chatMessage.asSharedFlow()
+
+    private val _chatTyping = MutableSharedFlow<SocketChatTypingEvent>(extraBufferCapacity = 16)
+    val chatTyping: SharedFlow<SocketChatTypingEvent> = _chatTyping.asSharedFlow()
+
+    private val _chatMessageDeleted = MutableSharedFlow<SocketChatMessageDeletedEvent>(extraBufferCapacity = 8)
+    val chatMessageDeleted: SharedFlow<SocketChatMessageDeletedEvent> = _chatMessageDeleted.asSharedFlow()
+
+    private val _chatMessageEdited = MutableSharedFlow<SocketChatMessageEditedEvent>(extraBufferCapacity = 8)
+    val chatMessageEdited: SharedFlow<SocketChatMessageEditedEvent> = _chatMessageEdited.asSharedFlow()
 
     private val _roomUsers = MutableSharedFlow<List<RoomParticipantDto>>(extraBufferCapacity = 4)
     val roomUsers: SharedFlow<List<RoomParticipantDto>> = _roomUsers.asSharedFlow()
@@ -89,6 +101,15 @@ class TcallSocketManager(private val gson: Gson = Gson()) {
         }
         s.on(SocketEvents.CHAT_MESSAGE) { args ->
             parseJson<SocketChatMessageEvent>(args)?.let { _chatMessage.tryEmit(it) }
+        }
+        s.on(SocketEvents.CHAT_TYPING) { args ->
+            parseJson<SocketChatTypingEvent>(args)?.let { _chatTyping.tryEmit(it) }
+        }
+        s.on(SocketEvents.CHAT_MESSAGE_DELETED) { args ->
+            parseJson<SocketChatMessageDeletedEvent>(args)?.let { _chatMessageDeleted.tryEmit(it) }
+        }
+        s.on(SocketEvents.CHAT_MESSAGE_EDITED) { args ->
+            parseJson<SocketChatMessageEditedEvent>(args)?.let { _chatMessageEdited.tryEmit(it) }
         }
         s.on(SocketEvents.CALL_ACCEPTED) { args ->
             (args.getOrNull(0) as? JSONObject)?.optString("roomId")?.takeIf { it.isNotBlank() }
@@ -212,8 +233,11 @@ class TcallSocketManager(private val gson: Gson = Gson()) {
         socket?.emit(SocketEvents.CALL_ENDED)
     }
 
-    fun emitChatTyping(conversationId: String) {
-        socket?.emit(SocketEvents.CHAT_TYPING, JSONObject().put("conversationId", conversationId))
+    fun emitChatTyping(conversationId: String, draft: String = "") {
+        val payload = JSONObject()
+            .put("conversationId", conversationId)
+            .put("draft", draft.take(500))
+        socket?.emit(SocketEvents.CHAT_TYPING, payload)
     }
 
     fun emitChatTypingStop(conversationId: String) {

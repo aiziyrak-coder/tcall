@@ -15,6 +15,12 @@ import uz.tcall.network.ChatMessageDto
 import uz.tcall.socket.TcallSocketManager
 import java.io.File
 
+data class ReplyTarget(
+    val messageId: String,
+    val senderName: String,
+    val preview: String,
+)
+
 data class ChatThreadUiState(
     val loading: Boolean = true,
     val messages: List<ChatMessageDto> = emptyList(),
@@ -23,6 +29,11 @@ data class ChatThreadUiState(
     val recordingVoice: Boolean = false,
     val showEmoji: Boolean = false,
     val peerTyping: Boolean = false,
+    val peerDraft: String = "",
+    val replyTo: ReplyTarget? = null,
+    val editingMessageId: String? = null,
+    val selectedMessageId: String? = null,
+    val pinned: Boolean = false,
     val error: String? = null,
 )
 
@@ -35,15 +46,35 @@ class ChatThreadViewModel(
     private val _state = MutableStateFlow(ChatThreadUiState())
     val state: StateFlow<ChatThreadUiState> = _state.asStateFlow()
     private var typingJob: Job? = null
+    private var lastTypingEmit = 0L
 
     init {
         load()
         viewModelScope.launch { chatRepository.markRead(conversationId) }
+
         socketManager.chatMessage.onEach { event ->
             if (event.conversationId == conversationId) {
-                appendMessage(event.message)
+                upsertMessage(event.message)
                 viewModelScope.launch { chatRepository.markRead(conversationId) }
             }
+        }.launchIn(viewModelScope)
+
+        socketManager.chatTyping.onEach { event ->
+            if (event.conversationId != conversationId || event.userId == myUserId) return@onEach
+            _state.value = _state.value.copy(
+                peerTyping = event.typing,
+                peerDraft = if (event.typing) event.draft.orEmpty() else "",
+            )
+        }.launchIn(viewModelScope)
+
+        socketManager.chatMessageDeleted.onEach { event ->
+            if (event.conversationId != conversationId) return@onEach
+            markMessageDeleted(event.messageId)
+        }.launchIn(viewModelScope)
+
+        socketManager.chatMessageEdited.onEach { event ->
+            if (event.conversationId != conversationId) return@onEach
+            replaceMessage(event.message)
         }.launchIn(viewModelScope)
     }
 
@@ -52,7 +83,7 @@ class ChatThreadViewModel(
             _state.value = _state.value.copy(loading = true, error = null)
             chatRepository.loadMessages(conversationId)
                 .onSuccess { msgs ->
-                    _state.value = ChatThreadUiState(loading = false, messages = msgs.reversed())
+                    _state.value = _state.value.copy(loading = false, messages = msgs.reversed())
                 }
                 .onFailure { e ->
                     _state.value = _state.value.copy(loading = false, error = e.message)
@@ -61,14 +92,75 @@ class ChatThreadViewModel(
     }
 
     fun send(text: String) {
-        if (text.isBlank() || _state.value.sending) return
+        val trimmed = text.trim()
+        if (trimmed.isBlank() || _state.value.sending) return
+        val editingId = _state.value.editingMessageId
+        val replyId = _state.value.replyTo?.messageId
+
         viewModelScope.launch {
             _state.value = _state.value.copy(sending = true)
-            chatRepository.sendMessage(conversationId, text)
-                .onSuccess { msg -> appendMessage(msg) }
-                .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+            if (editingId != null) {
+                chatRepository.editMessage(conversationId, editingId, trimmed)
+                    .onSuccess { replaceMessage(it) }
+                    .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+                _state.value = _state.value.copy(editingMessageId = null)
+            } else {
+                chatRepository.sendMessage(conversationId, trimmed, replyId)
+                    .onSuccess { upsertMessage(it) }
+                    .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+                _state.value = _state.value.copy(replyTo = null)
+            }
             _state.value = _state.value.copy(sending = false)
             socketManager.emitChatTypingStop(conversationId)
+        }
+    }
+
+    fun setReply(msg: ChatMessageDto) {
+        if (msg.deleted == true) return
+        val preview = msg.displayText ?: msg.originalText ?: ""
+        _state.value = _state.value.copy(
+            replyTo = ReplyTarget(msg.id, msg.sender.name, preview),
+            editingMessageId = null,
+            selectedMessageId = msg.id,
+        )
+    }
+
+    fun clearReply() {
+        _state.value = _state.value.copy(replyTo = null)
+    }
+
+    fun startEdit(msg: ChatMessageDto) {
+        if (msg.sender.id != myUserId || msg.deleted == true || msg.type != "text") return
+        _state.value = _state.value.copy(
+            editingMessageId = msg.id,
+            replyTo = null,
+            selectedMessageId = msg.id,
+        )
+    }
+
+    fun cancelEdit() {
+        _state.value = _state.value.copy(editingMessageId = null)
+    }
+
+    fun deleteMessage(msg: ChatMessageDto) {
+        viewModelScope.launch {
+            chatRepository.deleteMessage(conversationId, msg.id)
+                .onSuccess { markMessageDeleted(msg.id) }
+                .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+        }
+    }
+
+    fun selectMessage(msg: ChatMessageDto) {
+        _state.value = _state.value.copy(
+            selectedMessageId = if (_state.value.selectedMessageId == msg.id) null else msg.id,
+        )
+    }
+
+    fun pinConversation(pinned: Boolean) {
+        viewModelScope.launch {
+            chatRepository.pinConversation(conversationId, pinned)
+                .onSuccess { _state.value = _state.value.copy(pinned = pinned) }
+                .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
         }
     }
 
@@ -86,7 +178,11 @@ class ChatThreadViewModel(
             typingJob?.cancel()
             return
         }
-        socketManager.emitChatTyping(conversationId)
+        val now = System.currentTimeMillis()
+        if (now - lastTypingEmit > 280) {
+            socketManager.emitChatTyping(conversationId, text)
+            lastTypingEmit = now
+        }
         typingJob?.cancel()
         typingJob = viewModelScope.launch {
             delay(2500)
@@ -99,7 +195,7 @@ class ChatThreadViewModel(
         viewModelScope.launch {
             _state.value = _state.value.copy(uploading = true, error = null)
             chatRepository.uploadAndSend(conversationId, file, mime, name)
-                .onSuccess { appendMessage(it) }
+                .onSuccess { upsertMessage(it) }
                 .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
             _state.value = _state.value.copy(uploading = false)
         }
@@ -117,10 +213,33 @@ class ChatThreadViewModel(
         }
     }
 
-    private fun appendMessage(msg: ChatMessageDto) {
+    private fun upsertMessage(msg: ChatMessageDto) {
         val current = _state.value.messages
-        if (current.any { it.id == msg.id }) return
+        if (current.any { it.id == msg.id }) {
+            replaceMessage(msg)
+            return
+        }
         _state.value = _state.value.copy(messages = current + msg)
+    }
+
+    private fun replaceMessage(msg: ChatMessageDto) {
+        _state.value = _state.value.copy(
+            messages = _state.value.messages.map { if (it.id == msg.id) msg else it },
+        )
+    }
+
+    private fun markMessageDeleted(messageId: String) {
+        _state.value = _state.value.copy(
+            messages = _state.value.messages.map { m ->
+                if (m.id != messageId) m
+                else m.copy(
+                    deleted = true,
+                    displayText = "Xabar o'chirildi",
+                    originalText = null,
+                    hasTranslation = false,
+                )
+            },
+        )
     }
 
     fun isMine(msg: ChatMessageDto) = msg.sender.id == myUserId

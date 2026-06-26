@@ -80,7 +80,7 @@ fun SupportScreen(userRepository: UserRepository, onBack: () -> Unit) {
                             msg.text,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (mine) TcallColors.IosBlue else Color.White)
+                                .background(if (mine) TcallColors.AccentDeep else TcallColors.SurfaceElevated)
                                 .padding(12.dp),
                             color = if (mine) Color.White else TcallColors.TextPrimary,
                             fontSize = 14.sp,

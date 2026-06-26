@@ -83,7 +83,7 @@ fun FriendsScreen(
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Color.White)
+                        .background(TcallColors.SurfaceElevated)
                         .border(1.dp, Color(0x12000000), RoundedCornerShape(14.dp))
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                 ) {
@@ -107,7 +107,7 @@ fun FriendsScreen(
                         .clickable { /* search triggers on 9 digits */ }
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
-                    Text(ui.search, color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(ui.search, color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
             if (state.searching) {
@@ -212,7 +212,7 @@ private fun BlacklistSection(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFFFFF1F2))
+            .background(TcallColors.SurfaceElevated)
             .border(1.dp, Color(0x26F43F5E), RoundedCornerShape(14.dp))
             .padding(14.dp),
     ) {
@@ -236,7 +236,7 @@ private fun BlacklistSection(
                     Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
+                        .background(TcallColors.SurfaceElevated)
                         .border(1.dp, Color(0x12000000), RoundedCornerShape(12.dp))
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) {
@@ -254,7 +254,7 @@ private fun BlacklistSection(
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White)
+                        .background(TcallColors.SurfaceElevated)
                         .border(1.dp, Color(0x26000000), RoundedCornerShape(12.dp))
                         .clickable(enabled = blockInput.length == 9, onClick = onBlock)
                         .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -327,7 +327,7 @@ private fun IncomingRequestRow(
     onRespond: (String, Boolean) -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color.White).padding(12.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(TcallColors.SurfaceElevated).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TcallAvatar(req.sender.name, size = 44.dp)

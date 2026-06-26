@@ -37,7 +37,7 @@ fun IncomingCallDialog(
 ) {
     AlertDialog(
         onDismissRequest = onReject,
-        containerColor = Color.White,
+        containerColor = TcallColors.SurfaceElevated,
         shape = RoundedCornerShape(20.dp),
         title = {
             Text("Kiruvchi qo'ng'iroq", fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary)

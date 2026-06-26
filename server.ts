@@ -602,7 +602,10 @@ app.prepare().then(async () => {
       }
     });
 
-    socket.on("chat-typing", async ({ conversationId }: { conversationId?: string }) => {
+    socket.on("chat-typing", async ({
+      conversationId,
+      draft,
+    }: { conversationId?: string; draft?: string }) => {
       if (!conversationId) return;
       try {
         await assertMember(conversationId, session.userId);
@@ -610,10 +613,12 @@ app.prepare().then(async () => {
           where: { conversationId, NOT: { userId: session.userId } },
           select: { userId: true },
         });
+        const preview = typeof draft === "string" ? draft.slice(0, 500) : "";
         const payload = {
           conversationId,
           userId: session.userId,
           typing: true,
+          draft: preview,
         };
         for (const o of others) {
           emitToUser(o.userId, "chat-typing", payload);
@@ -626,7 +631,7 @@ app.prepare().then(async () => {
           setTimeout(() => {
             typingTimers.delete(key);
             for (const o of others) {
-              emitToUser(o.userId, "chat-typing", { ...payload, typing: false });
+              emitToUser(o.userId, "chat-typing", { ...payload, typing: false, draft: "" });
             }
           }, 3500)
         );
@@ -654,6 +659,7 @@ app.prepare().then(async () => {
             conversationId,
             userId: session.userId,
             typing: false,
+            draft: "",
           });
         }
       } catch {

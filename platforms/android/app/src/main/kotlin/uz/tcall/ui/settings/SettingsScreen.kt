@@ -142,7 +142,7 @@ private fun SettingsNavRow(title: String, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
+            .background(TcallColors.SurfaceElevated)
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,

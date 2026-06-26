@@ -432,6 +432,7 @@ model ChatMessage {
   mediaName      String?
   mediaSize      Int?
   deletedAt      DateTime?
+  editedAt       DateTime?
   createdAt      DateTime     @default(now())
   replyToId      String?
   replyTo        ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id])

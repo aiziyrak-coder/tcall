@@ -88,28 +88,28 @@ private val pages = listOf(
         Icons.Default.AutoAwesome,
         "Tcall ga xush kelibsiz",
         "Dunyo bilan o'z tilingizda gaplashing. 9 xonali Tcall raqamingiz bilan audio qo'ng'iroq qiling.",
-        gradient = listOf(Color(0x3340E0D0), Color(0x1AFFE4B5), Color.Transparent),
+        gradient = listOf(Color(0x33FF6B35), Color(0x1AFFB347), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Language,
         "Real-time tarjima",
         "70+ til. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.",
-        gradient = listOf(Color(0x33FFE4B5), Color(0x1A40E0D0), Color.Transparent),
+        gradient = listOf(Color(0x33FFB347), Color(0x1AFF6B35), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Phone,
         "Qo'ng'iroq va xabar",
         "Yuqori sifatli audio qo'ng'iroq va chat — hammasi avtomatik tarjima bilan.",
-        gradient = listOf(Color(0x3340E0D0), Color(0x1A708090), Color.Transparent),
+        gradient = listOf(Color(0x33E85D04), Color(0x1AFF8C42), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.FEATURE,
         Icons.Default.Shield,
         "Xavfsiz va shaxsiy",
         "PIN qulf, yuz orqali tiklash va himoyalangan muloqot.",
-        gradient = listOf(Color(0x33708090), Color(0x1A40E0D0), Color.Transparent),
+        gradient = listOf(Color(0x339A3412), Color(0x1AFF6B35), Color.Transparent),
     ),
     OnboardingPage(
         PageKind.PERMISSION,
@@ -258,7 +258,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     TextButton(onClick = onComplete) {
                         Text(
                             "O'tish",
-                            color = TcallColors.TextMuted,
+                            color = TcallColors.Ink,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                         )
@@ -286,13 +286,13 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             .size(88.dp)
                             .shadow(8.dp, RoundedCornerShape(28.dp))
                             .clip(RoundedCornerShape(28.dp))
-                            .background(Color.White.copy(alpha = 0.95f)),
+                            .background(TcallColors.GlassSheet),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             page.icon,
                             contentDescription = null,
-                            tint = TcallColors.Brand600,
+                            tint = TcallColors.IconActive,
                             modifier = Modifier.size(40.dp),
                         )
                     }
@@ -322,7 +322,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White.copy(alpha = 0.9f))
+                                .background(TcallColors.GlassSheet)
                                 .clickable { requestPermission(page) }
                                 .padding(16.dp),
                         ) {
@@ -376,7 +376,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 .size(if (pagerState.currentPage == i) 10.dp else 8.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (pagerState.currentPage == i) TcallColors.Accent else TcallColors.Slate.copy(0.45f),
+                                    if (pagerState.currentPage == i) TcallColors.IconActive else TcallColors.IconMuted,
                                 ),
                         )
                     }
@@ -406,12 +406,26 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     TcallPrimaryButton(
                         text = if (pagerState.currentPage == pages.size - 1) "Boshlash" else "Keyingi",
                         onClick = {
+                            val page = pages[pagerState.currentPage]
+                            if (page.kind == PageKind.PERMISSION && page.permission != null) {
+                                val granted = grantedMap[page.permission] == true ||
+                                    ContextCompat.checkSelfPermission(context, page.permission) == PackageManager.PERMISSION_GRANTED
+                                if (!granted) return@TcallPrimaryButton
+                            }
                             if (pagerState.currentPage == pages.size - 1) {
                                 onComplete()
                             } else {
                                 scope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                 }
+                            }
+                        },
+                        enabled = run {
+                            val page = pages[pagerState.currentPage]
+                            if (page.kind != PageKind.PERMISSION || page.permission == null) true
+                            else {
+                                grantedMap[page.permission] == true ||
+                                    ContextCompat.checkSelfPermission(context, page.permission) == PackageManager.PERMISSION_GRANTED
                             }
                         },
                         modifier = Modifier.weight(1f),

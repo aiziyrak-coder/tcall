@@ -23,6 +23,8 @@ object SocketEvents {
     const val ROOM_FULL = "room-full"
     const val ROOM_ERROR = "room-error"
     const val CHAT_MESSAGE = "chat-message"
+    const val CHAT_MESSAGE_DELETED = "chat-message-deleted"
+    const val CHAT_MESSAGE_EDITED = "chat-message-edited"
     const val CHAT_READ = "chat-read"
     const val TRANSLATION = "translation"
 }

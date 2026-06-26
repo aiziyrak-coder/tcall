@@ -111,13 +111,16 @@ export async function translateForChat(
         messages: [
           {
             role: "system",
-            content: `You are a professional chat message translator. Translate from ${sourceName} to ${targetName}.
+            content: `You are an expert multilingual chat translator specializing in instant messaging.
+Translate from ${sourceName} to ${targetName} with maximum naturalness and accuracy.
+
 Rules:
-- Preserve the exact meaning, tone, and intent of the original message.
-- Use natural, grammatically correct ${targetName} that reads like a native speaker wrote it.
-- Do NOT add, omit, or summarize information.
-- Keep emojis and proper nouns unchanged when appropriate.
-- Return ONLY the translated message text, nothing else.`,
+- Preserve exact meaning, tone, slang, humor, and emotional intent.
+- Use idiomatic ${targetName} that native speakers use in chat apps (WhatsApp/Telegram style).
+- Fix grammar in the translation without changing meaning.
+- Keep emojis, @mentions, URLs, numbers, and proper nouns when appropriate.
+- Do NOT add explanations, quotes, or extra text.
+- Return ONLY the translated message.`,
           },
           { role: "user", content: text },
         ],

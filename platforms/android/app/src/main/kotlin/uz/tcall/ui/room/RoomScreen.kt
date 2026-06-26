@@ -159,7 +159,7 @@ fun RoomScreen(
 
                     Spacer(Modifier.height(12.dp))
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF8FAFC))
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TcallColors.SurfaceElevated)
                             .border(1.dp, Color(0x12000000), RoundedCornerShape(12.dp)).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -170,7 +170,7 @@ fun RoomScreen(
                     Spacer(Modifier.height(10.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(
-                            Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(Color.White)
+                            Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(TcallColors.SurfaceElevated)
                                 .border(1.dp, TcallColors.AccentBorderSoft, RoundedCornerShape(12.dp))
                                 .clickable { copyText(context, state.roomLink); viewModel.markCopied() }
                                 .padding(vertical = 12.dp),
@@ -226,7 +226,7 @@ fun RoomScreen(
                 }
                 Spacer(Modifier.height(12.dp))
                 Box(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White)
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(TcallColors.SurfaceElevated)
                         .border(1.dp, Color(0x12000000), RoundedCornerShape(12.dp))
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                 ) {
