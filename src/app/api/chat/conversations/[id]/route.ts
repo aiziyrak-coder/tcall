@@ -11,6 +11,7 @@ import {
 } from "@/lib/chat-service";
 import { getDirectPeerPresence } from "@/lib/presence";
 import { getUserLanguage } from "@/lib/chat-translate";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(
   req: NextRequest,
@@ -33,11 +34,16 @@ export async function GET(
       ? []
       : await getPinnedMessagesForConversation(params.id, session.userId, userLang);
     const peer = await getDirectPeerPresence(params.id, session.userId);
+    const member = await prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId: params.id, userId: session.userId } },
+      select: { lastReadAt: true },
+    });
     return NextResponse.json({
       messages: result.messages,
       hasMore: result.hasMore,
       pinnedMessages,
       peer,
+      lastReadAt: member?.lastReadAt?.toISOString() ?? null,
     });
   } catch {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });

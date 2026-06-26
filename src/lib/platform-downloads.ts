@@ -1,5 +1,5 @@
 import { getLandingUrl } from "@/lib/domains";
-import { LANGUAGES, GLOBAL_LANGUAGES_TAGLINE } from "@/lib/languages";
+import { GLOBAL_LANGUAGES_TAGLINE } from "@/lib/languages";
 
 export type PlatformId = "android" | "ios" | "windows" | "linux";
 
@@ -20,135 +20,114 @@ const base = getLandingUrl();
 
 export const APP_VERSION = VERSION;
 
+export const ANDROID_DOWNLOAD = `${base}/downloads/tcall-android.apk?v=${VERSION}`;
+
 export const PLATFORM_DOWNLOADS: PlatformDownload[] = [
   {
     id: "android",
     name: "Android",
     subtitle: "Telefon va planshet",
-    minOs: "Android 8.0 (Oreo) yoki yangiroq",
+    minOs: "Android 8.0+",
     fileLabel: "APK",
-    downloadPath: `${base}/downloads/tcall-android.apk?v=${VERSION}`,
+    downloadPath: ANDROID_DOWNLOAD,
     available: true,
-    installHint: "APK yuklab oling → «Nomaʼlum manbalar» ruxsatini yoqing → o‘rnating.",
-    requirements: ["ARM64 yoki ARMv7", "Kamera va mikrofon", "Internet"],
+    installHint: "Yuklab oling → «Nomaʼlum manbalar» ruxsatini yoqing → o‘rnating.",
+    requirements: ["Kamera va mikrofon", "Internet"],
   },
   {
     id: "ios",
     name: "iPhone / iPad",
     subtitle: "iOS qurilmalar",
-    minOs: "iOS 16.0 yoki yangiroq",
+    minOs: "iOS 16.0+",
     fileLabel: "App Store",
     downloadPath: "https://apps.apple.com/app/tcall",
     available: false,
-    installHint: "App Store orqali o‘rnatish tez orada. Hozircha TestFlight taklifnomasi kerak.",
-    requirements: ["iPhone 8 va yangiroq", "Kamera va mikrofon", "Internet"],
+    installHint: "App Store versiyasi tez orada.",
+    requirements: ["Kamera va mikrofon", "Internet"],
   },
   {
     id: "windows",
     name: "Windows",
-    subtitle: "Kompyuter va noutbuk",
-    minOs: "Windows 10 / 11 (64-bit)",
+    subtitle: "Kompyuter",
+    minOs: "Windows 10 / 11",
     fileLabel: "Installer",
     downloadPath: `${base}/downloads/tcall-windows-setup.exe`,
     available: false,
-    installHint: "O‘rnatuvchini yuklab oling va ishga tushiring. SmartScreen ogohlantirishi chiqsa «Batafsil» → «Baribir ishga tushirish».",
-    requirements: [".NET 8 Runtime (o‘rnatuvchi bilan keladi)", "Kamera va mikrofon", "Internet"],
+    installHint: "Tez orada chiqadi.",
+    requirements: ["Kamera va mikrofon", "Internet"],
   },
   {
     id: "linux",
     name: "Linux",
-    subtitle: "Ubuntu, Debian, Kali va boshqalar",
-    minOs: "Ubuntu 22.04+ yoki ekvivalent",
+    subtitle: "Ubuntu va boshqalar",
+    minOs: "Ubuntu 22.04+",
     fileLabel: "AppImage",
     downloadPath: `${base}/downloads/tcall-linux-x64.AppImage`,
     available: false,
-    installHint: "AppImage faylini yuklab oling → `chmod +x` → ikki marta bosing yoki terminaldan ishga tushiring.",
-    requirements: ["x86_64 (64-bit)", "libfuse2 (Ubuntu: sudo apt install libfuse2)", "Internet"],
+    installHint: "Tez orada chiqadi.",
+    requirements: ["x86_64", "Internet"],
   },
 ];
 
 export const LANDING_FEATURES = [
   {
-    title: "Real-time tarjima",
-    description: `${GLOBAL_LANGUAGES_TAGLINE}. Gapiring — sherigingiz o'z tilida subtitr va tarjima ko'radi.`,
+    icon: "languages" as const,
+    title: "Har qanday tilda gapiring",
+    description: `${GLOBAL_LANGUAGES_TAGLINE}. Siz o'z tilingizda yozasiz — sherigingiz o'zida o'qiydi.`,
   },
   {
-    title: "Video va audio qo‘ng‘iroq",
-    description: "WebRTC — yuqori sifat, past kechikish. Dunyo bilan bevosita bog‘laning.",
+    icon: "video" as const,
+    title: "Video va audio qo'ng'iroq",
+    description: "Yuqori sifat, past kechikish. Dunyo bilan bevosita bog'laning.",
   },
   {
-    title: "Xavfsiz chat",
-    description: "Shaxsiy va guruh suhbatlari, media, ovozli xabarlar.",
+    icon: "chat" as const,
+    title: "Zamonaviy chat",
+    description: "Guruhlar, pin, javob, reaksiya, ovozli xabar — hammasi bir joyda.",
   },
   {
-    title: "Har qurilmada native",
-    description: "Android, iOS, Windows, Linux — WebView emas, haqiqiy ilovalar.",
+    icon: "shield" as const,
+    title: "Xavfsiz va maxfiy",
+    description: "Shifrlangan ulanish. Suhbatlaringiz sizniki — hech kimga sotilmaydi.",
   },
-  {
-    title: "9 xonali Tcall ID",
-    description: "Telefon raqamisiz — do‘stingizga ID yuboring va darhol bog‘laning.",
-  },
-  {
-    title: "Jonli tarjimon",
-    description: "Mikrofon orqali nutqni taniydi va boshqa tilga tarjima qiladi.",
-  },
-];
+] as const;
 
 export const LANDING_STEPS = [
   {
     step: "1",
-    title: "Ro‘yxatdan o‘ting",
-    description: "web.tcall.uz da hisob yarating yoki native ilovadan kirish. Til va profilni sozlang.",
+    title: "Yuklab oling",
+    description: "Android APK ni bir bosishda o'rnating.",
   },
   {
     step: "2",
-    title: "Do‘st qo‘shing yoki raqam tering",
-    description: "9 xonali Tcall ID orqali qidiruv, do‘stlar ro‘yxati yoki xona kodi bilan ulanish.",
+    title: "Ro'yxatdan o'ting",
+    description: "Tilni tanlang, 9 xonali Tcall ID oling.",
   },
   {
     step: "3",
-    title: "Gapiring va qo‘ng‘iroq qiling",
-    description: "Chat, audio qo‘ng‘iroq yoki video — AI tarjima avtomatik ishlaydi.",
+    title: "Dunyo bilan gaplashing",
+    description: "Chat, qo'ng'iroq yoki video — tarjima avtomatik.",
   },
 ] as const;
 
 export const LANDING_STATS = [
-  { value: "🌍", label: "Barcha tillar" },
-  { value: "4", label: "Platforma" },
-  { value: "1 ID", label: "Butun dunyo" },
-  { value: "WebView yo‘q", label: "Native ilova" },
+  { value: "180+", label: "Tillar" },
+  { value: "HD", label: "Video qo'ng'iroq" },
+  { value: "0₽", label: "Boshlash bepul" },
+  { value: "24/7", label: "Ishlaydi" },
 ] as const;
-
-export const SUPPORTED_LANGUAGES = LANGUAGES.slice(0, 24).map((l) => l.name);
 
 export const LANDING_FAQ = [
   {
-    q: "tcall.uz va web.tcall.uz farqi nima?",
-    a: "tcall.uz — marketing va yuklab olish sahifasi. Kirish, chat va qo‘ng‘iroq uchun web.tcall.uz dan foydalaning.",
-  },
-  {
-    q: "Ilovani qayerdan yuklab olaman?",
-    a: "Android APK shu sahifadagi «Yuklab olish» bo‘limidan. iOS, Windows va Linux versiyalari tez orada qo‘shiladi.",
-  },
-  {
-    q: "Brauzerda ishlatsam bo‘ladimi?",
-    a: "Ha. To‘liq veb-ilova web.tcall.uz da — o‘rnatish shart emas, lekin PWA sifatida bosh ekranga qo‘shish mumkin.",
+    q: "Ilovani qanday o'rnataman?",
+    a: "Android uchun «Yuklab olish» tugmasini bosing. Sozlamalarda «Noma'lum manbalardan o'rnatish» ni yoqing va APK ni oching.",
   },
   {
     q: "Tarjima qanday ishlaydi?",
-    a: "Nutq yoki matn avtomatik tanlanadi, AI tarjima qiladi. Qo‘ng‘iroq paytida sherigingiz o‘z tilida subtitr ko‘radi.",
+    a: "Xabar yoki nutq avtomatik tanlanadi va sherigingiz tiliga tarjima qilinadi. Qo'ng'iroqda ham subtitr ko'rasiz.",
   },
   {
-    q: "Xavfsizlik qanday ta’minlanadi?",
-    a: "JWT sessiyalar, shifrlangan ulanishlar va maxfiylik siyosati. Ma’lumotlaringiz uchinchi shaxslarga sotilmaydi.",
+    q: "Bepulmi?",
+    a: "Ro'yxatdan o'tish va asosiy funksiyalar bepul. Premium imkoniyatlar ixtiyoriy.",
   },
-] as const;
-
-export const WEB_VS_NATIVE = [
-  { feature: "Chat va qo‘ng‘iroq", web: true, native: true },
-  { feature: "Real-time tarjima", web: true, native: true },
-  { feature: "O‘rnatish talab qilinmaydi", web: true, native: false },
-  { feature: "Push (ilova yopiq)", web: "Cheklangan", native: true },
-  { feature: "Eng yaxshi ishlash", web: false, native: true },
-  { feature: "Kamera / mikrofon", web: true, native: true },
 ] as const;

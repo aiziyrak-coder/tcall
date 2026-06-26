@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, Fragment } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Fragment } from "react";
 import {
   ArrowLeft,
   ArrowDown,
@@ -23,6 +23,8 @@ import {
   Play,
   Pencil,
   CornerUpLeft,
+  Copy,
+  Forward,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
@@ -58,6 +60,8 @@ import { startVoiceRecord, stopVoiceRecord, type VoiceRecordSession } from "@/li
 import { ChatMediaViewer } from "@/components/ChatMediaViewer";
 import { VoiceMessageBubble } from "@/components/VoiceMessageBubble";
 import { emitSubscriptionRequired, extractSubscriptionRequirement } from "@/lib/subscription-required";
+import { copyToClipboard } from "@/lib/utils";
+import { linkifyText } from "@/lib/linkify-text";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🥰", "😊", "👍", "🙏", "❤️", "🔥", "✨",
@@ -142,6 +146,17 @@ export function ChatMessenger({
     { id: string; conversationId: string; conversationName: string | null; text: string | null; createdAt: string }[]
   >([]);
   const [messageSearchLoading, setMessageSearchLoading] = useState(false);
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
+  const [threadSearchQuery, setThreadSearchQuery] = useState("");
+  const [threadSearchResults, setThreadSearchResults] = useState<
+    { id: string; text: string | null; createdAt: string }[]
+  >([]);
+  const [threadSearchLoading, setThreadSearchLoading] = useState(false);
+  const [highlightMessageId, setHighlightMessageId] = useState<string | null>(null);
+  const [unreadBeforeAt, setUnreadBeforeAt] = useState<Date | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<ChatMessageItem | null>(null);
+  const [forwarding, setForwarding] = useState(false);
+  const [copyToast, setCopyToast] = useState(false);
   const [showReportChat, setShowReportChat] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [conversationType, setConversationType] = useState<string>("direct");
@@ -358,6 +373,37 @@ export function ChatMessenger({
     return () => clearTimeout(t);
   }, [messageSearchMode, searchQuery]);
 
+  useEffect(() => {
+    if (!threadSearchOpen || !activeId) {
+      setThreadSearchResults([]);
+      return;
+    }
+    const q = threadSearchQuery.trim();
+    if (q.length < 2) {
+      setThreadSearchResults([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      setThreadSearchLoading(true);
+      void apiFetch(
+        `/api/chat/search?q=${encodeURIComponent(q)}&conversationId=${encodeURIComponent(activeId)}`
+      )
+        .then((r) => r.json())
+        .then((d) => setThreadSearchResults(d.results || []))
+        .finally(() => setThreadSearchLoading(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [threadSearchOpen, threadSearchQuery, activeId]);
+
+  const firstUnreadId = useMemo(() => {
+    if (!unreadBeforeAt) return null;
+    const boundary = unreadBeforeAt.getTime();
+    for (const m of messages) {
+      if (m.sender.id !== userId && new Date(m.createdAt).getTime() > boundary) return m.id;
+    }
+    return null;
+  }, [messages, unreadBeforeAt, userId]);
+
   const refreshAndOpenMembers = useCallback(async () => {
     setShowManage(false);
     await loadConversations();
@@ -365,12 +411,15 @@ export function ChatMessenger({
   }, [loadConversations]);
 
   const openConversation = useCallback(
-    async (id: string) => {
+    async (id: string, options?: { scrollToMessageId?: string }) => {
       setActiveId(id);
       setLoadingMsgs(true);
       setShowEmoji(false);
       setHasMore(false);
       setPeerTyping(false);
+      setThreadSearchOpen(false);
+      setThreadSearchQuery("");
+      setThreadSearchResults([]);
       atBottomRef.current = true;
 
       const conv = conversations.find((c) => c.id === id);
@@ -385,6 +434,9 @@ export function ChatMessenger({
       if (activeIdRef.current !== id) return;
 
       const fetched: ChatMessageItem[] = d.messages || [];
+      const lastRead = d.lastReadAt ? new Date(d.lastReadAt) : null;
+      setUnreadBeforeAt(lastRead);
+
       setMessages((prev) => {
         const ids = new Set(fetched.map((m) => m.id));
         const extra = prev.filter((m) => !ids.has(m.id));
@@ -412,13 +464,29 @@ export function ChatMessenger({
         setPeerPresence(null);
       }
       setLoadingMsgs(false);
+
+      const jumpId =
+        options?.scrollToMessageId ||
+        (lastRead
+          ? fetched.find((m) => m.sender.id !== userId && new Date(m.createdAt) > lastRead)?.id
+          : undefined);
+
+      if (jumpId) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`chat-msg-${jumpId}`);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightMessageId(jumpId);
+          setTimeout(() => setHighlightMessageId(null), 2200);
+        });
+      }
+
       await apiFetch(`/api/chat/conversations/${id}`, { method: "PATCH" });
       setConversations((prev) =>
         prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
       );
       onUnreadChange?.();
     },
-    [onUnreadChange, conversations]
+    [onUnreadChange, conversations, userId]
   );
 
   const loadOlderMessages = useCallback(async () => {
@@ -788,9 +856,52 @@ export function ChatMessenger({
     }
   };
 
-  const scrollToMessage = (messageId: string) => {
+  const scrollToMessage = (messageId: string, highlight = true) => {
     const el = document.getElementById(`chat-msg-${messageId}`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (highlight) {
+      setHighlightMessageId(messageId);
+      setTimeout(() => setHighlightMessageId(null), 2200);
+    }
+  };
+
+  const copyMessage = async (msg: ChatMessageItem) => {
+    const text = msg.displayText || msg.originalText || "";
+    if (!text) return;
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setCopyToast(true);
+      setTimeout(() => setCopyToast(false), 1800);
+    }
+  };
+
+  const forwardMessage = async (msg: ChatMessageItem, toConversationId: string) => {
+    const body = msg.displayText || msg.originalText || msg.mediaName || "";
+    if (!body.trim()) return;
+    setForwarding(true);
+    try {
+      const prefix = `↪ ${msg.sender.name}: `;
+      const res = await apiFetch(`/api/chat/conversations/${toConversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `${prefix}${body}`.trim(), type: "text" }),
+      });
+      if (res.ok) {
+        setForwardTarget(null);
+        if (toConversationId === activeId) {
+          const d = await res.json();
+          if (d.message) {
+            setMessages((prev) =>
+              prev.some((m) => m.id === d.message.id) ? prev : [...prev, d.message]
+            );
+          }
+        }
+      } else {
+        setActionError(ui.chatActionFailed);
+      }
+    } finally {
+      setForwarding(false);
+    }
   };
 
   const startReply = (msg: ChatMessageItem) => {
@@ -1300,6 +1411,18 @@ export function ChatMessenger({
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              className={`chat-thread-search-btn${threadSearchOpen ? " chat-thread-search-btn-active" : ""}`}
+              aria-label={ui.chatSearchInThread}
+              onClick={() => {
+                setThreadSearchOpen((v) => !v);
+                setThreadSearchQuery("");
+                setThreadSearchResults([]);
+              }}
+            >
+              <Search className="w-5 h-5" />
+            </button>
             {!isGroup && partner?.tcallId && (
               <button type="button" onClick={() => void dial(partner.tcallId!)} className="chat-thread-call-btn">
                 <Phone className="w-5 h-5 text-green-600" />
@@ -1320,6 +1443,57 @@ export function ChatMessenger({
         </div>
 
         {actionError && <div className="chat-upload-error mx-5 mt-2">{actionError}</div>}
+
+        {threadSearchOpen && (
+          <div className="chat-thread-search">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="search"
+              className="chat-thread-search-input"
+              placeholder={ui.chatSearchInThread}
+              value={threadSearchQuery}
+              onChange={(e) => setThreadSearchQuery(e.target.value)}
+              autoFocus
+            />
+            <button
+              type="button"
+              className="chat-thread-search-close"
+              onClick={() => {
+                setThreadSearchOpen(false);
+                setThreadSearchQuery("");
+                setThreadSearchResults([]);
+              }}
+              aria-label={ui.chatCancelEdit}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {threadSearchOpen && threadSearchQuery.trim().length >= 2 && (
+          <div className="chat-thread-search-results">
+            {threadSearchLoading ? (
+              <p className="chat-thread-search-hint">{ui.chatSearchPlaceholder}</p>
+            ) : threadSearchResults.length === 0 ? (
+              <p className="chat-thread-search-hint">{ui.chatSearchNoResults}</p>
+            ) : (
+              threadSearchResults.map((hit) => (
+                <button
+                  key={hit.id}
+                  type="button"
+                  className="chat-thread-search-hit"
+                  onClick={() => {
+                    scrollToMessage(hit.id);
+                    setThreadSearchOpen(false);
+                    setThreadSearchQuery("");
+                    setThreadSearchResults([]);
+                  }}
+                >
+                  {(hit.text || "").slice(0, 120)}
+                </button>
+              ))
+            )}
+          </div>
+        )}
 
         {pinnedMessages.length > 0 && (
           <div className="chat-pinned-bar">
@@ -1361,6 +1535,7 @@ export function ChatMessenger({
             messages.map((m, i) => {
               const prev = messages[i - 1];
               const showDate = !prev || !sameChatDay(prev.createdAt, m.createdAt);
+              const showUnreadDivider = m.id === firstUnreadId;
               return (
                 <Fragment key={m.id}>
                   {showDate && (
@@ -1368,10 +1543,16 @@ export function ChatMessenger({
                       {formatChatDateLabel(m.createdAt, userLanguage)}
                     </div>
                   )}
+                  {showUnreadDivider && (
+                    <div className="chat-unread-divider">
+                      <span>{ui.chatUnreadDivider}</span>
+                    </div>
+                  )}
                   <MessageBubble
                     msg={m}
                     isMine={m.sender.id === userId}
                     ui={ui}
+                    highlighted={highlightMessageId === m.id}
                     onDelete={
                       !m.deleted && (m.sender.id === userId || canModerateMessages)
                         ? () => void deleteMessage(m.id)
@@ -1384,6 +1565,16 @@ export function ChatMessenger({
                         : undefined
                     }
                     onPin={!m.deleted ? () => void toggleMessagePin(m) : undefined}
+                    onCopy={
+                      !m.deleted && (m.displayText || m.originalText)
+                        ? () => void copyMessage(m)
+                        : undefined
+                    }
+                    onForward={
+                      !m.deleted && (m.displayText || m.originalText || m.mediaName)
+                        ? () => setForwardTarget(m)
+                        : undefined
+                    }
                     onReact={!m.deleted ? (emoji) => void handleReaction(m.id, emoji) : undefined}
                     onOpenMedia={() => openMediaGallery(m)}
                     onQuoteClick={m.replyTo ? () => scrollToMessage(m.replyTo!.id) : undefined}
@@ -1400,28 +1591,16 @@ export function ChatMessenger({
             <span>{ui.chatNewMessages}</span>
           </button>
         )}
-        </div>
-
-        {pinnedMessages.length > 0 && (
-          <div className="chat-pinned-bar">
-            <Pin className="w-4 h-4 text-brand-600 shrink-0" aria-hidden />
-            <div className="chat-pinned-list">
-              {pinnedMessages.map((pm) => (
-                <button
-                  key={pm.id}
-                  type="button"
-                  className="chat-pinned-item"
-                  onClick={() => scrollToMessage(pm.id)}
-                >
-                  <span className="chat-pinned-author">{pm.sender.name}</span>
-                  <span className="chat-pinned-preview">
-                    {pm.deleted ? ui.chatMessageDeleted : (pm.displayText || pm.mediaName || "…").slice(0, 80)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+        {firstUnreadId && showScrollDown && (
+          <button
+            type="button"
+            className="chat-jump-unread-btn"
+            onClick={() => scrollToMessage(firstUnreadId)}
+          >
+            {ui.chatJumpToUnread}
+          </button>
         )}
+        </div>
 
         <div className="chat-composer">
           {replyTarget && !editingMessage && (
@@ -1803,7 +1982,7 @@ export function ChatMessenger({
                 <button
                   type="button"
                   className="chat-conv-item"
-                  onClick={() => void openConversation(hit.conversationId)}
+                  onClick={() => void openConversation(hit.conversationId, { scrollToMessageId: hit.id })}
                 >
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-semibold truncate">{hit.conversationName || ui.messages}</p>
@@ -1957,6 +2136,44 @@ export function ChatMessenger({
           </div>
         </div>
       )}
+
+      {forwardTarget && (
+        <div className="ios-modal-overlay" onClick={() => setForwardTarget(null)}>
+          <div className="ios-modal-panel max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold">{ui.chatForwardTo}</h3>
+              <button type="button" onClick={() => setForwardTarget(null)} className="ios-icon-btn">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-3 truncate">
+              {(forwardTarget.displayText || forwardTarget.originalText || forwardTarget.mediaName || "").slice(0, 80)}
+            </p>
+            <ul className="chat-forward-list max-h-64 overflow-y-auto">
+              {conversations
+                .filter((c) => c.id !== activeId)
+                .map((c) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className="chat-forward-item"
+                      disabled={forwarding}
+                      onClick={() => void forwardMessage(forwardTarget, c.id)}
+                    >
+                      {c.title}
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {copyToast && (
+        <div className="chat-copy-toast" role="status">
+          {ui.chatCopied}
+        </div>
+      )}
     </div>
   );
 }
@@ -1965,10 +2182,13 @@ function MessageBubble({
   msg,
   isMine,
   ui,
+  highlighted,
   onDelete,
   onReply,
   onEdit,
   onPin,
+  onCopy,
+  onForward,
   onReact,
   onOpenMedia,
   onQuoteClick,
@@ -1976,10 +2196,13 @@ function MessageBubble({
   msg: ChatMessageItem;
   isMine: boolean;
   ui: Record<string, string>;
+  highlighted?: boolean;
   onDelete?: () => void;
   onReply?: () => void;
   onEdit?: () => void;
   onPin?: () => void;
+  onCopy?: () => void;
+  onForward?: () => void;
   onReact?: (emoji: string) => void;
   onOpenMedia?: () => void;
   onQuoteClick?: () => void;
@@ -1987,6 +2210,7 @@ function MessageBubble({
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const body = msg.deleted ? msg.displayText : showOriginal ? msg.originalText : msg.displayText;
   const mediaSrc = resolveChatMediaUrl(msg.mediaUrl);
   const isImage = !msg.deleted && isChatImageMessage(msg.type, msg.mediaMime, msg.mediaName);
@@ -1996,19 +2220,32 @@ function MessageBubble({
   const bubbleClass = isAudio
     ? `chat-bubble chat-bubble-voice ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`
     : `chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`;
-  const hasActions = Boolean(onDelete || onReply || onEdit || onPin || onReact);
+  const hasActions = Boolean(onDelete || onReply || onEdit || onPin || onReact || onCopy || onForward);
+
+  const openActions = () => {
+    if (hasActions) setShowActions(true);
+  };
 
   return (
     <div
       id={`chat-msg-${msg.id}`}
       className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${
         msg.deleted ? "chat-bubble-deleted" : ""
-      } ${isAudio ? "chat-bubble-wrap-voice" : ""}`}
+      } ${isAudio ? "chat-bubble-wrap-voice" : ""} ${highlighted ? "chat-bubble-highlight" : ""}`}
       onContextMenu={(e) => {
         if (hasActions) {
           e.preventDefault();
           setShowActions((v) => !v);
         }
+      }}
+      onTouchStart={() => {
+        longPressRef.current = setTimeout(openActions, 480);
+      }}
+      onTouchEnd={() => {
+        if (longPressRef.current) clearTimeout(longPressRef.current);
+      }}
+      onTouchMove={() => {
+        if (longPressRef.current) clearTimeout(longPressRef.current);
       }}
     >
       {!isMine && msg.sender.name && (
@@ -2068,7 +2305,7 @@ function MessageBubble({
         )}
         {body && (
           <p className={`chat-bubble-text whitespace-pre-wrap ${msg.deleted ? "chat-bubble-text-deleted" : ""}`}>
-            {body}
+            {msg.deleted ? body : linkifyText(body)}
           </p>
         )}
         {msg.hasTranslation && msg.originalText && !msg.deleted && (
@@ -2134,6 +2371,18 @@ function MessageBubble({
             <button type="button" className="chat-msg-action" onClick={() => { onReply(); setShowActions(false); }}>
               <CornerUpLeft className="w-3.5 h-3.5" />
               {ui.chatReply}
+            </button>
+          )}
+          {onCopy && (
+            <button type="button" className="chat-msg-action" onClick={() => { onCopy(); setShowActions(false); }}>
+              <Copy className="w-3.5 h-3.5" />
+              {ui.chatCopy}
+            </button>
+          )}
+          {onForward && (
+            <button type="button" className="chat-msg-action" onClick={() => { onForward(); setShowActions(false); }}>
+              <Forward className="w-3.5 h-3.5" />
+              {ui.chatForward}
             </button>
           )}
           {onEdit && (

@@ -26,6 +26,7 @@ export function VoiceMessageBubble({ src, isMine, duration }: VoiceMessageBubble
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(duration ?? 0);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const animRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -63,6 +64,15 @@ export function VoiceMessageBubble({ src, isMine, duration }: VoiceMessageBubble
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
   }, [src]);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  const cycleSpeed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPlaybackRate((r) => (r >= 2 ? 1 : r === 1 ? 1.5 : 2));
+  };
 
   const tick = () => {
     const audio = audioRef.current;
@@ -137,7 +147,12 @@ export function VoiceMessageBubble({ src, isMine, duration }: VoiceMessageBubble
             );
           })}
         </div>
-        <span className="voice-time">{displayTime}</span>
+        <div className="voice-meta">
+          <span className="voice-time">{displayTime}</span>
+          <button type="button" className="voice-speed-btn" onClick={cycleSpeed} aria-label="Tezlik">
+            {playbackRate}x
+          </button>
+        </div>
       </div>
     </div>
   );
