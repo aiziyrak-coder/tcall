@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch } from "@/lib/api";
+import { ensureNativeNotificationPermission } from "@/lib/native-permissions";
 
 const INCOMING_CHANNEL = "incoming_calls";
 
@@ -180,6 +181,9 @@ export async function requestNativeNotificationPermission(): Promise<boolean> {
   if (!isNativeApp()) return false;
 
   try {
+    const nativeOk = await ensureNativeNotificationPermission();
+    if (nativeOk) return true;
+
     const { LocalNotifications } = await import("@capacitor/local-notifications");
     const local = await LocalNotifications.requestPermissions();
     return local.display === "granted";

@@ -7,10 +7,11 @@ import {
   UserPlus,
   Users,
   User,
-  X,
   Pin,
   Flag,
 } from "lucide-react";
+import type { RefObject } from "react";
+import { HeaderActionMenu } from "@/components/HeaderActionMenu";
 
 interface ChatThreadMenuSheetProps {
   ui: Record<string, string>;
@@ -18,6 +19,7 @@ interface ChatThreadMenuSheetProps {
   canManageGroup: boolean;
   isOwner: boolean;
   isPinned?: boolean;
+  anchorRef: RefObject<HTMLElement | null>;
   onClose: () => void;
   onViewMembers: () => void;
   onAddMembers: () => void;
@@ -34,6 +36,7 @@ export function ChatThreadMenuSheet({
   isGroup,
   canManageGroup,
   isOwner,
+  anchorRef,
   onClose,
   onViewMembers,
   onAddMembers,
@@ -48,6 +51,7 @@ export function ChatThreadMenuSheet({
   const item = (label: string, icon: React.ReactNode, action: () => void, danger = false) => (
     <button
       type="button"
+      role="menuitem"
       className={`chat-menu-sheet-item ${danger ? "chat-menu-sheet-item-danger" : ""}`}
       onClick={() => {
         onClose();
@@ -60,43 +64,37 @@ export function ChatThreadMenuSheet({
   );
 
   return (
-    <div className="ios-modal-overlay chat-menu-overlay" onClick={onClose}>
-      <div className="ios-modal-panel chat-menu-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="chat-menu-sheet-handle" aria-hidden />
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-lg">
-            {isGroup ? ui.chatGroupSettings : ui.chatSettings}
-          </h3>
-          <button type="button" onClick={onClose} className="ios-icon-btn" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="chat-menu-sheet-list">
-          {onTogglePin &&
-            item(
-              isPinned ? ui.chatUnpinConversation : ui.chatPinConversation,
-              <Pin className="w-5 h-5" />,
-              onTogglePin
-            )}
-          {!isGroup && onViewProfile && item(ui.viewProfile, <User className="w-5 h-5" />, onViewProfile)}
-          {isGroup && item(ui.chatViewMembers, <Users className="w-5 h-5" />, onViewMembers)}
-          {isGroup && canManageGroup && item(ui.chatAddMembers, <UserPlus className="w-5 h-5" />, onAddMembers)}
-          {isGroup && canManageGroup && item(ui.chatRenameGroup, <MessageSquare className="w-5 h-5" />, onRenameGroup)}
-          {item(
-            isGroup ? ui.chatLeaveGroup : ui.chatDeleteChat,
-            <LogOut className="w-5 h-5" />,
-            onLeave
+    <HeaderActionMenu
+      open
+      anchorRef={anchorRef}
+      onClose={onClose}
+      ariaLabel={isGroup ? ui.chatGroupSettings : ui.chatSettings}
+      panelClassName="header-menu-dropdown--chat"
+    >
+      <div className="chat-menu-sheet-list">
+        {onTogglePin &&
+          item(
+            isPinned ? ui.chatUnpinConversation : ui.chatPinConversation,
+            <Pin className="w-5 h-5" />,
+            onTogglePin
           )}
-          {isGroup && isOwner && item(
-            ui.chatDeleteGroup,
-            <Trash2 className="w-5 h-5" />,
-            onDeleteGroup,
-            true
-          )}
-          {onReport && item(ui.reportUser, <Flag className="w-5 h-5" />, onReport, true)}
-        </div>
+        {!isGroup && onViewProfile && item(ui.viewProfile, <User className="w-5 h-5" />, onViewProfile)}
+        {isGroup && item(ui.chatViewMembers, <Users className="w-5 h-5" />, onViewMembers)}
+        {isGroup && canManageGroup && item(ui.chatAddMembers, <UserPlus className="w-5 h-5" />, onAddMembers)}
+        {isGroup && canManageGroup && item(ui.chatRenameGroup, <MessageSquare className="w-5 h-5" />, onRenameGroup)}
+        {item(
+          isGroup ? ui.chatLeaveGroup : ui.chatDeleteChat,
+          <LogOut className="w-5 h-5" />,
+          onLeave
+        )}
+        {isGroup && isOwner && item(
+          ui.chatDeleteGroup,
+          <Trash2 className="w-5 h-5" />,
+          onDeleteGroup,
+          true
+        )}
+        {onReport && item(ui.reportUser, <Flag className="w-5 h-5" />, onReport, true)}
       </div>
-    </div>
+    </HeaderActionMenu>
   );
 }

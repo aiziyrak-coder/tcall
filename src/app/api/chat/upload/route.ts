@@ -35,13 +35,13 @@ export async function POST(req: NextRequest) {
 
     const kind = detectChatMediaKind(file.name, file.type);
     const mime = resolveChatMime(file.name, file.type);
-    const maxSize = maxSizeForKind(kind);
+    const maxSize = maxSizeForKind(kind, mime, file.name);
     if (file.size > maxSize) {
       const mb = Math.round(maxSize / (1024 * 1024));
       return NextResponse.json({ error: `Fayl juda katta (max ${mb} MB)` }, { status: 400 });
     }
 
-    const ext = sanitizeUploadExt(file.name, kind);
+    const ext = sanitizeUploadExt(file.name, kind, mime);
     const filename = `${randomUUID()}.${ext}`;
     const dir = join(process.cwd(), "public", "uploads", "chat", session.userId);
     await mkdir(dir, { recursive: true });

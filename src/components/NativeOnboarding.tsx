@@ -141,11 +141,24 @@ export function NativeOnboarding({ onComplete }: NativeOnboardingProps) {
   const enableNotifications = useCallback(async () => {
     setNotifAsked(true);
     try {
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      const { ensureNativeNotificationPermission } = await import("@/lib/native-permissions");
+      const { isNativeApp } = await import("@/lib/native-app");
+      if (isNativeApp()) {
+        await ensureNativeNotificationPermission();
+      } else if (typeof Notification !== "undefined" && Notification.permission === "default") {
         await Notification.requestPermission();
       }
       const { ensureWebPushSubscription } = await import("@/lib/web-push-client");
       void ensureWebPushSubscription({ requestPermission: false });
+    } catch {
+      /* best effort */
+    }
+  }, []);
+
+  const enableMicrophone = useCallback(async () => {
+    try {
+      const { ensureNativeMicPermission } = await import("@/lib/native-permissions");
+      await ensureNativeMicPermission();
     } catch {
       /* best effort */
     }
@@ -204,9 +217,16 @@ export function NativeOnboarding({ onComplete }: NativeOnboardingProps) {
             </div>
             <button
               type="button"
+              onClick={() => void enableMicrophone()}
+              className="mt-4 w-full py-3 rounded-2xl bg-slate-100 text-slate-800 font-semibold text-[15px] flex items-center justify-center gap-2 border border-slate-200"
+            >
+              <Mic className="w-4 h-4" /> {t.perms.items[0]?.label || "Mikrofon"}
+            </button>
+            <button
+              type="button"
               onClick={() => void enableNotifications()}
               disabled={notifAsked}
-              className="mt-5 w-full py-3 rounded-2xl bg-brand-600 text-white font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
+              className="mt-3 w-full py-3 rounded-2xl bg-brand-600 text-white font-semibold text-[15px] flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {notifAsked ? <><Check className="w-4 h-4" /> {t.notifOn}</> : <><Bell className="w-4 h-4" /> {t.enableNotif}</>}
             </button>

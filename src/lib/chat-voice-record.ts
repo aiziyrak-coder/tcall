@@ -1,4 +1,6 @@
 import { getAudioConstraints, getPreferredAudioMimeType } from "@/lib/mobile";
+import { ensureNativeMicPermission } from "@/lib/native-permissions";
+import { isNativeApp } from "@/lib/native-app";
 
 export type VoiceRecordSession = {
   recorder: MediaRecorder;
@@ -8,6 +10,10 @@ export type VoiceRecordSession = {
 };
 
 export async function startVoiceRecord(): Promise<VoiceRecordSession> {
+  if (isNativeApp()) {
+    const ok = await ensureNativeMicPermission();
+    if (!ok) throw new Error("Mic denied");
+  }
   const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
   const mime = getPreferredAudioMimeType();
   const chunks: Blob[] = [];

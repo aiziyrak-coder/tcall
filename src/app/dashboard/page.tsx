@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
@@ -25,6 +25,7 @@ import { AppSplash } from "@/components/AppSplash";
 import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { HeaderActionMenu } from "@/components/HeaderActionMenu";
 
 interface CallRecord {
   id: string;
@@ -115,6 +116,7 @@ function DashboardInner({
   const [chatInThread, setChatInThread] = useState(false);
   const [notifHint, setNotifHint] = useState("");
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  const headerMenuBtnRef = useRef<HTMLButtonElement>(null);
   const [showSupport, setShowSupport] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
 
@@ -310,10 +312,13 @@ function DashboardInner({
                 </button>
                 <button
                   type="button"
+                  ref={headerMenuBtnRef}
                   onClick={() => setShowHeaderMenu(true)}
                   className="ios-icon-btn"
                   title={ui.moreTab}
                   aria-label={ui.moreTab}
+                  aria-haspopup="menu"
+                  aria-expanded={showHeaderMenu}
                 >
                   <MoreVertical className="w-5 h-5" />
                 </button>
@@ -414,62 +419,67 @@ function DashboardInner({
         onClose={() => { setShowSupport(false); refreshSupportUnread(); }}
       />
 
-      {showHeaderMenu && (
-        <div className="ios-modal-overlay" onClick={() => setShowHeaderMenu(false)}>
-          <div className="ios-modal-panel header-actions-sheet" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="header-actions-item"
-              onClick={() => {
-                setShowHeaderMenu(false);
-                setTab("numbers");
-              }}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{ui.vanityNumbers}</span>
-            </button>
-            <button
-              type="button"
-              className="header-actions-item"
-              onClick={() => {
-                setShowHeaderMenu(false);
-                void handleNotifications();
-              }}
-            >
-              {notificationsEnabled ? (
-                <Bell className="w-4 h-4 text-green-600" />
-              ) : (
-                <BellOff className="w-4 h-4 text-yellow-500" />
-              )}
-              <span>{notificationsEnabled ? ui.notificationsEnabled : ui.enableNotifications}</span>
-            </button>
-            <button
-              type="button"
-              className="header-actions-item"
-              onClick={() => {
-                setShowHeaderMenu(false);
-                setShowSettings(true);
-              }}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{ui.settings}</span>
-            </button>
-            {!nativeApp && (
-              <button
-                type="button"
-                className="header-actions-item header-actions-item-danger"
-                onClick={() => {
-                  setShowHeaderMenu(false);
-                  void logout();
-                }}
-              >
-                <LogOut className="w-4 h-4" />
-                <span>{ui.logout}</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      <HeaderActionMenu
+        open={showHeaderMenu}
+        onClose={() => setShowHeaderMenu(false)}
+        anchorRef={headerMenuBtnRef}
+        ariaLabel={ui.moreTab}
+      >
+        <button
+          type="button"
+          className="header-actions-item"
+          role="menuitem"
+          onClick={() => {
+            setShowHeaderMenu(false);
+            setTab("numbers");
+          }}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>{ui.vanityNumbers}</span>
+        </button>
+        <button
+          type="button"
+          className="header-actions-item"
+          role="menuitem"
+          onClick={() => {
+            setShowHeaderMenu(false);
+            void handleNotifications();
+          }}
+        >
+          {notificationsEnabled ? (
+            <Bell className="w-4 h-4 text-green-600" />
+          ) : (
+            <BellOff className="w-4 h-4 text-yellow-500" />
+          )}
+          <span>{notificationsEnabled ? ui.notificationsEnabled : ui.enableNotifications}</span>
+        </button>
+        <button
+          type="button"
+          className="header-actions-item"
+          role="menuitem"
+          onClick={() => {
+            setShowHeaderMenu(false);
+            setShowSettings(true);
+          }}
+        >
+          <Settings className="w-4 h-4" />
+          <span>{ui.settings}</span>
+        </button>
+        {!nativeApp && (
+          <button
+            type="button"
+            className="header-actions-item header-actions-item-danger"
+            role="menuitem"
+            onClick={() => {
+              setShowHeaderMenu(false);
+              void logout();
+            }}
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{ui.logout}</span>
+          </button>
+        )}
+      </HeaderActionMenu>
 
       {quickMessageTarget && (
         <QuickMessageModal

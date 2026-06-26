@@ -1,5 +1,7 @@
 import { getAudioConstraints, getInterpreterAudioConstraints } from "./mobile";
 import { unlockBrowserAudio } from "./audio-unlock";
+import { isNativeApp } from "./native-app";
+import { ensureNativeMicPermission, checkNativeMicPermission } from "./native-permissions";
 import {
   cacheMicStream,
   hasCachedMicStream,
@@ -29,6 +31,14 @@ export function wasMicGrantedBefore(): boolean {
 }
 
 export async function queryMicPermission(): Promise<"granted" | "denied" | "prompt" | "unknown"> {
+  if (isNativeApp()) {
+    const granted = await checkNativeMicPermission();
+    if (granted) {
+      markMicGranted();
+      return "granted";
+    }
+  }
+
   if (typeof navigator === "undefined" || !navigator.permissions?.query) {
     return wasMicGrantedBefore() ? "granted" : "unknown";
   }
@@ -61,12 +71,37 @@ export function watchMicPermission(onGranted: () => void) {
 }
 
 /** User gesture kontekstida chaqiring — brauzer ruxsat oynasini ochadi */
+async function getUserMediaWithTimeout(
+  constraints: MediaStreamConstraints,
+  timeoutMs = 15000
+): Promise<MediaStream> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("MIC_TIMEOUT")), timeoutMs);
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        clearTimeout(timer);
+        resolve(stream);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 export async function requestMicrophoneStream(interpreter = false): Promise<MediaStream> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
     throw new Error("getUserMedia unavailable");
   }
+
+  if (isNativeApp()) {
+    const ok = await ensureNativeMicPermission();
+    if (!ok) throw new Error("Mic denied");
+  }
+
   const constraints = interpreter ? getInterpreterAudioConstraints() : getAudioConstraints();
-  const stream = await navigator.mediaDevices.getUserMedia(constraints);
+  const stream = await getUserMediaWithTimeout(constraints);
   markMicGranted();
   void unlockBrowserAudio();
   return stream;
@@ -80,13 +115,18 @@ export async function prefetchMicrophoneAccess(): Promise<boolean> {
       return true;
     }
 
+    if (isNativeApp()) {
+      const ok = await ensureNativeMicPermission();
+      if (!ok) return false;
+    }
+
     const perm = await queryMicPermission();
     if (perm === "denied") return false;
     if (perm !== "granted") return wasMicGrantedBefore();
 
     markMicGranted();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+      const stream = await getUserMediaWithTimeout(getAudioConstraints());
       cacheMicStream(stream);
       return true;
     } catch {
@@ -113,7 +153,11 @@ export async function acquireMicrophoneStream(interpreter = false): Promise<Medi
 
   if (perm === "granted" || wasMicGrantedBefore()) {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (isNativeApp()) {
+        const ok = await ensureNativeMicPermission();
+        if (!ok) throw new Error("Mic denied");
+      }
+      const stream = await getUserMediaWithTimeout(constraints);
       markMicGranted();
       void unlockBrowserAudio();
       return stream;

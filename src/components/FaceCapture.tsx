@@ -38,6 +38,12 @@ export function FaceCapture({ title, hint, confirmLabel, onCapture, onCancel }: 
         setError("Bu qurilmada kamera ishlamayapti.");
         return;
       }
+      const { ensureNativeCameraPermission } = await import("@/lib/native-permissions");
+      const allowed = await ensureNativeCameraPermission();
+      if (!allowed) {
+        setError("Kameraga ruxsat berilmadi. Sozlamalardan kameraga ruxsat bering.");
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
         audio: false,

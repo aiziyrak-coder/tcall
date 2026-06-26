@@ -3,6 +3,7 @@
 import { Mic, AlertCircle, Settings, Phone } from "lucide-react";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
+import { isNativeApp, getNativePlatform } from "@/lib/native-app";
 
 interface MicPermissionGateProps {
   ui: Record<string, string>;
@@ -19,6 +20,10 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
   const tap = status === "tap";
   const gateTitle = denied ? ui.micDeniedTitle : tap ? ui.micTapTitle : ui.micPermissionTitle;
   const gateDesc = denied ? ui.micDeniedDesc : tap ? ui.micTapDesc : ui.micPermissionDesc;
+  const settingsHint =
+    isNativeApp() && getNativePlatform() === "android"
+      ? ui.micSettingsHintAndroid || ui.micSettingsHint
+      : ui.micSettingsHint;
 
   return (
     <div className="phone-screen flex items-center justify-center p-5">
@@ -48,7 +53,7 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
         {denied && (
           <p className="mic-gate-settings">
             <Settings className="w-3.5 h-3.5 inline mr-1" />
-            {ui.micSettingsHint}
+            {settingsHint}
           </p>
         )}
       </div>

@@ -20,6 +20,7 @@ import {
   Users,
   X,
   Pin,
+  Play,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
@@ -27,6 +28,12 @@ import { formatTcallId } from "@/lib/tcallId";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
 import { resolveChatMediaUrl } from "@/lib/chat-media-url";
+import {
+  isChatAudioMessage,
+  isChatImageMessage,
+  isChatVideoMessage,
+} from "@/lib/chat-media";
+import type { ChatViewerItem } from "@/components/ChatMediaViewer";
 import { bindTelegramBackButton } from "@/hooks/useTelegramWebApp";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { ChatGroupMembersPanel } from "@/components/ChatGroupMembersPanel";
@@ -155,8 +162,9 @@ export function ChatMessenger({
   const [groupAvatarUploading, setGroupAvatarUploading] = useState(false);
   const [recordingVoice, setRecordingVoice] = useState(false);
   const [voiceDuration, setVoiceDuration] = useState(0);
-  const [mediaViewer, setMediaViewer] = useState<{ src: string; type: "image" | "video" | "audio"; name?: string } | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<{ items: ChatViewerItem[]; index: number } | null>(null);
   const groupAvatarRef = useRef<HTMLInputElement>(null);
+  const chatManageBtnRef = useRef<HTMLButtonElement>(null);
   const voiceSessionRef = useRef<VoiceRecordSession | null>(null);
   const voiceRecordStartedRef = useRef(0);
   const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -694,6 +702,25 @@ export function ChatMessenger({
     }
   };
 
+  const openMediaGallery = useCallback((msg: ChatMessageItem) => {
+    type GalleryEntry = ChatViewerItem & { id: string };
+    const gallery: GalleryEntry[] = [];
+
+    for (const m of messages) {
+      if (m.deleted || !m.mediaUrl) continue;
+      const src = resolveChatMediaUrl(m.mediaUrl);
+      if (!src) continue;
+      if (isChatImageMessage(m.type, m.mediaMime, m.mediaName)) {
+        gallery.push({ id: m.id, src, type: "image", name: m.mediaName || undefined });
+      } else if (isChatVideoMessage(m.type, m.mediaMime, m.mediaName)) {
+        gallery.push({ id: m.id, src, type: "video", name: m.mediaName || undefined });
+      }
+    }
+
+    const idx = Math.max(0, gallery.findIndex((g) => g.id === msg.id));
+    setMediaViewer({ items: gallery.map(({ id: _id, ...rest }) => rest), index: idx });
+  }, [messages]);
+
   const sendText = async () => {
     if (!activeId || !text.trim() || sending) return;
     setSending(true);
@@ -1118,8 +1145,11 @@ export function ChatMessenger({
             )}
             <button
               type="button"
+              ref={chatManageBtnRef}
               className="chat-manage-btn"
               aria-label={isGroup ? ui.chatGroupSettings : ui.chatSettings}
+              aria-haspopup="menu"
+              aria-expanded={showManage}
               onClick={() => setShowManage(true)}
             >
               <MoreVertical className="w-5 h-5" />
@@ -1161,7 +1191,7 @@ export function ChatMessenger({
                     ui={ui}
                     onDelete={m.sender.id === userId && !m.deleted ? () => void deleteMessage(m.id) : undefined}
                     onReact={!m.deleted ? (emoji) => void handleReaction(m.id, emoji) : undefined}
-                    onOpenMedia={(src, type, name) => setMediaViewer({ src, type, name })}
+                    onOpenMedia={() => openMediaGallery(m)}
                   />
                 </Fragment>
               );
@@ -1341,6 +1371,7 @@ export function ChatMessenger({
         {showManage && activeConv && (
           <ChatThreadMenuSheet
             ui={ui}
+            anchorRef={chatManageBtnRef}
             isGroup={isGroup}
             canManageGroup={canManageGroup}
             isOwner={myRole === "owner"}
@@ -1661,10 +1692,10 @@ export function ChatMessenger({
 
       {mediaViewer && (
         <ChatMediaViewer
-          src={mediaViewer.src}
-          type={mediaViewer.type}
-          name={mediaViewer.name}
+          items={mediaViewer.items}
+          index={mediaViewer.index}
           onClose={() => setMediaViewer(null)}
+          onIndexChange={(index) => setMediaViewer((v) => (v ? { ...v, index } : null))}
         />
       )}
 
@@ -1701,29 +1732,26 @@ function MessageBubble({
   ui: Record<string, string>;
   onDelete?: () => void;
   onReact?: (emoji: string) => void;
-  onOpenMedia?: (src: string, type: "image" | "video" | "audio", name?: string) => void;
+  onOpenMedia?: () => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const body = msg.deleted ? msg.displayText : showOriginal ? msg.originalText : msg.displayText;
   const mediaSrc = resolveChatMediaUrl(msg.mediaUrl);
-  const isImage =
-    !msg.deleted &&
-    (msg.type === "image" || (msg.type === "file" && !!msg.mediaMime?.startsWith("image/")));
-  const isVideo =
-    !msg.deleted &&
-    (msg.type === "video" || (msg.type === "file" && !!msg.mediaMime?.startsWith("video/")));
-  const isAudio =
-    !msg.deleted &&
-    (msg.type === "file" && !!msg.mediaMime?.startsWith("audio/"));
+  const isImage = !msg.deleted && isChatImageMessage(msg.type, msg.mediaMime, msg.mediaName);
+  const isVideo = !msg.deleted && isChatVideoMessage(msg.type, msg.mediaMime, msg.mediaName);
+  const isAudio = !msg.deleted && isChatAudioMessage(msg.type, msg.mediaMime, msg.mediaName);
   const sourceLang = msg.sourceLang ? getLanguage(msg.sourceLang) : null;
+  const bubbleClass = isAudio
+    ? `chat-bubble chat-bubble-voice ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`
+    : `chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`;
 
   return (
     <div
       className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${
         msg.deleted ? "chat-bubble-deleted" : ""
-      }`}
+      } ${isAudio ? "chat-bubble-wrap-voice" : ""}`}
       onContextMenu={(e) => {
         if (onDelete) {
           e.preventDefault();
@@ -1734,8 +1762,8 @@ function MessageBubble({
       {!isMine && msg.sender.name && (
         <p className="chat-bubble-sender">{msg.sender.name}</p>
       )}
-      <div className={`chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`}>
-        {msg.hasTranslation && sourceLang && !showOriginal && !msg.deleted && (
+      <div className={bubbleClass}>
+        {msg.hasTranslation && sourceLang && !showOriginal && !msg.deleted && !isAudio && (
           <p className="chat-translation-badge">
             {sourceLang.flag} {ui.chatTranslatedFrom}
           </p>
@@ -1744,18 +1772,19 @@ function MessageBubble({
           <button
             type="button"
             className="chat-media-tap"
-            onClick={() => onOpenMedia?.(mediaSrc, "image", msg.mediaName || undefined)}
+            onClick={() => onOpenMedia?.()}
           >
             <img
               src={mediaSrc}
               alt={msg.mediaName || ui.chatPhoto}
               className="chat-media-image"
+              loading="lazy"
               onError={() => setMediaBroken(true)}
             />
           </button>
         )}
         {isImage && mediaSrc && mediaBroken && (
-          <button type="button" className="chat-file-link" onClick={() => onOpenMedia?.(mediaSrc, "image", msg.mediaName || undefined)}>
+          <button type="button" className="chat-file-link" onClick={() => onOpenMedia?.()}>
             📷 {msg.mediaName || ui.chatOpenFile}
           </button>
         )}
@@ -1763,10 +1792,12 @@ function MessageBubble({
           <button
             type="button"
             className="chat-media-tap chat-media-video-thumb"
-            onClick={() => onOpenMedia?.(mediaSrc, "video", msg.mediaName || undefined)}
+            onClick={() => onOpenMedia?.()}
           >
             <video src={mediaSrc} className="chat-media-video" preload="metadata" playsInline muted />
-            <span className="chat-video-play-icon" aria-hidden>▶</span>
+            <span className="chat-video-play-icon" aria-hidden>
+              <Play className="w-8 h-8 fill-white text-white" />
+            </span>
           </button>
         )}
         {isAudio && mediaSrc && (

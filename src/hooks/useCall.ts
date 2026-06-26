@@ -20,6 +20,7 @@ import {
   watchMicPermission,
   takeCachedMicStream,
 } from "@/lib/mic-permission";
+import { isNativeApp } from "@/lib/native-app";
 import {
   playMediaStreamOnElement,
   unlockBrowserAudio,
@@ -852,6 +853,29 @@ export function useCall({
         if (mounted) void tryAcquire(false);
       });
 
+      if (isNativeApp()) {
+        const perm = await queryMicPermission();
+        if (perm === "denied") {
+          if (mounted) {
+            setMicStatus("denied");
+            setCallError("media_denied");
+            setCallStatus("error");
+          }
+          return;
+        }
+
+        const cached = takeCachedMicStream();
+        if (cached) {
+          markMicGranted();
+          await startWithStream(cached);
+          return;
+        }
+
+        // Android WebView: getUserMedia faqat foydalanuvchi bosganda — avtomatik chaqirish osilib qoladi
+        if (mounted) setMicStatus("pending");
+        return;
+      }
+
       await tryAcquire(true);
     }
 
@@ -967,19 +991,28 @@ export function useCall({
 
   const requestMicrophone = useCallback(async () => {
     setMicStatus("requesting");
+    const timeout = setTimeout(() => {
+      setMicStatus((s) => (s === "requesting" ? "pending" : s));
+    }, 15000);
+
     try {
       await unlockBrowserAudio();
       const cached = takeCachedMicStream();
       const stream = cached ?? (await requestMicrophoneStream());
+      clearTimeout(timeout);
       await startSessionRef.current(stream);
       return true;
     } catch (err) {
+      clearTimeout(timeout);
       console.error("Mic permission error:", err);
+      const timedOut = err instanceof Error && err.message === "MIC_TIMEOUT";
       const perm = await queryMicPermission();
-      if (perm === "denied") {
+      if (perm === "denied" || (err instanceof Error && err.message === "Mic denied")) {
         setMicStatus("denied");
         setCallError("media_denied");
         setCallStatus("error");
+      } else if (timedOut) {
+        setMicStatus("pending");
       } else if (wasMicGrantedBefore()) {
         setMicStatus("tap");
       } else {
