@@ -63,8 +63,14 @@ export async function verifyToken(token: string): Promise<SessionPayload | null>
   }
 }
 
-/** Custom server (tsx) bilan ishlaydi — faqat NextRequest dan cookie o'qish */
+/** Cookie yoki `Authorization: Bearer` (native Android/iOS) */
 export async function getSession(req?: NextRequest): Promise<SessionPayload | null> {
+  if (req) {
+    const bearer = req.headers.get("authorization");
+    if (bearer?.startsWith("Bearer ")) {
+      return verifyToken(bearer.slice(7).trim());
+    }
+  }
   const token = req?.cookies.get("session")?.value;
   if (!token) return null;
   return verifyToken(token);

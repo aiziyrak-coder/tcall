@@ -68,19 +68,21 @@ export async function POST(req: NextRequest) {
       translationMode: user.translationMode,
     });
 
-    return jsonWithSession(
-      {
-        user: {
-          userId: user.id,
-          email: user.email,
-          name: user.name,
-          language: user.language,
-          tcallId: user.tcallId!,
-          translationMode: user.translationMode,
-        },
-      },
-      token
-    );
+    const userPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      language: user.language,
+      tcallId: user.tcallId!,
+      translationMode: user.translationMode,
+    };
+
+    const responseBody: { user: typeof userPayload; token?: string } = { user: userPayload };
+    if (req.headers.get("x-tcall-native") === "1") {
+      responseBody.token = token;
+    }
+
+    return jsonWithSession(responseBody, token);
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.errors[0].message }, { status: 400 });
