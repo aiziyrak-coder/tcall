@@ -43,8 +43,9 @@ export async function GET(req: NextRequest) {
       null;
 
     return NextResponse.json({ user: freshUser, ...(token ? { token } : {}) });
-  } catch {
-    return jsonClearSession({ user: null });
+  } catch (err) {
+    console.error("[session] GET failed:", err);
+    return NextResponse.json({ user: null });
   }
 }
 

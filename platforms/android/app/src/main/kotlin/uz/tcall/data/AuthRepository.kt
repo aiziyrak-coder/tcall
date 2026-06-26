@@ -6,11 +6,23 @@ import uz.tcall.network.RegisterRequest
 import uz.tcall.network.TcallApi
 import uz.tcall.network.UserDto
 
+data class AuthSession(
+    val user: UserDto,
+    val token: String,
+)
+
+data class SessionRefresh(
+    val user: UserDto?,
+    val token: String?,
+    /** Server tokenni rad etdi — faqat foydalanuvchi hali kirgan bo'lsa tozalash mumkin */
+    val tokenRejected: Boolean = false,
+)
+
 class AuthRepository(
     private val api: TcallApi,
     private val sessionStore: SessionStore,
 ) {
-    suspend fun login(email: String, password: String): Result<UserDto> {
+    suspend fun login(email: String, password: String): Result<AuthSession> {
         return try {
             val response = api.login(
                 LoginRequest(
@@ -21,8 +33,9 @@ class AuthRepository(
             val body = response.body()
             when {
                 response.isSuccessful && body?.user != null && !body.token.isNullOrBlank() -> {
-                    sessionStore.saveSession(body.token!!, body.user)
-                    Result.success(body.user)
+                    val session = AuthSession(body.user, body.token!!)
+                    sessionStore.saveSession(session.token, session.user)
+                    Result.success(session)
                 }
                 body?.error != null -> Result.failure(Exception(body.error))
                 response.code() == 401 -> Result.failure(Exception("Email yoki parol noto'g'ri"))
@@ -39,7 +52,7 @@ class AuthRepository(
         name: String,
         language: String,
         ref: String? = null,
-    ): Result<UserDto> {
+    ): Result<AuthSession> {
         return try {
             val response = api.register(
                 RegisterRequest(
@@ -53,8 +66,9 @@ class AuthRepository(
             val body = response.body()
             when {
                 response.isSuccessful && body?.user != null && !body.token.isNullOrBlank() -> {
-                    sessionStore.saveSession(body.token!!, body.user)
-                    Result.success(body.user)
+                    val session = AuthSession(body.user, body.token!!)
+                    sessionStore.saveSession(session.token, session.user)
+                    Result.success(session)
                 }
                 body?.error != null -> Result.failure(Exception(body.error))
                 else -> Result.failure(Exception("Ro'yxatdan o'tish xatosi (${response.code()})"))
@@ -82,28 +96,29 @@ class AuthRepository(
 
     suspend fun cachedUser(): UserDto? = sessionStore.cachedUser()
 
-    suspend fun restoreSession(): UserDto? {
-        if (sessionStore.getTokenSync().isNullOrBlank()) return null
+    /** Serverdan yangilash — sessiyani o'chirmaydi (logout alohida) */
+    suspend fun refreshSession(): SessionRefresh {
+        val token = sessionStore.getTokenSync()
+        if (token.isNullOrBlank()) return SessionRefresh(null, null)
         val cached = cachedUser()
         return try {
             val response = api.session()
-            val user = response.body()?.user
+            val body = response.body()
+            val user = body?.user
+            val newToken = body?.token?.takeIf { it.isNotBlank() }
             when {
                 response.isSuccessful && user != null -> {
-                    val token = sessionStore.getTokenSync()
-                    if (!token.isNullOrBlank()) {
-                        sessionStore.saveSession(token, user)
-                    }
-                    user
+                    val tok = newToken ?: token
+                    sessionStore.saveSession(tok, user)
+                    SessionRefresh(user, tok)
                 }
                 response.code() == 401 || response.code() == 403 -> {
-                    sessionStore.clear()
-                    null
+                    SessionRefresh(cached, token, tokenRejected = true)
                 }
-                else -> cached
+                else -> SessionRefresh(cached, token)
             }
         } catch (_: Exception) {
-            cached
+            SessionRefresh(cached, token)
         }
     }
 

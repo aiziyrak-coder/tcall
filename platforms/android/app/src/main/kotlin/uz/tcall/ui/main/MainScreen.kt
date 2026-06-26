@@ -213,7 +213,11 @@ fun MainScreen(
     }
 
     LaunchedEffect(user) {
-        services.webRtcCallManager.initialize()
+        try {
+            services.webRtcCallManager.initialize()
+        } catch (_: Exception) {
+            /* WebRTC ba'zi qurilmalarda ishga tushmasligi mumkin — ilova ochiq qolsin */
+        }
         services.socketManager.roomUsers.onEach { participants ->
             if (activeCall != null) {
                 services.webRtcCallManager.startCall(activeCall!!.roomId, participants, user.userId)

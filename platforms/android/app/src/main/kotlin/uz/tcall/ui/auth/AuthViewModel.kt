@@ -30,21 +30,69 @@ class AuthViewModel(
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
 
+    /** Login/register dan keyin eski fon yangilanishini bekor qilish */
+    private var sessionGeneration = 0
+
     init {
+        bootstrapSession()
+    }
+
+    private fun bootstrapSession() {
+        val gen = ++sessionGeneration
         viewModelScope.launch {
             val token = authRepository.currentToken()
             if (token.isNullOrBlank()) {
-                _state.value = AuthUiState(loading = false)
+                if (gen == sessionGeneration) {
+                    _state.value = AuthUiState(loading = false)
+                }
                 return@launch
             }
             val cached = authRepository.cachedUser()
-            _state.value = AuthUiState(loading = false, user = cached, token = token)
+            if (gen == sessionGeneration) {
+                _state.value = AuthUiState(loading = false, user = cached, token = token)
+            }
             withTimeoutOrNull(12_000) {
-                val user = authRepository.restoreSession() ?: cached
-                val freshToken = authRepository.currentToken()
-                _state.value = AuthUiState(loading = false, user = user, token = freshToken)
+                applyRefresh(authRepository.refreshSession(), gen, cached, token)
             }
         }
+    }
+
+    private fun applyRefresh(
+        refresh: uz.tcall.data.SessionRefresh,
+        gen: Int,
+        fallbackUser: UserDto?,
+        fallbackToken: String?,
+    ) {
+        if (gen != sessionGeneration) return
+        when {
+            refresh.user != null && !refresh.token.isNullOrBlank() -> {
+                _state.value = AuthUiState(
+                    loading = false,
+                    user = refresh.user,
+                    token = refresh.token,
+                )
+            }
+            refresh.tokenRejected && _state.value.user == null -> {
+                viewModelScope.launch {
+                    authRepository.logout()
+                    if (gen == sessionGeneration) {
+                        _state.value = AuthUiState(loading = false)
+                    }
+                }
+            }
+            else -> {
+                _state.value = AuthUiState(
+                    loading = false,
+                    user = refresh.user ?: fallbackUser ?: _state.value.user,
+                    token = refresh.token ?: fallbackToken ?: _state.value.token,
+                )
+            }
+        }
+    }
+
+    private fun commitSession(user: UserDto, token: String) {
+        sessionGeneration++
+        _state.value = AuthUiState(loading = false, user = user, token = token)
     }
 
     fun showLogin() {
@@ -65,14 +113,17 @@ class AuthViewModel(
             return
         }
         viewModelScope.launch {
+            sessionGeneration++
             _state.value = _state.value.copy(submitting = true, error = null)
             if (remember) appPreferences.saveRememberedEmail(email) else appPreferences.saveRememberedEmail(null)
             authRepository.login(email, password)
-                .onSuccess { user ->
-                    _state.value = AuthUiState(loading = false, user = user, token = authRepository.currentToken())
-                }
+                .onSuccess { session -> commitSession(session.user, session.token) }
                 .onFailure { err ->
-                    _state.value = _state.value.copy(submitting = false, error = err.message ?: "Xatolik")
+                    _state.value = _state.value.copy(
+                        submitting = false,
+                        loading = false,
+                        error = err.message ?: "Xatolik",
+                    )
                 }
         }
     }
@@ -87,13 +138,16 @@ class AuthViewModel(
             return
         }
         viewModelScope.launch {
+            sessionGeneration++
             _state.value = _state.value.copy(submitting = true, error = null)
             authRepository.register(email, password, name, language)
-                .onSuccess { user ->
-                    _state.value = AuthUiState(loading = false, user = user, token = authRepository.currentToken())
-                }
+                .onSuccess { session -> commitSession(session.user, session.token) }
                 .onFailure { err ->
-                    _state.value = _state.value.copy(submitting = false, error = err.message ?: "Xatolik")
+                    _state.value = _state.value.copy(
+                        submitting = false,
+                        loading = false,
+                        error = err.message ?: "Xatolik",
+                    )
                 }
         }
     }
@@ -117,6 +171,7 @@ class AuthViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            sessionGeneration++
             authRepository.logout()
             _state.value = AuthUiState(loading = false, user = null, token = null)
         }

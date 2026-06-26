@@ -49,6 +49,7 @@ fun TcallAppRoot(
     )
 
     val authState by authViewModel.state.collectAsState()
+    val isAuthenticated = authState.user != null && !authState.token.isNullOrBlank()
     var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
     var rememberedEmail by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -79,7 +80,7 @@ fun TcallAppRoot(
         onboardingDone == null -> {
             AppSplashScreen()
         }
-        authState.user != null -> {
+        isAuthenticated -> {
             AppLockGate(pinRepository = services.pinRepository) {
                 MainScreen(
                     user = authState.user!!,

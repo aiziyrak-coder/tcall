@@ -7,7 +7,7 @@ data class UserDto(
     @SerializedName("email") val email: String,
     @SerializedName("name") val name: String,
     @SerializedName("language") val language: String,
-    @SerializedName("tcallId") val tcallId: String,
+    @SerializedName("tcallId") val tcallId: String = "",
     @SerializedName("translationMode") val translationMode: String? = "text",
 )
 
@@ -25,6 +25,7 @@ data class LoginResponse(
 
 data class SessionResponse(
     val user: UserDto?,
+    val token: String? = null,
 )
 
 data class ErrorResponse(

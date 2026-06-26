@@ -5,6 +5,7 @@ import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset, Sparkles } from
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { readCachedToken, readCachedUser } from "@/lib/auth-cache";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
@@ -49,7 +50,11 @@ export default function DashboardPage() {
   const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (loading) return;
+    if (user) return;
+    const cached = readCachedUser();
+    const token = readCachedToken();
+    if (!cached && !token) router.push("/login");
   }, [user, loading, router]);
 
   if (loading && !user) return <AppSplash />;

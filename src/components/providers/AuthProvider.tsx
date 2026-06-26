@@ -49,31 +49,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshSession = useCallback(async () => {
     const gen = ++refreshGenRef.current;
     const cached = readCachedUser();
+    const cachedToken = readCachedToken();
+
     try {
       const r = await apiFetch("/api/auth/session");
       if (gen !== refreshGenRef.current) return cached;
+
       if (!r.ok) {
+        if (cached && cachedToken) return cached;
         if (r.status === 401 || r.status === 403) {
           clearAuthCache();
           setUserState(null);
           return null;
         }
-        if (cached && readCachedToken()) return cached;
         throw new Error("Session yuklanmadi");
       }
+
       const d = await r.json();
       if (gen !== refreshGenRef.current) return cached;
-      setUserState(d.user ?? null);
-      cacheUser(d.user ?? null);
-      if (d.token) cacheToken(d.token);
-      setError(null);
-      return d.user ?? null;
+
+      if (d.user) {
+        setUserState(d.user);
+        cacheUser(d.user);
+        if (d.token) cacheToken(d.token);
+        setError(null);
+        return d.user;
+      }
+
+      if (cached && cachedToken) return cached;
+
+      setUserState(null);
+      cacheUser(null);
+      return null;
     } catch (e) {
       if (gen !== refreshGenRef.current) return cached;
-      if (!cached || !readCachedToken()) {
-        setUserState(null);
-        cacheUser(null);
-      }
+      if (cached && cachedToken) return cached;
       setError(e instanceof Error ? e.message : "Xatolik");
       return cached;
     }
@@ -81,11 +91,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const cached = readCachedUser();
-    if (cached) setUserState(cached);
+    const token = readCachedToken();
+    if (cached && token) setUserState(cached);
     void refreshSession().finally(() => setLoading(false));
   }, [refreshSession]);
 
   const logout = useCallback(async () => {
+    refreshGenRef.current += 1;
     await apiFetch("/api/auth/session", { method: "DELETE" });
     clearAuthCache();
     setUserState(null);
