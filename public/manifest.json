@@ -2,9 +2,13 @@
   "name": "Tcall — Audio qo'ng'iroq",
   "short_name": "Tcall",
   "description": "Til chegarasisiz audio qo'ng'iroq va real-time tarjima",
-  "start_url": "/",
+  "start_url": "https://web.tcall.uz/",
   "display": "standalone",
-  "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "fullscreen",
+    "minimal-ui"
+  ],
   "background_color": "#F2F2F7",
   "theme_color": "#007AFF",
   "orientation": "portrait-primary",
@@ -26,5 +30,6 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "version": "1.000000"
 }

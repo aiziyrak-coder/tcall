@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { isLandingHost } from "@/lib/domains";
 import { enableWebAppChrome, isStandaloneDisplay } from "@/lib/app-fullscreen";
 import { isNativeApp } from "@/lib/native-app";
 import { registerServiceWorker, ensureWebPushSubscription } from "@/lib/web-push-client";
@@ -8,6 +9,7 @@ import { registerServiceWorker, ensureWebPushSubscription } from "@/lib/web-push
 /** Web: ilova kabi fixed viewport va chrome */
 export function WebAppInit() {
   useEffect(() => {
+    if (typeof window !== "undefined" && isLandingHost(window.location.hostname)) return;
     if (isNativeApp()) return;
     enableWebAppChrome();
 

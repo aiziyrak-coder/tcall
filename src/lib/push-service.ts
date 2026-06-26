@@ -3,7 +3,9 @@ import { sendFcmV1 } from "./fcm";
 import { sendWebPushToUser } from "./webpush";
 import { notifyUserTelegram, escapeHtml } from "./telegram";
 
-const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://tcall.uz";
+import { getWebAppUrl } from "./domains";
+
+const APP_URL = process.env.APP_URL || getWebAppUrl();
 
 function telegramText(payload: {
   title: string;

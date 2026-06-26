@@ -79,7 +79,7 @@ Android Studio:
 
 1. **Build → Build Bundle(s) / APK(s) → Build APK(s)**
 2. Tayyor bo'lgach: **locate** tugmasi
-3. Fayl: `android/app/build/outputs/apk/debug/app-debug.apk`
+3. Fayl: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
 4. APK ni telefonga yuboring (Telegram, USB) va oching
 5. "Noma'lum manbalardan o'rnatish" ruxsatini bering
 
@@ -100,9 +100,9 @@ Android Studio:
 Background/killed holatda push kerak bo'lsa:
 
 1. [Firebase Console](https://console.firebase.google.com) → yangi loyiha
-2. Android app qo'shing: package name **`uz.vizara.tcall`**
+2. Android app qo'shing: package name **`uz.tcall`**
 3. `google-services.json` yuklab oling
-4. Faylni joylang: `android/app/google-services.json`
+4. Faylni joylang: `platforms/android/app/google-services.json`
 5. Firebase → Project Settings → Cloud Messaging → **Server key** ni oling
 6. Server `.env` ga qo'shing:
    ```
@@ -149,7 +149,7 @@ Keyin Android Studio da qayta **Run**.
 
 ### Kiruvchi qo'ng'iroq kelmaydi (ilova yopiq)
 - `FCM_SERVER_KEY` serverda sozlanganini tekshiring
-- `google-services.json` `android/app/` da borligini tekshiring
+- `google-services.json` `platforms/android/app/` da borligini tekshiring
 - Bildirishnomalar ruxsati berilganini tekshiring
 
 ### Internet / login ishlamaydi
@@ -162,7 +162,7 @@ Keyin Android Studio da qayta **Run**.
 
 | Parametr | Qiymat |
 |----------|--------|
-| App ID | `uz.vizara.tcall` |
+| App ID | `uz.tcall` |
 | Server | `https://tcall.uz` |
 | API | `https://api.tcall.uz` |
 | Min Android | API 24 (Android 7.0) |

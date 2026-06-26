@@ -1,0 +1,35 @@
+{
+  "version": "1.000000",
+  "updated": "2026-06-26",
+  "platforms": {
+    "android": {
+      "file": "tcall-android.apk",
+      "label": "Android APK",
+      "minOs": "Android 8.0+",
+      "sizeBytes": 66560383,
+      "sizeLabel": "63.48 MB",
+      "sha256": "9fdea37c3f819fff81417e66dab34dd4d3a96ec67ba402e1cbe14be9943ea288",
+      "package": "uz.tcall",
+      "status": "available"
+    },
+    "ios": {
+      "file": null,
+      "label": "App Store",
+      "minOs": "iOS 16.0+",
+      "status": "coming_soon"
+    },
+    "windows": {
+      "file": "tcall-windows-setup.exe",
+      "label": "Windows Installer",
+      "minOs": "Windows 10/11 64-bit",
+      "status": "coming_soon"
+    },
+    "linux": {
+      "file": "tcall-linux-x64.AppImage",
+      "label": "Linux AppImage",
+      "minOs": "Ubuntu 22.04+",
+      "status": "coming_soon"
+    }
+  },
+  "webApp": "https://web.tcall.uz"
+}

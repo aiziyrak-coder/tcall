@@ -4801,3 +4801,351 @@ body.tg-webapp .liquid-tab-bar {
     scroll-behavior: auto !important;
   }
 }
+
+/* ===== Marketing landing (tcall.uz) ===== */
+body.landing-body {
+  overflow: auto;
+  overflow-x: hidden;
+  height: auto;
+  min-height: 100%;
+  background: #f8fafc;
+}
+
+.landing-root {
+  min-height: 100dvh;
+  color: #0f172a;
+}
+
+.landing-container {
+  @apply max-w-6xl mx-auto px-5 sm:px-6;
+}
+
+.landing-header {
+  @apply sticky top-0 z-50 border-b border-slate-200/80;
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.landing-header-inner {
+  @apply flex items-center justify-between gap-4 py-4;
+}
+
+.landing-nav {
+  @apply hidden sm:flex items-center gap-6;
+}
+
+.landing-nav-link {
+  @apply text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors;
+}
+
+.landing-btn-primary-sm {
+  @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+.landing-btn-primary-sm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+}
+
+.landing-hero {
+  @apply pt-12 pb-16 sm:pt-16 sm:pb-20;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(99, 102, 241, 0.15), transparent),
+    linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.landing-hero-grid {
+  @apply grid lg:grid-cols-2 gap-12 lg:gap-16 items-center;
+}
+
+.landing-eyebrow {
+  @apply inline-flex items-center gap-2 text-sm font-medium text-brand-700 bg-brand-50 border border-brand-100 rounded-full px-3 py-1;
+}
+
+.landing-hero-title {
+  @apply mt-5 text-4xl sm:text-5xl lg:text-[3.25rem] font-bold tracking-tight text-slate-900 leading-[1.1];
+}
+
+.landing-hero-subtitle {
+  @apply mt-5 text-lg text-slate-600 leading-relaxed max-w-xl;
+}
+
+.landing-hero-actions {
+  @apply mt-8 flex flex-col sm:flex-row gap-3;
+}
+
+.landing-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 text-base font-semibold text-white transition-all;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+}
+.landing-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.42);
+}
+
+.landing-btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 text-base font-semibold text-slate-700 bg-white border border-slate-200 transition-all;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+.landing-btn-secondary:hover {
+  @apply border-brand-200 text-brand-700;
+  transform: translateY(-1px);
+}
+
+.landing-hero-note {
+  @apply mt-6 text-sm text-slate-500;
+}
+
+.landing-link {
+  @apply font-semibold text-brand-600 hover:text-brand-700 underline underline-offset-2;
+}
+
+.landing-hero-visual {
+  @apply flex justify-center lg:justify-end;
+}
+
+.landing-hero-orbit {
+  @apply relative w-72 h-72 sm:w-80 sm:h-80;
+}
+
+.landing-hero-phone {
+  @apply absolute inset-0 m-auto w-44 h-72 rounded-[2rem] border-4 border-slate-800 shadow-2xl;
+  background: linear-gradient(160deg, #312e81 0%, #4f46e5 50%, #818cf8 100%);
+}
+
+.landing-hero-screen {
+  @apply absolute inset-3 rounded-[1.4rem] flex flex-col items-center justify-center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+}
+
+.landing-float-badge {
+  @apply absolute flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg border border-slate-100;
+  animation: float 6s ease-in-out infinite;
+}
+
+.landing-float-1 { top: 8%; right: 0; animation-delay: 0s; }
+.landing-float-2 { bottom: 18%; left: -4%; animation-delay: 1.5s; }
+.landing-float-3 { top: 42%; right: -8%; animation-delay: 3s; }
+
+.landing-web-banner {
+  @apply py-6 border-y border-slate-200 bg-white;
+}
+
+.landing-web-banner-inner {
+  @apply flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6;
+}
+
+.landing-web-banner-icon {
+  @apply w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0;
+}
+
+.landing-section {
+  @apply py-16 sm:py-20;
+}
+
+.landing-section-alt {
+  @apply bg-slate-50 border-t border-slate-200;
+}
+
+.landing-section-head {
+  @apply text-center max-w-2xl mx-auto mb-12;
+}
+
+.landing-section-title {
+  @apply text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight;
+}
+
+.landing-section-desc {
+  @apply mt-3 text-slate-600 text-lg;
+}
+
+.landing-features-grid {
+  @apply grid sm:grid-cols-2 lg:grid-cols-4 gap-5;
+}
+
+.landing-feature-card {
+  @apply rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow;
+}
+
+.landing-platforms-grid {
+  @apply grid sm:grid-cols-2 lg:grid-cols-4 gap-5;
+}
+
+.landing-platform-card {
+  @apply rounded-2xl bg-white border border-slate-200 p-6 shadow-sm flex flex-col;
+}
+
+.landing-platform-icon {
+  @apply w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center;
+}
+
+.landing-version-badge {
+  @apply text-[11px] font-mono font-semibold text-brand-700 bg-brand-50 px-2 py-1 rounded-md;
+}
+
+.landing-btn-download {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white mt-auto;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+}
+.landing-btn-download:hover {
+  filter: brightness(1.05);
+}
+
+.landing-btn-soon {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-medium text-slate-500 bg-slate-100 border border-slate-200;
+}
+
+.landing-download-note {
+  @apply mt-10 text-center text-sm text-slate-500 max-w-3xl mx-auto leading-relaxed;
+}
+
+.landing-code {
+  @apply font-mono text-xs bg-slate-200/60 px-1.5 py-0.5 rounded;
+}
+
+.landing-footer {
+  @apply py-10 border-t border-slate-200 bg-white;
+}
+
+.landing-footer-inner {
+  @apply flex flex-col sm:flex-row items-center gap-4 sm:gap-6 text-sm text-slate-500;
+}
+
+.landing-footer-links {
+  @apply flex flex-wrap justify-center gap-x-5 gap-y-2;
+}
+.landing-footer-links a {
+  @apply hover:text-brand-600 transition-colors;
+}
+
+/* Stats bar */
+.landing-stats-bar {
+  @apply py-8 border-y border-slate-200/80 bg-white;
+}
+.landing-stats-grid {
+  @apply grid grid-cols-2 sm:grid-cols-4 gap-6 text-center;
+}
+.landing-stat-value {
+  @apply block text-2xl sm:text-3xl font-bold text-brand-700;
+}
+.landing-stat-label {
+  @apply block text-sm text-slate-500 mt-1;
+}
+
+/* Steps */
+.landing-steps-grid {
+  @apply grid md:grid-cols-3 gap-6;
+}
+.landing-step-card {
+  @apply rounded-2xl bg-white border border-slate-200 p-6 shadow-sm;
+}
+.landing-step-num {
+  @apply inline-flex w-10 h-10 items-center justify-center rounded-full text-lg font-bold text-white;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+}
+
+/* Languages */
+.landing-lang-grid {
+  @apply flex flex-wrap gap-2 justify-center;
+}
+.landing-lang-chip {
+  @apply text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full px-4 py-2;
+}
+
+/* Install tips */
+.landing-install-tips {
+  @apply rounded-2xl bg-white border border-slate-200 p-6 max-w-3xl mx-auto;
+}
+
+/* Compare table */
+.landing-compare-wrap {
+  @apply overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm;
+}
+.landing-compare-table {
+  @apply w-full text-sm text-left;
+}
+.landing-compare-table th {
+  @apply px-4 py-3 font-semibold text-slate-700 bg-slate-50 border-b border-slate-200 text-center;
+}
+.landing-compare-table th:first-child {
+  @apply text-left;
+}
+.landing-compare-table td {
+  @apply px-4 py-3 border-b border-slate-100 text-center;
+}
+.landing-compare-table td:first-child {
+  @apply text-left text-slate-700 font-medium;
+}
+
+/* Security */
+.landing-security-grid {
+  @apply grid lg:grid-cols-2 gap-10 items-center;
+}
+.landing-security-card {
+  @apply rounded-2xl bg-white border border-slate-200 p-8 shadow-sm;
+}
+
+/* FAQ */
+.landing-faq-wrap {
+  @apply max-w-3xl mx-auto;
+}
+.landing-faq-list {
+  @apply space-y-3;
+}
+.landing-faq-item {
+  @apply rounded-xl bg-white border border-slate-200 overflow-hidden;
+}
+.landing-faq-item summary {
+  @apply px-5 py-4 font-semibold text-slate-900 cursor-pointer list-none flex items-center justify-between;
+}
+.landing-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.landing-faq-item p {
+  @apply px-5 pb-4 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3;
+}
+
+/* Final CTA */
+.landing-final-cta {
+  @apply py-16 sm:py-20;
+  background: linear-gradient(135deg, #312e81 0%, #4f46e5 50%, #6366f1 100%);
+}
+.landing-btn-white {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-semibold text-brand-700 bg-white transition-all;
+}
+.landing-btn-white:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+.landing-btn-outline-white {
+  @apply inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-semibold text-white border-2 border-white/40 transition-all;
+}
+.landing-btn-outline-white:hover {
+  @apply bg-white/10 border-white/60;
+}
+
+/* Mobile nav */
+.landing-mobile-menu-btn {
+  @apply p-2 rounded-lg text-slate-700 hover:bg-slate-100;
+}
+.landing-mobile-nav {
+  @apply border-t border-slate-200 bg-white/95 backdrop-blur-md;
+}
+.landing-mobile-nav-link {
+  @apply block py-3 text-base font-medium text-slate-700 border-b border-slate-100 last:border-0;
+}
+
+.landing-footer-copy {
+  @apply sm:ml-auto text-xs;
+}
+
+@media (max-width: 639px) {
+  .landing-header-inner .landing-nav {
+    @apply flex;
+  }
+  .landing-nav .landing-nav-link {
+    @apply hidden;
+  }
+}

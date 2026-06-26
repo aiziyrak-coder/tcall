@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "login": "POST /api/auth/login",
+    "session": "GET /api/auth/session",
+    "logout": "DELETE /api/auth/session",
+    "register": "POST /api/auth/register"
+  },
+  "calls": {
+    "dial": "POST /api/calls/dial",
+    "join": "POST /api/calls/join",
+    "end": "POST /api/calls/end",
+    "list": "GET /api/calls"
+  },
+  "chat": {
+    "conversations": "GET /api/chat/conversations",
+    "messages": "GET|POST /api/chat/conversations/{id}/messages",
+    "upload": "POST /api/chat/upload"
+  },
+  "headers": {
+    "native": "X-Tcall-Native",
+    "nativeValue": "1",
+    "authorization": "Authorization",
+    "bearerPrefix": "Bearer "
+  }
+}

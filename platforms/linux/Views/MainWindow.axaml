@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Tcall.Linux.Views.MainWindow"
+        Width="420" Height="640"
+        Title="Tcall"
+        Background="#F2F2F7">
+  <Grid Margin="24">
+    <StackPanel x:Name="LoginPanel" VerticalAlignment="Center" Spacing="12">
+      <TextBlock Text="Tcall" FontSize="32" FontWeight="Bold" Foreground="#007AFF" HorizontalAlignment="Center"/>
+      <TextBlock Text="Linux native ilova (Ubuntu, Kali, Debian…)" Opacity="0.65" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+      <TextBox x:Name="EmailBox" Watermark="Email"/>
+      <TextBox x:Name="PasswordBox" Watermark="Parol" PasswordChar="•"/>
+      <TextBlock x:Name="ErrorText" Foreground="Red" IsVisible="False" TextWrapping="Wrap"/>
+      <Button x:Name="LoginBtn" Content="Kirish" Click="OnLoginClick" HorizontalAlignment="Stretch" Height="44"/>
+    </StackPanel>
+    <StackPanel x:Name="MainPanel" IsVisible="False" VerticalAlignment="Center" Spacing="16">
+      <TextBlock x:Name="WelcomeText" FontSize="18" FontWeight="SemiBold" TextAlignment="Center"/>
+      <TextBlock Text="Terish · Xabarlar · Qo'ng'iroq — tez orada" TextAlignment="Center" Opacity="0.7"/>
+      <Button Content="Chiqish" Click="OnLogoutClick" HorizontalAlignment="Center"/>
+    </StackPanel>
+  </Grid>
+</Window>

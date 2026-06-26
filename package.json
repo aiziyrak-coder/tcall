@@ -1,6 +1,6 @@
 {
   "name": "tcall",
-  "version": "1.0.0",
+  "version": "1.000000",
   "private": true,
   "scripts": {
     "dev": "tsx server.ts",
@@ -12,10 +12,14 @@
     "smoke": "node scripts/smoke-test.mjs",
     "smoke:socket": "node scripts/socket-smoke-test.mjs",
     "smoke:all": "npm run smoke && npm run smoke:socket",
-    "mobile:sync": "npx cap sync",
-    "mobile:android": "npx cap open android",
-    "mobile:ios": "npx cap open ios",
-    "mobile:run:android": "npx cap run android"
+    "version:bump": "node scripts/version-bump.mjs",
+    "version:major": "node scripts/version-bump.mjs --major",
+    "version:sync": "node scripts/version-sync.mjs",
+    "platform:android": "cd platforms/android && ./gradlew :app:assembleDebug",
+    "publish:android-apk": "node scripts/publish-android-apk.mjs",
+    "publish:android-apk:copy": "node scripts/publish-android-apk.mjs --skip-build",
+    "platform:windows": "dotnet run --project platforms/windows/Tcall.Windows.csproj",
+    "platform:linux": "dotnet run --project platforms/linux/Tcall.Linux.csproj"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

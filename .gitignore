@@ -11,3 +11,15 @@ dist
 public/uploads/
 tsconfig.tsbuildinfo
 .locale-cache/
+
+# Native platform build artifacts
+platforms/android/.gradle/
+platforms/android/**/build/
+platforms/android/.idea/
+platforms/windows/bin/
+platforms/windows/obj/
+platforms/linux/bin/
+platforms/linux/obj/
+packages/desktop-core/bin/
+packages/desktop-core/obj/
+platforms/android/app/google-services.json

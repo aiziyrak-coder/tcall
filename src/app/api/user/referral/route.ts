@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const APP_URL = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "https://tcall.uz";
+import { getWebAppUrl } from "@/lib/domains";
+
+const APP_URL = process.env.APP_URL || getWebAppUrl();
 
 export async function GET(req: NextRequest) {
   const session = await getSession(req);

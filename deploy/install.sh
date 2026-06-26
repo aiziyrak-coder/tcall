@@ -31,7 +31,7 @@ source .env 2>/dev/null || true
 npm ci
 npx prisma generate
 npx prisma db push
-mkdir -p public/uploads/avatars public/uploads/chat
+mkdir -p public/uploads/avatars public/uploads/chat public/downloads
 
 npm run build
 
@@ -48,16 +48,17 @@ pm2 save
 
 # Nginx
 cp deploy/nginx/tcall.uz.conf /etc/nginx/sites-available/tcall.uz
+cp deploy/nginx/web.tcall.uz.conf /etc/nginx/sites-available/web.tcall.uz
 cp deploy/nginx/api.tcall.uz.conf /etc/nginx/sites-available/api.tcall.uz
 ln -sf /etc/nginx/sites-available/tcall.uz /etc/nginx/sites-enabled/tcall.uz
+ln -sf /etc/nginx/sites-available/web.tcall.uz /etc/nginx/sites-enabled/web.tcall.uz
 ln -sf /etc/nginx/sites-available/api.tcall.uz /etc/nginx/sites-enabled/api.tcall.uz
-rm -f /etc/nginx/sites-enabled/tcall.vizara.uz /etc/nginx/sites-enabled/tcallapi.vizara.uz 2>/dev/null || true
 
 nginx -t
 systemctl reload nginx
 
 if command -v certbot &>/dev/null; then
-  certbot --nginx -d tcall.uz -d www.tcall.uz -d api.tcall.uz --non-interactive --agree-tos -m admin@tcall.uz --redirect 2>/dev/null || true
+  certbot --nginx -d tcall.uz -d www.tcall.uz -d web.tcall.uz -d api.tcall.uz --non-interactive --agree-tos -m admin@tcall.uz --redirect 2>/dev/null || true
 fi
 
 echo "=== Tcall deploy tugadi ==="

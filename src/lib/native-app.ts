@@ -168,7 +168,11 @@ function urlToPath(url: string): string | null {
     if (u.protocol === "tcall:" && u.hostname === "call") {
       return `/call/${u.pathname.replace(/^\//, "").toUpperCase()}`;
     }
-    if (u.hostname === "tcall.uz" || u.hostname === "www.tcall.uz") {
+    if (
+      u.hostname === "tcall.uz" ||
+      u.hostname === "www.tcall.uz" ||
+      u.hostname === "web.tcall.uz"
+    ) {
       return u.pathname + u.search;
     }
   } catch {

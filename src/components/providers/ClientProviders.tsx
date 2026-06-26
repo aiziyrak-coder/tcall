@@ -44,7 +44,17 @@ function CallBridge({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ClientProviders({ children }: { children: React.ReactNode }) {
+export function ClientProviders({
+  children,
+  landing = false,
+}: {
+  children: React.ReactNode;
+  landing?: boolean;
+}) {
+  if (landing) {
+    return <>{children}</>;
+  }
+
   return (
     <AuthProvider>
       <ThemeInit />

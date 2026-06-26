@@ -128,7 +128,16 @@ app.prepare().then(async () => {
   io.use(async (socket, next) => {
     try {
       const cookies = parseCookies(socket.handshake.headers.cookie);
-      const token = cookies.session;
+      const authHeader = socket.handshake.headers.authorization;
+      const bearer =
+        typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+          ? authHeader.slice(7)
+          : null;
+      const authToken =
+        typeof socket.handshake.auth?.token === "string"
+          ? socket.handshake.auth.token
+          : null;
+      const token = cookies.session || bearer || authToken;
       if (!token) return next(new Error("Unauthorized"));
       const session = await verifyToken(token);
       if (!session?.userId) return next(new Error("Unauthorized"));

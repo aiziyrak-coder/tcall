@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { DEFAULT_APP_URL, getAllowedOrigins, getPublicAppUrl } from "@/lib/domains";
+import {
+  DEFAULT_WEB_APP_URL,
+  getAllowedOrigins,
+  getWebAppUrl,
+  isLandingHost,
+  isLandingStaticPath,
+  LANDING_ALLOWED_PATHS,
+  resolveHostname,
+} from "@/lib/domains";
 import { getAdminJwtSecretBytes } from "@/lib/admin-jwt";
 
 const protectedPaths = ["/dashboard", "/call", "/admin"];
@@ -15,7 +23,7 @@ function getJwtSecret() {
 
 function corsHeaders(origin: string | null) {
   const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : null;
-  const fallback = getPublicAppUrl() || DEFAULT_APP_URL;
+  const fallback = getWebAppUrl() || DEFAULT_WEB_APP_URL;
   return {
     "Access-Control-Allow-Origin": allowed || fallback,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
@@ -26,7 +34,7 @@ function corsHeaders(origin: string | null) {
 
 async function verifySessionCookie(token: string): Promise<{ ok: true; email?: string } | { ok: false }> {
   const secret = getJwtSecret();
-  if (!secret) return { ok: false }; // Always require JWT — no dev bypass
+  if (!secret) return { ok: false };
   try {
     const { payload } = await jwtVerify(token, secret);
     const email = typeof payload.email === "string" ? payload.email : undefined;
@@ -56,8 +64,23 @@ function securityHeaders(response: NextResponse) {
   return response;
 }
 
+function redirectToWebApp(request: NextRequest): NextResponse {
+  const webBase = getWebAppUrl();
+  const target = new URL(request.nextUrl.pathname + request.nextUrl.search, webBase);
+  return securityHeaders(NextResponse.redirect(target, 308));
+}
+
+function requestHostname(request: NextRequest): string {
+  return resolveHostname(
+    request.headers.get("host"),
+    request.headers.get("x-forwarded-host"),
+    request.nextUrl.hostname,
+  );
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = requestHostname(request);
 
   if (pathname.startsWith("/api")) {
     const origin = request.headers.get("origin");
@@ -69,10 +92,17 @@ export async function middleware(request: NextRequest) {
     return securityHeaders(response);
   }
 
+  // tcall.uz — faqat marketing landing, yuklab olish, legal
+  if (isLandingHost(hostname)) {
+    if (LANDING_ALLOWED_PATHS.has(pathname) || isLandingStaticPath(pathname)) {
+      return securityHeaders(NextResponse.next());
+    }
+    return redirectToWebApp(request);
+  }
+
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   if (!isProtected) return securityHeaders(NextResponse.next());
 
-  // Admin panel — alohida cookie bilan himoyalangan
   if (pathname.startsWith("/admin")) {
     if (pathname === "/admin/login") return securityHeaders(NextResponse.next());
     const adminToken = request.cookies.get("admin_session")?.value;
@@ -97,11 +127,19 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/api/:path*",
     "/dashboard/:path*",
     "/call/:path*",
     "/admin/:path*",
     "/admin/login",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/privacy",
+    "/terms",
+    "/downloads/:path*",
     "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)",
   ],
 };

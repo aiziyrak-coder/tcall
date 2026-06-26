@@ -37,9 +37,31 @@ Platforma 3 bosqichli tarjima tizimidan foydalanadi:
 
 Nutq tanish: brauzer Web Speech API (Chrome tavsiya etiladi).
 
+## Platformalar (native ilovalar)
+
+Har bir qurilma turi alohida papkada, **WebView yo‘q**. Batafsil: [ARCHITECTURE.md](./ARCHITECTURE.md)
+
+| Papka | Qurilma |
+|-------|---------|
+| `platforms/android` | Android telefon |
+| `platforms/ios` | iPhone |
+| `platforms/windows` | Windows desktop |
+| `platforms/linux` | Linux desktop (Ubuntu, Kali…) |
+
+Versiya: `1.000000` → `node scripts/version-bump.mjs` → `1.000001`
+
+```bash
+npm run platform:android   # APK
+npm run platform:windows   # .NET 8 kerak
+npm run platform:linux
+```
+
 ## Texnologiyalar
 
-- Next.js 14, React, TypeScript
+- **Server / veb:** Next.js 14, React, TypeScript
+- **Android:** Kotlin, Jetpack Compose, Retrofit
+- **iOS:** Swift, SwiftUI
+- **Desktop:** C#, Avalonia (.NET 8)
 - WebRTC (P2P video)
 - Socket.io (signaling + tarjima relay)
 - Prisma + SQLite
@@ -49,5 +71,5 @@ Nutq tanish: brauzer Web Speech API (Chrome tavsiya etiladi).
 
 - Ko'p kishilik qo'ng'iroq (3+ odam)
 - Text-to-Speech (ovozli tarjima)
-- Mobil ilova
+- Native chat / qo'ng'iroq barcha platformalarda
 - Qo'ng'iroq yozuvlari
