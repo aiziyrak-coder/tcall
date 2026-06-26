@@ -1,7 +1,9 @@
 package uz.tcall.ui.interpreter
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,130 +13,157 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import uz.tcall.ui.components.TcallGlassCard
-import uz.tcall.ui.components.TcallSectionTitle
-import uz.tcall.ui.components.tcallTextFieldColors
+import uz.tcall.ui.components.GradientPrimaryButton
+import uz.tcall.ui.components.IosListCard
+import uz.tcall.ui.strings.TcallUiStrings
 import uz.tcall.ui.theme.TcallColors
 
 @Composable
-fun InterpreterScreen(viewModel: InterpreterViewModel) {
+fun InterpreterScreen(viewModel: InterpreterViewModel, ui: TcallUiStrings) {
     val state by viewModel.state.collectAsState()
-    val fieldColors = tcallTextFieldColors()
 
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TcallSectionTitle("Jonli tarjimon", modifier = Modifier.padding(horizontal = 0.dp))
-        Text(
-            "Mikrofonni bosib ushlab turing, gapiring, keyin qo'yib yuboring.",
-            fontSize = 14.sp,
-            color = TcallColors.Slate500,
-            lineHeight = 20.sp,
+        IosListCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFECFDF5), RoundedCornerShape(16.dp)),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(Color.White),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.Translate, null, tint = TcallColors.CallGreen)
+                }
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text(ui.interpreterTitle, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TcallColors.Slate900)
+                    Text(ui.interpreterSubtitle, fontSize = 13.sp, color = TcallColors.Slate500, lineHeight = 18.sp)
+                }
+            }
+        }
+
+        GradientPrimaryButton(
+            text = if (state.recording) "..." else ui.enableMic,
+            onClick = {
+                if (state.recording) viewModel.stopAndProcess() else viewModel.startRecording()
+            },
+            enabled = !state.processing,
+            loading = state.processing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(99.dp)),
         )
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LangField("Dan", state.sourceLang, viewModel::setSourceLang, Modifier.weight(1f), fieldColors)
-            LangField("Ga", state.targetLang, viewModel::setTargetLang, Modifier.weight(1f), fieldColors)
-        }
-
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            IconButton(
-                onClick = {
-                    if (state.recording) viewModel.stopAndProcess() else viewModel.startRecording()
-                },
-                enabled = !state.processing,
-                modifier = Modifier
-                    .size(72.dp)
-                    .shadow(10.dp, CircleShape, spotColor = TcallColors.IosBlue.copy(alpha = 0.35f))
-                    .background(
-                        if (state.recording) TcallColors.Destructive else TcallColors.IosBlue,
-                        CircleShape,
-                    ),
-            ) {
-                Icon(
-                    if (state.recording) Icons.Default.Stop else Icons.Default.Mic,
-                    contentDescription = if (state.recording) "To'xtatish" else "Yozish",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-            Text(
-                when {
-                    state.processing -> "Tarjima qilinmoqda..."
-                    state.recording -> "Yozilmoqda — qo'yib yuboring"
-                    else -> "Bosib gapiring"
-                },
-                modifier = Modifier.padding(top = 10.dp),
-                fontSize = 14.sp,
-                color = TcallColors.Slate500,
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            SpeakCard(
+                title = ui.iSpeak,
+                hint = ui.hold,
+                lang = "${state.sourceLang.uppercase()} → ${state.targetLang.uppercase()}",
+                border = TcallColors.IosBlue,
+                icon = Icons.Default.Person,
+                modifier = Modifier.weight(1f),
+                active = state.recording,
             )
-            if (state.processing) {
-                CircularProgressIndicator(Modifier.padding(top = 12.dp), color = TcallColors.IosBlue)
+            SpeakCard(
+                title = ui.theySpeak,
+                hint = ui.hold,
+                lang = "${state.targetLang.uppercase()} → ${state.sourceLang.uppercase()}",
+                border = TcallColors.CallGreen,
+                icon = Icons.Default.People,
+                modifier = Modifier.weight(1f),
+                active = false,
+            )
+        }
+
+        Text(ui.holdHint, fontSize = 12.sp, color = TcallColors.Slate500, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+
+        IosListCard {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Translate, null, tint = TcallColors.Slate500.copy(0.35f), modifier = Modifier.size(48.dp))
+                Spacer(Modifier.height(8.dp))
+                if (state.processing) {
+                    CircularProgressIndicator(Modifier.size(28.dp), color = TcallColors.IosBlue)
+                } else {
+                    Text(
+                        state.translated ?: state.original ?: ui.interpreterSubtitle,
+                        fontSize = 14.sp,
+                        color = TcallColors.Slate500,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp,
+                    )
+                }
             }
         }
 
-        state.error?.let {
-            Text(it, color = TcallColors.Destructive, fontSize = 13.sp)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color.White)
+                .border(1.dp, Color(0x12000000), RoundedCornerShape(14.dp))
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "${state.sourceLang.uppercase()} ↔ ${state.targetLang.uppercase()}",
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF334155),
+            )
         }
 
-        state.original?.let { orig ->
-            ResultCard("Asl", orig)
-        }
-        state.translated?.let { tr ->
-            ResultCard("Tarjima", tr)
-        }
+        state.error?.let { Text(it, color = TcallColors.Destructive, fontSize = 13.sp) }
     }
 }
 
 @Composable
-private fun LangField(
-    label: String,
-    value: String,
-    onChange: (String) -> Unit,
+private fun SpeakCard(
+    title: String,
+    hint: String,
+    lang: String,
+    border: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
-    colors: androidx.compose.material3.TextFieldColors,
+    active: Boolean,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label, color = TcallColors.Slate500) },
-        modifier = modifier,
-        singleLine = true,
-        shape = RoundedCornerShape(12.dp),
-        colors = colors,
-    )
-}
-
-@Composable
-private fun ResultCard(title: String, text: String) {
-    TcallGlassCard {
-        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TcallColors.Slate500)
-        Spacer(Modifier.height(6.dp))
-        Text(text, fontSize = 16.sp, color = TcallColors.TextPrimary, lineHeight = 22.sp)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(2.dp, if (active) border else border.copy(0.35f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(icon, null, tint = border, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = border)
+        Text(hint, fontSize = 12.sp, color = TcallColors.Slate500)
+        Text(lang, fontSize = 11.sp, color = TcallColors.Slate500, modifier = Modifier.padding(top = 4.dp))
     }
 }

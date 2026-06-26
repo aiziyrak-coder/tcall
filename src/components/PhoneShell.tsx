@@ -271,7 +271,7 @@ export function PhoneHeader({
     <div className="phone-header-shell">
       <div className="phone-header-row">
         {showLogo && (
-          <TcallLogo size="xs" variant="icon" className="phone-header-logo" />
+          <TcallLogo size="sm" variant="full" className="phone-header-logo" />
         )}
         {contextNode}
         {!showLogo && !context && (

@@ -18,6 +18,7 @@ android {
 
         buildConfigField "String", "API_BASE_URL", "\"https://api.tcall.uz\""
         buildConfigField "String", "SOCKET_URL", "\"https://api.tcall.uz\""
+        buildConfigField "String", "WEB_BASE_URL", "\"https://web.tcall.uz\""
     }
 
     buildFeatures {

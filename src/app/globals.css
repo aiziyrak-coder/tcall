@@ -1608,7 +1608,11 @@ body.tg-webapp .ios-tab-bar {
 
 .tcall-logo-img {
   @apply relative shrink-0;
-  background: transparent;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
 }
 
 .tcall-logo-icon-crop {
@@ -1622,7 +1626,7 @@ body.tg-webapp .ios-tab-bar {
 .tcall-logo-image {
   @apply object-contain;
   display: block;
-  background: transparent;
+  background: #ffffff;
 }
 
 .tcall-logo-pulse {
@@ -1651,7 +1655,7 @@ body.tg-webapp .ios-tab-bar {
 
 /* Phone dashboard header */
 .phone-header-shell {
-  @apply block;
+  @apply block bg-white border-b border-black/5;
 }
 
 .phone-header-row {
@@ -1664,8 +1668,9 @@ body.tg-webapp .ios-tab-bar {
 
 .phone-header-logo .tcall-logo-image,
 .phone-header-logo img {
-  width: 30px !important;
-  height: 30px !important;
+  width: 108px !important;
+  height: auto !important;
+  max-height: 28px !important;
 }
 
 .phone-header-actions {

@@ -23,4 +23,22 @@ class CallRepository(private val api: TcallApi) {
     suspend fun end(roomId: String) {
         runCatching { api.endCall(EndCallRequest(roomId)) }
     }
+
+    suspend fun createRoom(): Result<String> = runCatching {
+        val res = api.createRoom()
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Xona yaratish xatosi")
+        res.body()?.roomId ?: throw Exception(res.body()?.error ?: "roomId yo'q")
+    }
+
+    suspend fun roomParticipants(roomId: String) = runCatching {
+        val res = api.roomStatus(roomId)
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Xona xatosi")
+        res.body()?.participants.orEmpty()
+    }
+
+    suspend fun callHistory() = runCatching {
+        val res = api.callHistory()
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Tarix xatosi")
+        res.body()?.calls.orEmpty()
+    }
 }

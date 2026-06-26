@@ -1,5 +1,9 @@
 package uz.tcall.ui.main
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -30,14 +34,25 @@ import uz.tcall.ui.components.PhoneShell
 import uz.tcall.ui.components.PhoneTab
 import uz.tcall.ui.dialer.DialerScreen
 import uz.tcall.ui.dialer.DialerViewModel
+import uz.tcall.ui.dialer.RecentsViewModel
 import uz.tcall.ui.friends.FriendsScreen
+import uz.tcall.ui.friends.FriendsViewModel
 import uz.tcall.ui.interpreter.InterpreterScreen
 import uz.tcall.ui.interpreter.InterpreterViewModel
 import uz.tcall.ui.room.RoomScreen
+import uz.tcall.ui.room.RoomViewModel
+import uz.tcall.ui.settings.SettingsModal
+import uz.tcall.ui.settings.SettingsViewModel
+import uz.tcall.ui.strings.uiStrings
+import uz.tcall.ui.support.SupportChatModal
+import uz.tcall.ui.vanity.VanityScreen
+import uz.tcall.ui.vanity.VanityViewModel
 
 data class ActiveCall(val roomId: String, val peerName: String)
 
-data class OpenChat(val conversationId: String, val title: String)
+data class OpenChat(val conversationId: String, val title: String, val peerTcallId: String? = null)
+
+private enum class Overlay { NONE, VANITY }
 
 @Composable
 fun MainScreen(
@@ -52,7 +67,11 @@ fun MainScreen(
     var activeCall by remember { mutableStateOf<ActiveCall?>(null) }
     var openChat by remember { mutableStateOf<OpenChat?>(null) }
     var incomingCall by remember { mutableStateOf<IncomingCallEvent?>(null) }
+    var overlay by remember { mutableStateOf(Overlay.NONE) }
+    var supportOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val ui = remember(user.language) { uiStrings(user.language) }
 
     val chatListVm: ChatListViewModel = viewModel(
         factory = remember(services) {
@@ -72,6 +91,15 @@ fun MainScreen(
             }
         },
     )
+    val recentsVm: RecentsViewModel = viewModel(
+        factory = remember(services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    RecentsViewModel(services.callRepository) as T
+            }
+        },
+    )
     val interpreterVm: InterpreterViewModel = viewModel(
         factory = remember(services) {
             object : androidx.lifecycle.ViewModelProvider.Factory {
@@ -81,11 +109,84 @@ fun MainScreen(
             }
         },
     )
+    val friendsVm: FriendsViewModel = viewModel(
+        factory = remember(services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    FriendsViewModel(services.socialRepository) as T
+            }
+        },
+    )
+    val roomVm: RoomViewModel = viewModel(
+        factory = remember(services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    RoomViewModel(services.callRepository) as T
+            }
+        },
+    )
+    val settingsVm: SettingsViewModel = viewModel(
+        factory = remember(services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    SettingsViewModel(services.userRepository) as T
+            }
+        },
+    )
+    val vanityVm: VanityViewModel = viewModel(
+        factory = remember(services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    VanityViewModel(services.userRepository) as T
+            }
+        },
+    )
 
     fun enterCall(roomId: String, peerName: String = "Suhbatdosh") {
         activeCall = ActiveCall(roomId, peerName)
         services.webRtcCallManager.initialize()
         services.socketManager.joinRoom(roomId, user)
+    }
+
+    fun openChatByTcallId(tcallId: String, title: String = tcallId) {
+        scope.launch {
+            services.chatRepository.openDirectChat(tcallId)
+                .onSuccess { convId ->
+                    openChat = OpenChat(convId, title, tcallId)
+                    selectedTab = PhoneTab.MESSAGES.name
+                }
+        }
+    }
+
+    fun startChatFromList(tcallId: String) {
+        scope.launch {
+            services.chatRepository.openDirectChat(tcallId)
+                .onSuccess { convId ->
+                    openChat = OpenChat(convId, tcallId, tcallId)
+                    chatListVm.refresh()
+                }
+        }
+    }
+
+    fun createGroupFromList(name: String, memberIds: List<String>) {
+        scope.launch {
+            services.chatRepository.createGroupChat(name, memberIds)
+                .onSuccess { convId ->
+                    openChat = OpenChat(convId, name)
+                    chatListVm.refresh()
+                }
+        }
+    }
+
+    fun dialByTcallId(tcallId: String) {
+        scope.launch {
+            services.callRepository.dial(tcallId)
+                .onSuccess { roomId -> enterCall(roomId, tcallId) }
+        }
     }
 
     LaunchedEffect(user) {
@@ -132,6 +233,14 @@ fun MainScreen(
         }
     }
 
+    when (overlay) {
+        Overlay.VANITY -> {
+            VanityScreen(viewModel = vanityVm, ui = ui, onBack = { overlay = Overlay.NONE })
+            return
+        }
+        Overlay.NONE -> Unit
+    }
+
     if (activeCall != null) {
         CallScreen(
             roomId = activeCall!!.roomId,
@@ -144,6 +253,7 @@ fun MainScreen(
                 scope.launch { services.callRepository.end(room) }
                 services.webRtcCallManager.end()
                 activeCall = null
+                recentsVm.refresh()
             },
         )
         return
@@ -165,7 +275,14 @@ fun MainScreen(
                 }
             },
         )
-        ChatThreadScreen(title = chat.title, viewModel = threadVm, onBack = { openChat = null })
+        ChatThreadScreen(
+            title = chat.title,
+            peerTcallId = chat.peerTcallId,
+            ui = ui,
+            viewModel = threadVm,
+            onBack = { openChat = null },
+            onCall = ::dialByTcallId,
+        )
         return
     }
 
@@ -189,34 +306,77 @@ fun MainScreen(
 
     val chatState by chatListVm.state.collectAsState()
 
-    PhoneShell(
-        selectedTab = tab,
-        onTabSelected = { selectedTab = it.name },
-        userName = user.name,
-        userTcallId = user.tcallId,
-        onLogout = onLogout,
-        badges = buildMap {
-            if (chatState.unreadTotal > 0) put(PhoneTab.MESSAGES, chatState.unreadTotal)
-        },
-    ) {
-        Box(Modifier.fillMaxSize()) {
-            when (tab) {
-                PhoneTab.MESSAGES -> ChatListScreen(
-                    viewModel = chatListVm,
-                    onOpenChat = { conv -> openChat = OpenChat(conv.id, conv.title) },
-                )
-                PhoneTab.FRIENDS -> FriendsScreen()
-                PhoneTab.KEYPAD -> DialerScreen(
-                    viewModel = dialerVm,
-                    onCall = { roomId -> enterCall(roomId) },
-                    onMessage = { convId ->
-                        openChat = OpenChat(convId, dialerVm.state.value.digits)
-                        selectedTab = PhoneTab.MESSAGES.name
-                    },
-                )
-                PhoneTab.ROOM -> RoomScreen()
-                PhoneTab.INTERPRETER -> InterpreterScreen(viewModel = interpreterVm)
+    Box(Modifier.fillMaxSize()) {
+        PhoneShell(
+            selectedTab = tab,
+            onTabSelected = { selectedTab = it.name },
+            userName = user.name,
+            userTcallId = user.tcallId,
+            userLanguage = user.language,
+            onLogout = onLogout,
+            onOpenSettings = { settingsOpen = true },
+            onOpenVanity = { overlay = Overlay.VANITY },
+            onOpenSupport = { supportOpen = true },
+            badges = buildMap {
+                if (chatState.unreadTotal > 0) put(PhoneTab.MESSAGES, chatState.unreadTotal)
+            },
+        ) {
+            AnimatedContent(
+                targetState = tab,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "tabContent",
+            ) { currentTab ->
+                Box(Modifier.fillMaxSize()) {
+                    when (currentTab) {
+                        PhoneTab.MESSAGES -> ChatListScreen(
+                            viewModel = chatListVm,
+                            ui = ui,
+                            onOpenChat = { conv ->
+                                val peer = conv.members?.firstOrNull { it.tcallId != null }?.tcallId
+                                openChat = OpenChat(conv.id, conv.title, peer)
+                            },
+                            onStartChat = ::startChatFromList,
+                            onCreateGroup = ::createGroupFromList,
+                        )
+                        PhoneTab.FRIENDS -> FriendsScreen(
+                            viewModel = friendsVm,
+                            ui = ui,
+                            onCall = ::dialByTcallId,
+                            onMessage = ::openChatByTcallId,
+                        )
+                        PhoneTab.KEYPAD -> DialerScreen(
+                            viewModel = dialerVm,
+                            recentsViewModel = recentsVm,
+                            ui = ui,
+                            userTcallId = user.tcallId,
+                            onCall = { roomId -> enterCall(roomId) },
+                            onMessage = { convId ->
+                                val digits = dialerVm.state.value.digits
+                                openChat = OpenChat(convId, digits, digits)
+                                selectedTab = PhoneTab.MESSAGES.name
+                            },
+                            onDialTcallId = ::dialByTcallId,
+                        )
+                        PhoneTab.ROOM -> RoomScreen(viewModel = roomVm, ui = ui, onJoinCall = { roomId -> enterCall(roomId) })
+                        PhoneTab.INTERPRETER -> InterpreterScreen(viewModel = interpreterVm, ui = ui)
+                    }
+                }
             }
         }
+
+        SupportChatModal(
+            open = supportOpen,
+            userRepository = services.userRepository,
+            ui = ui,
+            onClose = { supportOpen = false },
+        )
+
+        SettingsModal(
+            open = settingsOpen,
+            viewModel = settingsVm,
+            ui = ui,
+            onClose = { settingsOpen = false },
+            onLogout = onLogout,
+        )
     }
 }

@@ -3,6 +3,7 @@ package uz.tcall.data
 import uz.tcall.network.ChatMessageDto
 import uz.tcall.network.ConversationDto
 import uz.tcall.network.CreateDirectChatRequest
+import uz.tcall.network.CreateGroupChatRequest
 import uz.tcall.network.SendMessageRequest
 import uz.tcall.network.TcallApi
 
@@ -35,5 +36,11 @@ class ChatRepository(private val api: TcallApi) {
         val res = api.createDirectChat(CreateDirectChatRequest(tcallId))
         if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Xatolik")
         res.body()?.conversationId ?: throw Exception(res.body()?.error ?: "Chat yaratilmadi")
+    }
+
+    suspend fun createGroupChat(name: String, memberTcallIds: List<String>): Result<String> = runCatching {
+        val res = api.createGroupChat(CreateGroupChatRequest(name = name, memberTcallIds = memberTcallIds))
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Xatolik")
+        res.body()?.conversationId ?: throw Exception(res.body()?.error ?: "Guruh yaratilmadi")
     }
 }

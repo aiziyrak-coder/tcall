@@ -22,10 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.HeadsetMic
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PersonSearch
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -48,6 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Translate
+import uz.tcall.ui.strings.TcallUiStrings
+import uz.tcall.ui.strings.tabLabel
+import uz.tcall.ui.strings.uiStrings
 import uz.tcall.ui.theme.TcallColors
 import uz.tcall.ui.theme.formatTcallId
 
@@ -65,13 +71,19 @@ fun PhoneShell(
     onTabSelected: (PhoneTab) -> Unit,
     userName: String,
     userTcallId: String,
+    userLanguage: String = "uz",
     onLogout: () -> Unit,
+    onOpenSettings: () -> Unit = {},
+    onOpenVanity: () -> Unit = {},
+    onOpenSupport: () -> Unit = {},
     badges: Map<PhoneTab, Int> = emptyMap(),
     hideHeader: Boolean = false,
     hideTabBar: Boolean = false,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val ui = remember(userLanguage) { uiStrings(userLanguage) }
+
     Box(
         modifier
             .fillMaxSize()
@@ -83,9 +95,12 @@ fun PhoneShell(
             if (!hideHeader) {
                 PhoneHeader(
                     selectedTab = selectedTab,
-                    userName = userName,
+                    ui = ui,
                     userTcallId = userTcallId,
                     onLogout = onLogout,
+                    onOpenSettings = onOpenSettings,
+                    onOpenVanity = onOpenVanity,
+                    onOpenSupport = onOpenSupport,
                 )
             }
 
@@ -98,6 +113,7 @@ fun PhoneShell(
                     selectedTab = selectedTab,
                     onTabSelected = onTabSelected,
                     badges = badges,
+                    ui = ui,
                 )
             }
         }
@@ -128,66 +144,56 @@ private fun LiquidBackgroundOrbs() {
 @Composable
 private fun PhoneHeader(
     selectedTab: PhoneTab,
-    userName: String,
+    ui: TcallUiStrings,
     userTcallId: String,
     onLogout: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenVanity: () -> Unit,
+    onOpenSupport: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val tabTitle = tabLabel(selectedTab, ui)
+    val showLogo = selectedTab == PhoneTab.KEYPAD || selectedTab == PhoneTab.ROOM
+    val showPageTitle = !showLogo && selectedTab != PhoneTab.MESSAGES
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White.copy(alpha = 0.72f),
-        shadowElevation = 0.dp,
-    ) {
+    Surface(modifier = Modifier.fillMaxWidth(), color = Color.White, shadowElevation = 1.dp) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TcallLogo(variant = TcallLogoVariant.Icon, width = 32.dp)
-
-            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(TcallColors.IosBlue.copy(alpha = 0.12f))
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Icon(selectedTab.icon, contentDescription = null, modifier = Modifier.size(12.dp), tint = TcallColors.IosBlue)
-                            Text(selectedTab.label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlue)
-                        }
+            when {
+                showLogo -> {
+                    TcallLogoHeaderIcon()
+                    PhoneTabPill(selectedTab, tabTitle)
+                    if (selectedTab == PhoneTab.KEYPAD) {
+                        UserNumberChip(ui.yourNumber, formatTcallId(userTcallId))
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TcallAvatar(name = userName, size = 22.dp)
-                    Text(userName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary, maxLines = 1)
-                    Text(
-                        "#${formatTcallId(userTcallId)}",
-                        fontSize = 12.sp,
-                        color = TcallColors.Slate500,
-                        fontWeight = FontWeight.Medium,
-                    )
-                }
+                selectedTab == PhoneTab.MESSAGES -> PhoneTabPill(selectedTab, tabTitle)
+                showPageTitle -> IosPageTitle(tabTitle)
             }
-
+            Spacer(Modifier.weight(1f))
+            IosIconButton(Icons.Default.HeadsetMic, onOpenSupport, tint = TcallColors.IosBlue)
             Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Menyu", tint = TcallColors.TextPrimary)
-                }
+                IosIconButton(Icons.Default.MoreVert, { menuOpen = true })
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     DropdownMenuItem(
-                        text = { Text("Chiqish") },
-                        onClick = {
-                            menuOpen = false
-                            onLogout()
-                        },
+                        text = { Text(ui.numbers) },
+                        leadingIcon = { Icon(Icons.Default.Star, null) },
+                        onClick = { menuOpen = false; onOpenVanity() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(ui.settings) },
+                        leadingIcon = { Icon(Icons.Default.Settings, null) },
+                        onClick = { menuOpen = false; onOpenSettings() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(ui.logout, color = TcallColors.Destructive) },
+                        onClick = { menuOpen = false; onLogout() },
                     )
                 }
             }
@@ -214,6 +220,7 @@ private fun LiquidTabBar(
     selectedTab: PhoneTab,
     onTabSelected: (PhoneTab) -> Unit,
     badges: Map<PhoneTab, Int>,
+    ui: TcallUiStrings,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -232,6 +239,7 @@ private fun LiquidTabBar(
                 if (tab.center) {
                     CenterTabItem(
                         tab = tab,
+                        label = tabLabel(tab, ui),
                         selected = selectedTab == tab,
                         badge = badges[tab] ?: 0,
                         onClick = { onTabSelected(tab) },
@@ -239,6 +247,7 @@ private fun LiquidTabBar(
                 } else {
                     TabItem(
                         tab = tab,
+                        label = tabLabel(tab, ui),
                         selected = selectedTab == tab,
                         badge = badges[tab] ?: 0,
                         onClick = { onTabSelected(tab) },
@@ -252,6 +261,7 @@ private fun LiquidTabBar(
 @Composable
 private fun TabItem(
     tab: PhoneTab,
+    label: String,
     selected: Boolean,
     badge: Int,
     onClick: () -> Unit,
@@ -275,19 +285,20 @@ private fun TabItem(
         }
         Spacer(Modifier.height(4.dp))
         Box(contentAlignment = Alignment.Center) {
-            Icon(tab.icon, contentDescription = tab.label, tint = color, modifier = Modifier.size(22.dp))
+            Icon(tab.icon, contentDescription = label, tint = color, modifier = Modifier.size(22.dp))
             if (badge > 0) {
                 TabBadge(badge, Modifier.align(Alignment.TopEnd).offset(x = 6.dp, y = (-4).dp))
             }
         }
         Spacer(Modifier.height(2.dp))
-        Text(tab.label, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = color, textAlign = TextAlign.Center)
+        Text(label, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold, color = color, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun CenterTabItem(
     tab: PhoneTab,
+    label: String,
     selected: Boolean,
     badge: Int,
     onClick: () -> Unit,
@@ -308,7 +319,7 @@ private fun CenterTabItem(
                     .border(1.dp, Color.White.copy(alpha = 0.24f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(tab.icon, contentDescription = tab.label, tint = Color.White, modifier = Modifier.size(26.dp))
+                Icon(tab.icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(26.dp))
             }
             if (badge > 0) {
                 TabBadge(badge, Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp))
@@ -316,7 +327,7 @@ private fun CenterTabItem(
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            tab.label,
+            label,
             fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,
             color = if (selected) TcallColors.IosBlue else TcallColors.TabInactive,

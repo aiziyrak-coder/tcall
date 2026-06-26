@@ -31,6 +31,9 @@ interface TcallApi {
     @POST("/api/chat/conversations")
     suspend fun createDirectChat(@Body body: CreateDirectChatRequest): Response<CreateChatResponse>
 
+    @POST("/api/chat/conversations")
+    suspend fun createGroupChat(@Body body: CreateGroupChatRequest): Response<CreateChatResponse>
+
     @GET("/api/chat/conversations/{id}")
     suspend fun messages(
         @Path("id") conversationId: String,
@@ -70,4 +73,73 @@ interface TcallApi {
     // Push
     @POST("/api/user/device-token")
     suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): Response<OkResponse>
+
+    // Contacts & friends
+    @GET("/api/contacts")
+    suspend fun contacts(): Response<ContactsResponse>
+
+    @DELETE("/api/contacts/{id}")
+    suspend fun deleteContact(@Path("id") id: String): Response<OkResponse>
+
+    @GET("/api/blocks")
+    suspend fun blocks(): Response<BlocksResponse>
+
+    @POST("/api/blocks")
+    suspend fun blockUser(@Body body: BlockRequest): Response<OkResponse>
+
+    @DELETE("/api/blocks")
+    suspend fun unblockUser(@Query("tcallId") tcallId: String): Response<OkResponse>
+
+    @GET("/api/friend-requests")
+    suspend fun friendRequests(): Response<FriendRequestsResponse>
+
+    @PATCH("/api/friend-requests")
+    suspend fun respondFriendRequest(@Body body: FriendRequestActionRequest): Response<OkResponse>
+
+    @POST("/api/friend-requests")
+    suspend fun sendFriendRequest(@Body body: SendFriendRequestRequest): Response<OkResponse>
+
+    @GET("/api/users/lookup")
+    suspend fun lookupUser(@Query("tcallId") tcallId: String): Response<LookupResponse>
+
+    // User settings
+    @GET("/api/user/settings")
+    suspend fun userSettings(): Response<UserSettingsResponse>
+
+    @PATCH("/api/user/settings")
+    suspend fun updateSettings(@Body body: UpdateSettingsRequest): Response<UserSettingsResponse>
+
+    @POST("/api/user/password")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): Response<OkResponse>
+
+    // Rooms & history
+    @POST("/api/calls")
+    suspend fun createRoom(): Response<CreateRoomResponse>
+
+    @GET("/api/calls/room")
+    suspend fun roomStatus(@Query("roomId") roomId: String): Response<RoomStatusResponse>
+
+    @GET("/api/calls")
+    suspend fun callHistory(): Response<CallHistoryResponse>
+
+    // Vanity numbers
+    @GET("/api/numbers")
+    suspend fun vanityNumbers(
+        @Query("tier") tier: String? = null,
+        @Query("q") q: String? = null,
+        @Query("page") page: Int? = null,
+    ): Response<VanityNumbersResponse>
+
+    @POST("/api/numbers/check")
+    suspend fun checkVanityNumber(@Body body: VanityRequestBody): Response<VanityCheckResponse>
+
+    @POST("/api/numbers/request")
+    suspend fun requestVanityNumber(@Body body: VanityRequestBody): Response<OkResponse>
+
+    // Support
+    @GET("/api/support")
+    suspend fun supportMessages(): Response<SupportMessagesResponse>
+
+    @POST("/api/support")
+    suspend fun sendSupportMessage(@Body body: SendSupportRequest): Response<SendSupportResponse>
 }

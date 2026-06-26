@@ -7,6 +7,8 @@ import uz.tcall.data.AppPreferences
 import uz.tcall.data.CallRepository
 import uz.tcall.data.ChatRepository
 import uz.tcall.data.SessionStore
+import uz.tcall.data.SocialRepository
+import uz.tcall.data.UserRepository
 import uz.tcall.network.ApiClient
 import uz.tcall.socket.TcallSocketManager
 import uz.tcall.webrtc.WebRtcCallManager
@@ -18,6 +20,8 @@ class TcallServices private constructor(
     val apiClient: ApiClient,
     val chatRepository: ChatRepository,
     val callRepository: CallRepository,
+    val socialRepository: SocialRepository,
+    val userRepository: UserRepository,
     val socketManager: TcallSocketManager,
     val webRtcCallManager: WebRtcCallManager,
     val interpreterRecorder: InterpreterAudioRecorder,
@@ -45,6 +49,8 @@ class TcallServices private constructor(
         apiClient = apiClient,
         chatRepository = ChatRepository(apiClient.api),
         callRepository = CallRepository(apiClient.api),
+        socialRepository = SocialRepository(apiClient.api),
+        userRepository = UserRepository(apiClient.api),
         socketManager = socketManager,
         webRtcCallManager = WebRtcCallManager(context, socketManager),
         interpreterRecorder = InterpreterAudioRecorder(context, apiClient.api),

@@ -26,7 +26,7 @@ export const PLATFORM_DOWNLOADS: PlatformDownload[] = [
     subtitle: "Telefon va planshet",
     minOs: "Android 8.0 (Oreo) yoki yangiroq",
     fileLabel: "APK",
-    downloadPath: `${base}/downloads/tcall-android.apk`,
+    downloadPath: `${base}/downloads/tcall-android.apk?v=${VERSION}`,
     available: true,
     installHint: "APK yuklab oling → «Nomaʼlum manbalar» ruxsatini yoqing → o‘rnating.",
     requirements: ["ARM64 yoki ARMv7", "Kamera va mikrofon", "Internet"],

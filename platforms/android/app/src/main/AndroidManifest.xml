@@ -75,6 +75,10 @@
     <!-- Kamera — PIN tiklash uchun yuzni skanerlash -->
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!-- Joylashuv — vaqt mintaqasi va xavfsizlik -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- Bildirishnomalar — kiruvchi qo'ng'iroq (dialer) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />

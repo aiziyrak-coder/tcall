@@ -46,6 +46,8 @@ data class ChatMessageDto(
     val type: String,
     val originalText: String?,
     val displayText: String?,
+    @SerializedName("sourceLang") val sourceLang: String? = null,
+    @SerializedName("hasTranslation") val hasTranslation: Boolean? = false,
     val mediaUrl: String?,
     val mediaMime: String?,
     val mediaName: String?,
@@ -96,6 +98,12 @@ data class SendMessageResponse(
 
 data class CreateDirectChatRequest(
     val tcallId: String,
+)
+
+data class CreateGroupChatRequest(
+    val type: String = "group",
+    val name: String,
+    @SerializedName("memberTcallIds") val memberTcallIds: List<String>,
 )
 
 data class CreateChatResponse(
