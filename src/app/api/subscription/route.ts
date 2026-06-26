@@ -9,6 +9,7 @@ import {
   createPendingPayment,
   paymentConfigured,
   expireOldPayments,
+  syncPendingPaymentWithCryptomus,
 } from "@/lib/payments";
 
 function paymentView(p: {
@@ -35,15 +36,24 @@ export async function GET(req: NextRequest) {
 
   await expireOldPayments();
 
-  const [plan, sub, pending] = await Promise.all([
+  let pending = await prisma.payment.findFirst({
+    where: { userId: session.userId, status: "pending", expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (pending?.paymentUrl) {
+    await syncPendingPaymentWithCryptomus(pending.id).catch(() => false);
+    pending = await prisma.payment.findFirst({
+      where: { userId: session.userId, status: "pending", expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  const [plan, sub] = await Promise.all([
     getUserPlan(session.userId),
     prisma.subscription.findUnique({
       where: { userId: session.userId },
       select: { plan: true, status: true, expiresAt: true, startedAt: true, price: true },
-    }),
-    prisma.payment.findFirst({
-      where: { userId: session.userId, status: "pending", expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: "desc" },
     }),
   ]);
 

@@ -25,6 +25,10 @@ function bridge(): CapBridge | null {
 
 export function isNativeApp(): boolean {
   try {
+    if (typeof window !== "undefined") {
+      const tn = (window as unknown as { TcallNative?: { isAndroid?: boolean } }).TcallNative;
+      if (tn?.isAndroid) return true;
+    }
     return bridge()?.isNativePlatform?.() === true;
   } catch {
     return false;
@@ -33,6 +37,8 @@ export function isNativeApp(): boolean {
 
 export function getNativePlatform(): "android" | "ios" | "web" {
   try {
+    const tn = (window as unknown as { TcallNative?: { platform?: string } }).TcallNative;
+    if (tn?.platform === "android") return "android";
     const p = bridge()?.getPlatform?.();
     if (p === "android" || p === "ios") return p;
   } catch {

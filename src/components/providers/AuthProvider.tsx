@@ -96,6 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshSession().finally(() => setLoading(false));
   }, [refreshSession]);
 
+  useEffect(() => {
+    if (!user) return;
+    const bridge = (window as unknown as { TcallAndroidBridge?: { registerPush: (t: string) => void } })
+      .TcallAndroidBridge;
+    const token = readCachedToken();
+    if (bridge?.registerPush && token) bridge.registerPush(token);
+  }, [user]);
+
   const logout = useCallback(async () => {
     refreshGenRef.current += 1;
     await apiFetch("/api/auth/session", { method: "DELETE" });

@@ -1,4 +1,8 @@
-# Gson / Retrofit API modellari
+# WebView / JavascriptInterface
+-keepclassmembers class uz.tcall.web.TcallAndroidBridge { *; }
+-keep class uz.tcall.web.** { *; }
+
+# Gson / Retrofit (arxiv native modullar)
 -keepattributes Signature
 -keepattributes *Annotation*
 -keepattributes InnerClasses

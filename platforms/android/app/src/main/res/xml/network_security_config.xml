@@ -7,6 +7,6 @@
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">tcall.uz</domain>
-        <domain includeSubdomains="true">api.tcall.uz</domain>
+        <domain includeSubdomains="true">web.tcall.uz</domain>
     </domain-config>
 </network-security-config>

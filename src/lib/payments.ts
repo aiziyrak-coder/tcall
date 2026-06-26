@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { SUBSCRIPTION_PRICES } from "@/lib/subscription";
 import { notifyAdminTelegram } from "@/lib/telegram";
-import { createCryptomusInvoice, cryptomusConfigured } from "@/lib/cryptomus";
+import { createCryptomusInvoice, cryptomusConfigured, fetchCryptomusPaymentInfo, isCryptomusFailedStatus, isCryptomusPaidStatus } from "@/lib/cryptomus";
 
 function fmtSom(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
@@ -81,6 +81,7 @@ export async function createPendingPayment(
       amount: base,
       currency: "UZS",
       lifetimeSec,
+      additionalData: JSON.stringify({ userId, plan, durationDays }),
     });
 
     const invoiceExpires = invoice.expired_at
@@ -163,4 +164,31 @@ export async function activatePayment(
   );
 
   return prisma.payment.findUnique({ where: { id: payment.id } });
+}
+
+/** Webhook kechiksa — Cryptomus dan holatni tekshirib obunani yoqadi */
+export async function syncPendingPaymentWithCryptomus(paymentId: string): Promise<boolean> {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment || payment.status !== "pending") return false;
+
+  const info = await fetchCryptomusPaymentInfo({
+    orderId: payment.id,
+    uuid: payment.externalId ?? undefined,
+  });
+  if (!info) return false;
+
+  const status = info.payment_status || info.status || "";
+  if (isCryptomusPaidStatus(status)) {
+    await activatePayment(payment.id, { source: "cryptomus" });
+    return true;
+  }
+
+  if (isCryptomusFailedStatus(status)) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: status === "cancel" ? "expired" : "cancelled", note: `cryptomus:${status}` },
+    });
+  }
+
+  return false;
 }

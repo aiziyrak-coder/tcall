@@ -29,12 +29,16 @@ export function apiUrl(path: string): string {
   return base ? `${base}${path}` : path;
 }
 
+function isNativeClient(): boolean {
+  if (typeof window === "undefined") return false;
+  const tn = (window as unknown as { TcallNative?: { isAndroid?: boolean } }).TcallNative;
+  if (tn?.isAndroid) return true;
+  return window.Capacitor?.isNativePlatform?.() === true;
+}
+
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
-  if (
-    typeof window !== "undefined" &&
-    window.Capacitor?.isNativePlatform?.()
-  ) {
+  if (isNativeClient()) {
     headers.set("X-Tcall-Native", "1");
   }
   const token = readCachedToken();

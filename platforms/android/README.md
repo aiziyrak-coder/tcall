@@ -1,13 +1,6 @@
-# Tcall Android — haqiqiy native (Kotlin + Compose)
+# Tcall Android — WebView (web.tcall.uz)
 
-**WebView yo‘q.** Capacitor arxivi ishlatilmaydi.
-
-Batafsil: [NATIVE_ANDROID.md](./NATIVE_ANDROID.md)
-
-## Talablar
-
-- Android Studio Ladybug yoki yangiroq
-- JDK 17
+Android ilova **web.tcall.uz** ni to‘liq WebView ichida ochadi — dizayn va funksiyalar veb bilan **bir xil**.
 
 ## Qurish
 
@@ -18,28 +11,20 @@ cd platforms/android
 
 APK: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
 
-## Versiya
+Nashr: `npm run publish:android-apk` (loyiha ildizida)
 
-`node scripts/version-sync.mjs` — `versionName` va `versionCode` yangilanadi.
+## Imkoniyatlar
 
-## Imkoniyatlar (native)
+| Funksiya | Holat |
+|----------|--------|
+| Login / dashboard / chat / qo‘ng‘iroq | ✅ veb bilan bir xil |
+| Sozlamalar / obuna / Cryptomus | ✅ veb bilan bir xil |
+| WebRTC (mikrofon/kamera) | ✅ WebView ruxsatlari |
+| Push (FCM) | ✅ |
+| Deep link `/call/ROOM` | ✅ |
 
-| Modul | Holat |
-|-------|--------|
-| Login / sessiya | ✅ |
-| Chat (REST + Socket.IO real-time) | ✅ |
-| Qo'ng'iroq (WebRTC + signaling) | ✅ |
-| Jonli tarjimon (mikrofon → API → TTS) | ✅ |
-| Push (FCM) | ✅ (`google-services.json` kerak) |
-| Do'stlar ro'yxati | Tez orada |
+## Texnik
 
-## FCM sozlash
-
-**Tayyor** — `platforms/android/app/google-services.json` mavjud (loyiha: `tcall-28118`, package: `uz.tcall`).
-
-Batafsil: [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
-
-Agar fayl yo‘qolsa:
-```bash
-firebase apps:sdkconfig ANDROID 1:745149350790:android:2db37ef44a22d195206207 --project tcall-28118 -o platforms/android/app/google-services.json
-```
+- `MainActivity` → `https://web.tcall.uz/dashboard`
+- `TcallAndroidBridge` — native push ro‘yxatdan o‘tish
+- Eski native Compose kod arxivda (`app/src/main/kotlin/uz/tcall/ui/`)
