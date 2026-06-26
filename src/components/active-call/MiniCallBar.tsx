@@ -46,11 +46,9 @@ export function MiniCallBar() {
   const activityHint =
     call.translationActivity === "processing"
       ? ui.interpreterProcessing
-      : call.translationActivity === "speaking"
-        ? ui.interpreterSpeaking
-        : call.translationActivity === "listening"
-          ? ui.interpreterListening
-          : null;
+      : call.translationActivity === "listening"
+        ? ui.interpreterListening
+        : null;
 
   return (
     <div className="mini-call-bar" role="region" aria-label={ui.callInProgress}>

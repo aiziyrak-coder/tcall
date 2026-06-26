@@ -6,8 +6,6 @@ import {
   Mic,
   MicOff,
   PhoneOff,
-  Type,
-  Volume2,
   Radio,
   ChevronDown,
   Languages,
@@ -173,17 +171,15 @@ export function AudioCallRoom() {
     );
   }
 
-  const latestTranslation = call.translations.filter((t) => t.speaker !== user.name).slice(-1)[0];
-  const latestOwn = call.translations.filter((t) => t.speaker === user.name).slice(-1)[0];
+  const partnerLines = call.translations.filter((t) => t.speaker !== user.name).slice(-6);
+  const ownLines = call.translations.filter((t) => t.speaker === user.name).slice(-3);
 
   const activityLabel =
     call.translationActivity === "processing"
       ? ui.interpreterProcessing
-      : call.translationActivity === "speaking"
-        ? ui.interpreterSpeaking
-        : call.translationActivity === "listening"
-          ? ui.interpreterListening
-          : null;
+      : call.translationActivity === "listening"
+        ? ui.interpreterListening
+        : null;
 
   const errorLabel =
     call.translationError === "no_speech"
@@ -198,7 +194,7 @@ export function AudioCallRoom() {
 
   const statusLabel =
     !call.socketConnected ? ui.reconnecting
-    : call.connectionSlow && (call.callStatus === "connecting" || call.callStatus === "waiting" || call.callStatus === "ringing")
+    : call.connectionSlow
       ? ui.connectingSlow
     : call.callStatus === "active" ? formatDuration(call.callDuration)
     : call.callStatus === "ringing" ? ui.ringing
@@ -292,28 +288,30 @@ export function AudioCallRoom() {
           </p>
         )}
 
-        {latestTranslation && (
-          <div className={`phone-subtitle ${call.translationMode === "voice" ? "phone-subtitle-voice" : ""}`}>
-            <p className="text-slate-400 text-[10px] mb-1">{latestTranslation.speaker} · {ui.translated}</p>
-            <p className="text-slate-900 font-medium">{latestTranslation.translated}</p>
-            {latestTranslation.original !== latestTranslation.translated && (
-              <p className="text-slate-500 text-xs mt-1 italic">{latestTranslation.original}</p>
-            )}
+        {translationEnabled && partnerLines.length > 0 && (
+          <div className="phone-subtitles-feed" onClick={(e) => e.stopPropagation()}>
+            {partnerLines.map((line) => (
+              <div key={line.id} className="phone-subtitle">
+                <p className="text-slate-400 text-[10px] mb-1">{line.speaker} · {ui.translated}</p>
+                <p className="text-slate-900 font-medium">{line.translated}</p>
+                {line.original !== line.translated && (
+                  <p className="text-slate-500 text-xs mt-1 italic">{line.original}</p>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {latestOwn && (
-          <div className="phone-subtitle-own">
-            <p className="text-slate-500 text-xs">{ui.youSaid}: {latestOwn.original}</p>
-            {latestOwn.translated !== latestOwn.original && (
-              <p className="text-brand-700 text-xs mt-0.5 font-medium">→ {latestOwn.translated}</p>
-            )}
-          </div>
-        )}
-
-        {call.translationMode === "voice" && call.isSpeaking && (
-          <div className="phone-voice-badge">
-            <Volume2 className="w-4 h-4 animate-pulse" /> {ui.voiceSpeaking}
+        {translationEnabled && ownLines.length > 0 && (
+          <div className="phone-subtitles-own-feed" onClick={(e) => e.stopPropagation()}>
+            {ownLines.map((line) => (
+              <div key={line.id} className="phone-subtitle-own">
+                <p className="text-slate-500 text-xs">{ui.youSaid}: {line.original}</p>
+                {line.translated !== line.original && (
+                  <p className="text-brand-700 text-xs mt-0.5 font-medium">→ {line.translated}</p>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -334,28 +332,6 @@ export function AudioCallRoom() {
             <span>{ui.interpreterHoldToTalk}</span>
             <span className="text-[10px] font-normal opacity-80">{ui.interpreterReleaseHint}</span>
           </button>
-        )}
-
-        {translationEnabled && (
-          <div className="phone-mode-toggle" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => call.setTranslationMode("text")}
-              className={`phone-mode-btn ${call.translationMode === "text" ? "phone-mode-active" : ""}`}
-            >
-              <Type className="w-4 h-4" /> {ui.textTranslation}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleTap();
-                call.setTranslationMode("voice");
-              }}
-              className={`phone-mode-btn ${call.translationMode === "voice" ? "phone-mode-active" : ""}`}
-            >
-              <Volume2 className="w-4 h-4" /> {ui.voiceTranslation}
-            </button>
-          </div>
         )}
       </div>
 

@@ -38,7 +38,7 @@ function notifyCallsChanged() {
 export type CallStatus = "connecting" | "waiting" | "ringing" | "active" | "ended" | "error";
 export type CallError = "media_denied" | "room_full" | "room_error" | "ai_error" | null;
 export type MicStatus = "checking" | "pending" | "requesting" | "granted" | "denied" | "tap";
-export type TranslationMode = "text" | "voice";
+export type TranslationMode = "text";
 
 interface UseCallOptions {
   roomId: string;
@@ -50,10 +50,27 @@ interface UseCallOptions {
   enabled: boolean;
 }
 
-const OFFER_RETRY_MS = 12_000;
-const MAX_OFFER_RETRIES = 8;
-const RELAY_FALLBACK_AFTER = 3;
-const USER_LEFT_GRACE_MS = 10_000;
+const OFFER_RETRY_MS = 15_000;
+const MAX_OFFER_RETRIES = 24;
+const RELAY_FALLBACK_AFTER = 2;
+const USER_LEFT_GRACE_MS = 30_000;
+const ICE_DISCONNECT_RECOVERY_MS = 18_000;
+const CONNECTION_DISCONNECT_RECOVERY_MS = 14_000;
+
+async function optimizeAudioSender(pc: RTCPeerConnection) {
+  try {
+    const sender = pc.getSenders().find((s) => s.track?.kind === "audio");
+    if (!sender) return;
+    const params = sender.getParameters();
+    if (!params.encodings?.length) params.encodings = [{}];
+    params.encodings[0].maxBitrate = 28_000;
+    params.encodings[0].priority = "high";
+    params.encodings[0].networkPriority = "high";
+    await sender.setParameters(params);
+  } catch {
+    /* brauzer qo'llamasa ham davom */
+  }
+}
 
 export function useCall({
   roomId,
@@ -68,13 +85,12 @@ export function useCall({
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [translations, setTranslations] = useState<TranslationMessage[]>([]);
   const [isMuted, setIsMuted] = useState(false);
-  const [translationModeState, setTranslationModeState] = useState<TranslationMode>(translationMode);
+  const [translationModeState] = useState<TranslationMode>("text");
   const [callStatus, setCallStatus] = useState<CallStatus>("connecting");
   const [callError, setCallError] = useState<CallError>(null);
   const [isListening, setIsListening] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [connectionSlow, setConnectionSlow] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [translationActivity, setTranslationActivity] = useState<TranslationActivity>("idle");
   const [translationError, setTranslationError] = useState<TranslationErrorCode | null>(null);
@@ -90,7 +106,7 @@ export function useCall({
   const intentionalEndRef = useRef(false);
   const makingOfferRef = useRef(false);
   const isMutedRef = useRef(false);
-  const translationModeRef = useRef<TranslationMode>(translationMode);
+  const translationModeRef = useRef<TranslationMode>("text");
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const offerRetryRef = useRef(0);
   const relayFallbackRef = useRef(false);
@@ -110,6 +126,7 @@ export function useCall({
   const remoteAudioGainRef = useRef<GainNode | null>(null);
   const reofferDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const iceDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectionRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playRemoteAudioRef = useRef<() => void>(() => {});
   const optsRef = useRef({ roomId, userId, userName, userLanguage, isHost });
   optsRef.current = { roomId, userId, userName, userLanguage, isHost };
@@ -128,8 +145,8 @@ export function useCall({
   }, [isHost]);
 
   useEffect(() => {
-    translationModeRef.current = translationModeState;
-  }, [translationModeState]);
+    translationModeRef.current = "text";
+  }, []);
 
   const clearSlowHint = useCallback(() => {
     if (slowHintTimerRef.current) {
@@ -146,7 +163,8 @@ export function useCall({
       if (
         callStatusRef.current === "connecting" ||
         callStatusRef.current === "ringing" ||
-        callStatusRef.current === "waiting"
+        callStatusRef.current === "waiting" ||
+        callStatusRef.current === "active"
       ) {
         setConnectionSlow(true);
       }
@@ -181,6 +199,10 @@ export function useCall({
       clearTimeout(iceDisconnectTimerRef.current);
       iceDisconnectTimerRef.current = null;
     }
+    if (connectionRecoveryTimerRef.current) {
+      clearTimeout(connectionRecoveryTimerRef.current);
+      connectionRecoveryTimerRef.current = null;
+    }
     iceQueueRef.current = [];
     remoteStreamRef.current = null;
     setRemoteStream(null);
@@ -209,7 +231,7 @@ export function useCall({
   }, []);
 
   const unlockAudio = useCallback(async () => {
-    return translationEngineRef.current?.unlockAudio() ?? false;
+    return unlockBrowserAudio();
   }, []);
 
   const startTimer = useCallback(() => {
@@ -263,13 +285,29 @@ export function useCall({
       pc.onconnectionstatechange = () => {
         const state = pc.connectionState;
         if (state === "connected") {
+          if (connectionRecoveryTimerRef.current) {
+            clearTimeout(connectionRecoveryTimerRef.current);
+            connectionRecoveryTimerRef.current = null;
+          }
           setCallStatus("active");
           startTimer();
           clearOfferRetry();
           clearSlowHint();
+          void optimizeAudioSender(pc);
           if (streamRef.current) startTranslation();
-        } else if (state === "failed" || state === "disconnected") {
+        } else if (state === "failed") {
           scheduleReofferRef.current();
+        } else if (state === "disconnected") {
+          startSlowHint();
+          if (!connectionRecoveryTimerRef.current) {
+            connectionRecoveryTimerRef.current = setTimeout(() => {
+              connectionRecoveryTimerRef.current = null;
+              const current = pcRef.current?.connectionState;
+              if (current === "disconnected" || current === "failed") {
+                scheduleReofferRef.current();
+              }
+            }, CONNECTION_DISCONNECT_RECOVERY_MS);
+          }
         }
       };
 
@@ -282,25 +320,32 @@ export function useCall({
             clearTimeout(iceDisconnectTimerRef.current);
             iceDisconnectTimerRef.current = null;
           }
+          if (connectionRecoveryTimerRef.current) {
+            clearTimeout(connectionRecoveryTimerRef.current);
+            connectionRecoveryTimerRef.current = null;
+          }
           if (streamRef.current && !isMutedRef.current) {
             startTranslation();
           }
         } else if (ice === "failed") {
           scheduleReofferRef.current();
         } else if (ice === "disconnected") {
+          startSlowHint();
           if (iceDisconnectTimerRef.current) clearTimeout(iceDisconnectTimerRef.current);
           iceDisconnectTimerRef.current = setTimeout(() => {
             iceDisconnectTimerRef.current = null;
-            if (pcRef.current?.iceConnectionState === "disconnected") {
+            const current = pcRef.current?.iceConnectionState;
+            if (current === "disconnected" || current === "failed") {
               scheduleReofferRef.current();
             }
-          }, 4000);
+          }, ICE_DISCONNECT_RECOVERY_MS);
         }
       };
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
         pc.addTrack(audioTrack, stream);
+        void optimizeAudioSender(pc);
       }
       return pc;
     },
@@ -354,12 +399,13 @@ export function useCall({
 
   const scheduleReoffer = useCallback(() => {
     if (offerRetryRef.current >= MAX_OFFER_RETRIES) {
-      setCallError("room_error");
-      setCallStatus("error");
-      return;
-    }
-    if (offerRetryRef.current >= RELAY_FALLBACK_AFTER && !relayFallbackRef.current) {
-      relayFallbackRef.current = true;
+      if (!relayFallbackRef.current) {
+        relayFallbackRef.current = true;
+        offerRetryRef.current = RELAY_FALLBACK_AFTER;
+      } else {
+        offerRetryRef.current = 0;
+      }
+      startSlowHint();
     }
     const other = otherParticipantRef.current;
     const stream = streamRef.current;
@@ -384,7 +430,7 @@ export function useCall({
       } else {
         sock.emit("request-reoffer", { targetId: peer.socketId });
       }
-    }, 2000);
+    }, 2500);
   }, [resetPeerConnection, sendOffer, startSlowHint]);
 
   const endCallDueToPartnerLeft = useCallback(() => {
@@ -561,24 +607,15 @@ export function useCall({
       getUserLang: () => optsRef.current.userLanguage,
       getPartnerLang: () => partnerLanguageRef.current,
       getSocket: () => socketRef.current,
-      getTranslationMode: () => translationModeRef.current,
       onActivity: setTranslationActivity,
       onListening: setIsListening,
-      onSpeaking: setIsSpeaking,
-      onTranslation: (entry) => setTranslations((prev) => [...prev.slice(-29), entry]),
+      onTranslation: (entry) => setTranslations((prev) => [...prev.slice(-39), entry]),
       onError: (code, source) => {
         if (code === "no_speech" && source === "auto") return;
         setTranslationError(code);
       },
-      duckRemote: (duck) => {
-        const el = remoteAudioRef.current;
-        if (el) el.volume = duck ? 0.25 : 1;
-        const gain = remoteAudioGainRef.current;
-        if (gain) gain.gain.value = duck ? 0.25 : 1;
-      },
     });
     translationEngineRef.current = engine;
-    engine.setTranslationMode(translationModeRef.current);
 
     async function startWithStream(stream: MediaStream) {
       if (!mounted || sessionStartedRef.current) {
@@ -589,7 +626,6 @@ export function useCall({
 
       try {
         await unlockBrowserAudio();
-        void engine.unlockAudio();
         engine.attachStream(stream);
 
         wakeLockRef.current = await requestWakeLock();
@@ -618,7 +654,7 @@ export function useCall({
             userId: o.userId,
             name: o.userName,
             language: o.userLanguage,
-            translationMode: translationModeRef.current,
+            translationMode: "text",
             isHost: o.isHost,
           });
         };
@@ -971,21 +1007,7 @@ export function useCall({
     }
   }, [isMuted, stopTranslation, startTranslation]);
 
-  const setTranslationMode = useCallback(async (mode: TranslationMode) => {
-    setTranslationModeState(mode);
-    translationModeRef.current = mode;
-    translationEngineRef.current?.setTranslationMode(mode);
-    socketRef.current?.emit("update-translation-mode", { mode });
-
-    await apiFetch("/api/user/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ translationMode: mode }),
-    }).catch(() => {});
-  }, []);
-
   const pressTranslateStart = useCallback(() => {
-    void translationEngineRef.current?.unlockAudio();
     translationEngineRef.current?.pressStart();
   }, []);
 
@@ -1040,13 +1062,11 @@ export function useCall({
     isListening,
     socketConnected,
     connectionSlow,
-    isSpeaking,
     callDuration,
     micStatus,
     unlockAudio,
     playRemoteAudio,
     toggleMute,
-    setTranslationMode,
     pressTranslateStart,
     pressTranslateEnd,
     clearTranslationError,

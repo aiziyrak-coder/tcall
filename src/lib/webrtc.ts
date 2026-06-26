@@ -43,8 +43,8 @@ export function getIceServers(): RTCIceServer[] {
 export function getPeerConnectionConfig(opts?: { preferRelay?: boolean }): RTCConfiguration {
   return {
     iceServers: getIceServers(),
-    iceCandidatePoolSize: 10,
-    bundlePolicy: "max-compat",
+    iceCandidatePoolSize: 12,
+    bundlePolicy: "balanced",
     rtcpMuxPolicy: "require",
     iceTransportPolicy: opts?.preferRelay ? "relay" : "all",
   };

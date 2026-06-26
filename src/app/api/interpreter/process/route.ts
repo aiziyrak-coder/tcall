@@ -10,8 +10,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const MIN_RECORD_MS = 1600;
-const MIN_AUDIO_BYTES = 1800;
+const MIN_RECORD_MS = 1200;
+const MIN_AUDIO_BYTES = 1400;
 
 export async function POST(req: NextRequest) {
   try {

@@ -15,8 +15,8 @@ interface ActiveCallEngineProps {
   children: React.ReactNode;
 }
 
-function normalizeTranslationMode(value: string | undefined): TranslationMode {
-  return value === "voice" ? "voice" : "text";
+function normalizeTranslationMode(): TranslationMode {
+  return "text";
 }
 
 export function ActiveCallEngine({
@@ -32,7 +32,7 @@ export function ActiveCallEngine({
     userId: user.userId,
     userName: user.name,
     userLanguage: user.language,
-    translationMode: normalizeTranslationMode(user.translationMode),
+    translationMode: normalizeTranslationMode(),
     isHost,
     enabled: true,
   });

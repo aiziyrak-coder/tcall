@@ -1,13 +1,12 @@
 import type { Socket } from "socket.io-client";
 import { apiFetch } from "@/lib/api";
-import { TranslationAudioQueue } from "@/lib/audioQueue";
 import { isDuplicateTranscript } from "@/lib/call-translation";
 import { normalizeLanguageCode } from "@/lib/lang-validators";
 import { CallUtteranceRecorder } from "@/lib/call-utterance-recorder";
 import type { TranslationPayload, TranslationMessage } from "@/types/signaling";
 
-export type TranslationMode = "text" | "voice";
-export type TranslationActivity = "idle" | "listening" | "processing" | "speaking";
+export type TranslationMode = "text";
+export type TranslationActivity = "idle" | "listening" | "processing";
 export type TranslationErrorCode = "no_speech" | "rate_limit" | "error" | "same_lang";
 export type TranslationErrorSource = "ptt" | "auto" | "relay";
 
@@ -16,23 +15,19 @@ export interface CallTranslationEngineOptions {
   getUserLang: () => string;
   getPartnerLang: () => string | null;
   getSocket: () => Socket | null;
-  getTranslationMode: () => TranslationMode;
   onActivity: (activity: TranslationActivity) => void;
   onListening: (listening: boolean) => void;
-  onSpeaking: (speaking: boolean) => void;
   onTranslation: (entry: TranslationMessage) => void;
   onError: (code: TranslationErrorCode, source?: TranslationErrorSource) => void;
-  duckRemote: (duck: boolean) => void;
 }
 
 function nextId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-/** Qo'ng'iroq tarjimoni — interpreter API + socket relay */
+/** Qo'ng'iroq tarjimoni — faqat real-time matn (interpreter API + socket) */
 export class CallTranslationEngine {
   private recorder = new CallUtteranceRecorder();
-  private audioQueue = new TranslationAudioQueue();
   private processing = false;
   private muted = false;
   private active = false;
@@ -55,26 +50,11 @@ export class CallTranslationEngine {
       this.opts.onError("error", "auto");
     };
     this.recorder.onListeningChange = (listening) => {
-      if (!this.processing && !this.audioQueue.isActive()) {
+      if (!this.processing) {
         this.opts.onListening(listening);
-        if (!listening && !this.audioQueue.isActive()) {
-          this.opts.onActivity("idle");
-        } else if (listening) {
-          this.opts.onActivity("listening");
-        }
+        this.opts.onActivity(listening ? "listening" : "idle");
       }
     };
-
-    this.audioQueue.setSpeakingCallback((speaking) => {
-      this.opts.onSpeaking(speaking);
-      if (speaking) {
-        this.opts.onActivity("speaking");
-        this.recorder.stopAuto();
-      } else {
-        this.resumeAutoListen();
-      }
-    });
-    this.audioQueue.setRemoteDuckCallback(opts.duckRemote);
   }
 
   needsTranslation(): boolean {
@@ -87,10 +67,6 @@ export class CallTranslationEngine {
     this.recorder.attach(stream);
   }
 
-  async unlockAudio() {
-    return this.audioQueue.unlock();
-  }
-
   setMuted(muted: boolean) {
     this.muted = muted;
     if (muted) {
@@ -99,12 +75,6 @@ export class CallTranslationEngine {
     } else if (this.active && this.needsTranslation()) {
       this.recorder.startAuto();
     }
-  }
-
-  setTranslationMode(mode: TranslationMode) {
-    const voice = mode === "voice";
-    this.audioQueue.setEnabled(voice);
-    if (!voice) this.audioQueue.stop();
   }
 
   start() {
@@ -119,10 +89,8 @@ export class CallTranslationEngine {
     this.processing = false;
     this.recorder.stopAuto();
     this.recorder.stop();
-    this.audioQueue.stop();
     this.opts.onActivity("idle");
     this.opts.onListening(false);
-    this.opts.onSpeaking(false);
   }
 
   pressStart() {
@@ -154,15 +122,10 @@ export class CallTranslationEngine {
       timestamp: Date.now(),
     };
     this.opts.onTranslation(entry);
-
-    if (msg.audioBase64 && this.opts.getTranslationMode() === "voice") {
-      void this.audioQueue.unlock();
-      this.audioQueue.enqueue(msg.audioBase64);
-    }
   }
 
   private resumeAutoListen() {
-    if (this.processing || this.audioQueue.isActive()) return;
+    if (this.processing) return;
     if (this.active && !this.muted && this.needsTranslation()) {
       this.opts.onActivity("idle");
       this.recorder.startAuto();
@@ -217,7 +180,7 @@ export class CallTranslationEngine {
       }
 
       const original = String(data.original || "").trim();
-      const translated = String(data.translated || "").trim();
+      const translated = String(data.translated || original || "").trim();
       if (!original) {
         this.opts.onError("no_speech", source);
         return;
@@ -238,7 +201,7 @@ export class CallTranslationEngine {
       const entry: TranslationMessage = {
         id: nextId("self"),
         original,
-        translated: translated || original,
+        translated,
         sourceLang: data.sourceLang || sourceLang,
         targetLang,
         speaker: userName,
@@ -249,11 +212,11 @@ export class CallTranslationEngine {
       this.opts.onTranslation(entry);
 
       socket.emit("call-translation", {
-          original,
-          translated: translated || original,
-          sourceLang: data.sourceLang || sourceLang,
-          targetLang,
-        });
+        original,
+        translated,
+        sourceLang: data.sourceLang || sourceLang,
+        targetLang,
+      });
     } catch (e) {
       console.error("Call translation failed:", e);
       this.opts.onError("error", source);

@@ -395,8 +395,8 @@ app.prepare().then(async () => {
           }
 
           const original = clampTranscript(data.original);
-          const translated = clampTranscript(data.translated);
-          if (!original || !translated) return;
+          const translated = clampTranscript(data.translated) || original;
+          if (!original) return;
 
           const room = rooms.get(currentRoom);
           if (!room) return;
@@ -411,19 +411,7 @@ app.prepare().then(async () => {
             recipients.map(async (user) => {
               const userLang = normalizeLanguageCode(user.language);
               const needsTranslation = userLang !== speakerLang;
-              const textForUser = needsTranslation
-                ? translated
-                : original;
-
-              let audioBase64: string | undefined;
-              if (needsTranslation && textForUser && user.translationMode === "voice") {
-                try {
-                  const audio = await textToSpeech(textForUser, userLang);
-                  if (audio) audioBase64 = audio.toString("base64");
-                } catch (e) {
-                  console.error("TTS failed:", e);
-                }
-              }
+              const textForUser = needsTranslation ? translated : original;
 
               io.to(user.socketId).emit("translation", {
                 original,
@@ -432,7 +420,6 @@ app.prepare().then(async () => {
                 targetLang: userLang,
                 speaker: currentUser!.name,
                 isFinal: true,
-                audioBase64,
               });
             })
           );

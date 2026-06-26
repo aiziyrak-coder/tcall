@@ -1,9 +1,9 @@
 import { getPreferredAudioMimeType, isIOS } from "@/lib/mobile";
 
-export const MIN_UTTERANCE_MS = 1600;
-export const MIN_BLOB_BYTES = 1800;
+export const MIN_UTTERANCE_MS = 1200;
+export const MIN_BLOB_BYTES = 1400;
 const MAX_UTTERANCE_MS = 12_000;
-const SILENCE_MS = 900;
+const SILENCE_MS = 750;
 const VAD_INTERVAL_MS = 120;
 const SPEECH_RMS = 0.014;
 const SPEECH_HITS = 2;
