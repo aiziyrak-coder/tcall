@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import uz.tcall.core.TcallServices
 import uz.tcall.data.AuthRepository
 import uz.tcall.data.SessionStore
@@ -53,12 +54,18 @@ fun TcallAppRoot(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        onboardingDone = services.appPreferences.onboardingComplete.first()
-        rememberedEmail = services.appPreferences.rememberedEmail.first().orEmpty()
+        try {
+            withTimeout(5_000) {
+                onboardingDone = services.appPreferences.isOnboardingComplete()
+                rememberedEmail = services.appPreferences.rememberedEmail.first().orEmpty()
+            }
+        } catch (_: Exception) {
+            onboardingDone = false
+        }
     }
 
     LaunchedEffect(authState.user, authState.token) {
-        val token = authState.token ?: sessionStore.getTokenSync()
+        val token = authState.token
         val user = authState.user
         if (!token.isNullOrBlank() && user != null) {
             services.socketManager.connect(token)

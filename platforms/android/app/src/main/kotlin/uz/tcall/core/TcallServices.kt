@@ -14,6 +14,8 @@ import uz.tcall.data.UserRepository
 import uz.tcall.network.ApiClient
 import uz.tcall.socket.TcallSocketManager
 import uz.tcall.webrtc.WebRtcCallManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 
 class TcallServices private constructor(
     context: Context,
@@ -44,6 +46,11 @@ class TcallServices private constructor(
       val gson = Gson()
       val sessionStore = SessionStore(context)
       val appPreferences = AppPreferences(context)
+      // DataStore ni UI dan oldin IO da yuklash — main thread deadlock oldini olish
+      runBlocking(Dispatchers.IO) {
+        sessionStore.warmUp()
+        appPreferences.warmUp()
+      }
       val apiClient = ApiClient(sessionStore)
       val socketManager = TcallSocketManager(gson)
       return TcallServices(

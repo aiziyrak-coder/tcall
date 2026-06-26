@@ -1,6 +1,5 @@
 package uz.tcall.data
 
-import kotlinx.coroutines.flow.first
 import uz.tcall.network.ForgotPasswordRequest
 import uz.tcall.network.LoginRequest
 import uz.tcall.network.RegisterRequest
@@ -81,7 +80,7 @@ class AuthRepository(
         }
     }
 
-    suspend fun cachedUser(): UserDto? = sessionStore.currentUser.first()
+    suspend fun cachedUser(): UserDto? = sessionStore.cachedUser()
 
     suspend fun restoreSession(): UserDto? {
         if (sessionStore.getTokenSync().isNullOrBlank()) return null

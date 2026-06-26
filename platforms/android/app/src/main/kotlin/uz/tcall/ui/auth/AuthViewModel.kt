@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import uz.tcall.data.AppPreferences
 import uz.tcall.data.AuthRepository
 import uz.tcall.network.UserDto
@@ -32,13 +33,17 @@ class AuthViewModel(
     init {
         viewModelScope.launch {
             val token = authRepository.currentToken()
-            val cached = if (!token.isNullOrBlank()) authRepository.cachedUser() else null
-            if (cached != null && !token.isNullOrBlank()) {
-                _state.value = AuthUiState(loading = false, user = cached, token = token)
+            if (token.isNullOrBlank()) {
+                _state.value = AuthUiState(loading = false)
+                return@launch
             }
-            val user = authRepository.restoreSession() ?: cached
-            val freshToken = authRepository.currentToken()
-            _state.value = AuthUiState(loading = false, user = user, token = freshToken)
+            val cached = authRepository.cachedUser()
+            _state.value = AuthUiState(loading = false, user = cached, token = token)
+            withTimeoutOrNull(12_000) {
+                val user = authRepository.restoreSession() ?: cached
+                val freshToken = authRepository.currentToken()
+                _state.value = AuthUiState(loading = false, user = user, token = freshToken)
+            }
         }
     }
 

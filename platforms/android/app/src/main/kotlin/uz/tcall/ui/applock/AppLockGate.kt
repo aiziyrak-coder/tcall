@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import uz.tcall.data.PinRepository
 import uz.tcall.ui.components.TcallLogo
 import uz.tcall.ui.components.TcallLogoVariant
@@ -49,12 +50,18 @@ fun AppLockGate(
     var unlocked by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        pinRepository.status()
-            .onSuccess { status ->
-                pinEnabled = status.enabled == true
-                unlocked = status.enabled != true
+        try {
+            withTimeout(8_000) {
+                pinRepository.status()
+                    .onSuccess { status ->
+                        pinEnabled = status.enabled == true
+                        unlocked = status.enabled != true
+                    }
+                    .onFailure { unlocked = true }
             }
-            .onFailure { unlocked = true }
+        } catch (_: Exception) {
+            unlocked = true
+        }
         checking = false
     }
 

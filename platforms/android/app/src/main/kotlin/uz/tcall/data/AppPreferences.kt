@@ -8,13 +8,15 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 
 private val Context.prefsStore by preferencesDataStore(name = "tcall_prefs")
 
 class AppPreferences(private val context: Context) {
     private val onboardingKey = booleanPreferencesKey("onboarding_v2")
     private val rememberedEmailKey = stringPreferencesKey("remembered_email")
+
+    @Volatile
+    private var onboardingCached: Boolean? = null
 
     val onboardingComplete: Flow<Boolean> = context.prefsStore.data.map { prefs ->
         prefs[onboardingKey] == true
@@ -24,11 +26,17 @@ class AppPreferences(private val context: Context) {
         prefs[rememberedEmailKey]
     }
 
-    fun isOnboardingCompleteSync(): Boolean = runBlocking {
-        context.prefsStore.data.first()[onboardingKey] == true
+    suspend fun warmUp() {
+        onboardingCached = context.prefsStore.data.first()[onboardingKey] == true
+    }
+
+    suspend fun isOnboardingComplete(): Boolean {
+        onboardingCached?.let { return it }
+        return onboardingComplete.first().also { onboardingCached = it }
     }
 
     suspend fun completeOnboarding() {
+        onboardingCached = true
         context.prefsStore.edit { it[onboardingKey] = true }
     }
 
