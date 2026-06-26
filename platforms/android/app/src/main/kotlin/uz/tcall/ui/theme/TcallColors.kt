@@ -3,108 +3,129 @@ package uz.tcall.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-/** Tcall flame brand — olov gradientlar, yorqin fon, to'q matn */
+/** Tcall — salat yashil fon + logo ko'k/cyan, gradient yo'q, liquid glass */
 object TcallColors {
-    val Flame = Color(0xFFFF6B35)
-    val FlameBright = Color(0xFFFF8C42)
-    val FlameDeep = Color(0xFFE85D04)
-    val FlameDark = Color(0xFF9A3412)
-    val Ember = Color(0xFFFFB347)
-    val Ash = Color(0xFF2D1B14)
-    val Ink = Color(0xFF1F140F)
-    val InkSoft = Color(0xFF4A3428)
-    val Slate = Color(0xFF6B5B52)
-    val SlateLight = Color(0xFF8A7A70)
+    // Logo ranglari
+    val LogoCyan = Color(0xFF3BB4E8)
+    val LogoBlue = Color(0xFF4A7FE8)
+    val LogoPurple = Color(0xFF6B63E8)
+    val LogoInk = Color(0xFF1E2A3A)
 
-    val Accent = Flame
-    val AccentLight = FlameBright
-    val AccentDeep = FlameDeep
-    val AccentDark = FlameDark
-    val AccentInk = FlameDark
-    val AccentBright = FlameBright
-    val Blue = FlameBright
-    val Purple = FlameDeep
-    val Warm = Ember
+    // Salat / mint
+    val Salad = Color(0xFFB8E8D4)
+    val SaladLight = Color(0xFFE8F7F0)
+    val SaladSoft = Color(0xFFD4F4E2)
+    val SaladMuted = Color(0xFFC5EBD8)
 
-    val Canvas = Color(0xFFFFF9F5)
-    val CanvasAlt = Color(0xFFFFF0E8)
-    val Surface = Color(0xFFFFFFFF)
-    val SurfaceGlass = Color(0xF2FFFFFF)
-    val SurfaceHighlight = Color(0xFFFFF0E8)
-    val SurfaceElevated = Color(0xFFFFF8F4)
+    val Accent = LogoCyan
+    val AccentLight = Color(0xFF6EC8F0)
+    val AccentDeep = LogoBlue
+    val AccentDark = Color(0xFF3A6AD4)
+    val AccentInk = LogoBlue
+    val AccentBright = LogoCyan
+    val Blue = LogoCyan
+    val Purple = LogoPurple
+    val Warm = Salad
+
+    val Canvas = Color(0xFFF0FAF5)
+    val CanvasAlt = Color(0xFFE8F7F0)
+    val Surface = Color(0xF5FFFFFF)
+    val SurfaceGlass = Color(0xD9F5FBF8)
+    val SurfaceHighlight = Color(0xFFE8F7F0)
+    val SurfaceElevated = Color(0xFFF4FBF7)
 
     val BgPrimary = Canvas
-    val BgElevated = Surface
-    val AuthBg = Color(0xFFFFF5EE)
+    val BgElevated = SurfaceElevated
+    val AuthBg = SaladLight
 
+    val Ink = LogoInk
+    val InkSoft = Color(0xFF3D4F63)
+    val Slate = Color(0xFF5C6B7A)
+    val SlateLight = Color(0xFF8A97A6)
     val TextPrimary = Ink
     val TextSecondary = InkSoft
     val TextMuted = Slate
     val TextCaption = SlateLight
-    val TextOnGradient = Color(0xFFFFF8F2)
-    val TextOnAccent = TextOnGradient
+    val TextOnGradient = Color.White
+    val TextOnAccent = Color.White
 
     val IconPrimary = InkSoft
     val IconMuted = Slate
-    val IconActive = FlameDeep
+    val IconActive = LogoBlue
 
     val Slate900 = Ink
     val Slate700 = InkSoft
     val Slate500 = Slate
     val Slate400 = SlateLight
 
-    val Separator = Color(0x33FF6B35)
-    val BorderLight = Color(0x55FF8C42)
-    val GlassHairline = Color(0xAAFFFFFF)
-    val GlassRim = Color(0x66FF8C42)
+    val Separator = Color(0x333BB4E8)
+    val BorderLight = Color(0x55B8E8D4)
+    val GlassHairline = Color(0xCCFFFFFF)
+    val GlassRim = Color(0x66B8E8D4)
 
-    val IosBlue = FlameDeep
-    val IosBlueLight = Flame
-    val IosBlueDark = FlameDark
-    val Brand600 = FlameDeep
-    val BrandPurple = FlameDeep
-    val BrandIndigo = FlameDark
-    val CallGreen = FlameDeep
+    val IosBlue = LogoBlue
+    val IosBlueLight = LogoCyan
+    val IosBlueDark = AccentDark
+    val Brand600 = LogoBlue
+    val BrandPurple = LogoPurple
+    val BrandIndigo = AccentDark
+    val CallGreen = Color(0xFF34C759)
     val Destructive = Color(0xFFE53935)
 
-    val TabBarBg = Color(0xF5FFFFFF)
+    val TabBarBg = Color(0xE8F5FBF8)
     val TabInactive = Slate
 
-    val GlassBar = Color(0xDFFFFFFF)
+    val GlassBar = Color(0xD9F0FAF6)
     val GlassCard = Color(0xD9FFFFFF)
-    val GlassSheet = Color(0xF8FFFFFF)
+    val GlassSheet = Color(0xF0FFFFFF)
 
-    val AccentSoft = Color(0x28FF6B35)
-    val AccentMuted = Color(0x18FF6B35)
-    val AccentBorderSoft = Color(0x55FF8C42)
-    val AccentGlow = Color(0x40FF6B35)
-    val WarmSoft = Color(0x33FFB347)
-    val WarmMuted = Color(0x1AFFB347)
-    val WarmLight = Color(0xFFFFF5EB)
+    val AccentSoft = Color(0x283BB4E8)
+    val AccentMuted = Color(0x18B8E8D4)
+    val AccentBorderSoft = Color(0x553BB4E8)
+    val AccentGlow = Color(0x283BB4E8)
+    val WarmSoft = Color(0x33B8E8D4)
+    val WarmMuted = Color(0x1AB8E8D4)
+    val WarmLight = SaladLight
 
-    val MeshGradient = Brush.verticalGradient(listOf(Canvas, Color(0xFFFFF0E6), CanvasAlt))
-    val AccentGradient = Brush.linearGradient(listOf(FlameBright, Flame, FlameDeep))
-    val AccentGradientVertical = Brush.verticalGradient(listOf(FlameBright, FlameDeep))
-    val AccentGradientSoft = Brush.linearGradient(listOf(AccentMuted, WarmMuted))
-    val WarmAccentGradient = AccentGradient
-    val PremiumGradient = Brush.linearGradient(listOf(WarmLight, Canvas))
-    val CanvasGradient = MeshGradient
-    val CallBtnGradient = Brush.linearGradient(listOf(FlameBright, Flame, FlameDeep))
-    val BubbleMineGradient = Brush.linearGradient(listOf(FlameDark, FlameDeep, Color(0xFF7C2D12)))
-    val BubbleTheirGradient = Brush.linearGradient(listOf(Color(0xFF5C3D2E), Color(0xFF4A3428), Color(0xFF3D2B20)))
-    val CenterBtnGradient = Brush.linearGradient(listOf(Surface, SurfaceGlass))
-    val KeyGradient = Brush.verticalGradient(listOf(Color.White, Color(0xFFFFF8F4)))
-    val TitleGradient = Brush.linearGradient(listOf(FlameDeep, Flame))
+    // Chat — shaffof liquid glass, to'q matn
+    val BubbleMine = Color(0xD9C8EDF8)
+    val BubbleTheir = Color(0xE6FFFFFF)
+    val BubbleMineBorder = Color(0x663BB4E8)
+    val BubbleTheirBorder = Color(0x55B8E8D4)
 
-    val OrbBlue = Color(0x30FF6B35)
-    val OrbPurple = Color(0x28E85D04)
-    val OrbTeal = Color(0x28FFB347)
-    val OrbWarm = Color(0x35FFB347)
+    // Eski nomlar — barchasi tekis rang (gradient emas)
+    private fun flat(c: Color) = Brush.linearGradient(listOf(c, c))
 
-    val OnDark = TextOnGradient
-    val CallGradient = MeshGradient
+    val MeshGradient = flat(Canvas)
+    val AccentGradient = flat(LogoBlue)
+    val AccentGradientVertical = flat(LogoBlue)
+    val AccentGradientSoft = flat(SaladSoft)
+    val WarmAccentGradient = flat(SaladSoft)
+    val PremiumGradient = flat(SaladLight)
+    val CanvasGradient = flat(Canvas)
+    val CallBtnGradient = flat(LogoBlue)
+    val BubbleMineGradient = flat(BubbleMine)
+    val BubbleTheirGradient = flat(BubbleTheir)
+    val CenterBtnGradient = flat(Color.White)
+    val KeyGradient = flat(Color.White)
+    val TitleGradient = flat(LogoBlue)
 
-    @Deprecated("Use TextSecondary") val TextSecondaryAlpha = Color(0x994A3428)
+    val Flame = LogoCyan
+    val FlameBright = LogoCyan
+    val FlameDeep = LogoBlue
+    val FlameDark = AccentDark
+    val Ember = Salad
+    val Ash = Ink
+
+    val OrbBlue = Color(0x00000000)
+    val OrbPurple = Color(0x00000000)
+    val OrbTeal = Color(0x00000000)
+    val OrbWarm = Color(0x00000000)
+
+    val OnDark = TextOnAccent
+    val CallGradient = flat(Canvas)
+
+    @Deprecated("Use TextSecondary") val TextSecondaryAlpha = Color(0x993D4F63)
     @Deprecated("Use TextMuted") val TextTertiary = Slate
 }
 

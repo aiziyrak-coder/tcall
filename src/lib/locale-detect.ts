@@ -1,8 +1,6 @@
 "use client";
 
-import { LANGUAGES } from "./languages-list";
-
-const SUPPORTED = new Set<string>(LANGUAGES.map((l) => l.code));
+import { isKnownLanguage } from "./lang-validators";
 
 /** Detects the best supported UI language from the device/browser settings. */
 export function detectDeviceLanguage(fallback = "en"): string {
@@ -12,7 +10,7 @@ export function detectDeviceLanguage(fallback = "en"): string {
   for (const c of candidates) {
     if (!c) continue;
     const code = c.split("-")[0].toLowerCase();
-    if (SUPPORTED.has(code)) return code;
+    if (isKnownLanguage(code)) return code;
   }
   return fallback;
 }

@@ -64,11 +64,7 @@ fun DialWaveform(modifier: Modifier = Modifier) {
                 Modifier
                     .size(width = 4.dp, height = barH)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(TcallColors.Blue, TcallColors.Accent, TcallColors.Purple),
-                        ),
-                    ),
+                    .background(TcallColors.LogoCyan)
             )
         }
     }
@@ -80,7 +76,7 @@ fun GradientTitle(text: String, modifier: Modifier = Modifier) {
         text,
         modifier = modifier,
         style = TextStyle(
-            brush = TcallColors.TitleGradient,
+            color = TcallColors.LogoBlue,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
         ),
@@ -133,7 +129,7 @@ fun PremiumCallButton(
             .scale(if (pressed) 0.94f else glow)
             .shadow(16.dp, CircleShape, spotColor = TcallColors.Blue.copy(0.45f))
             .clip(CircleShape)
-            .background(if (enabled) TcallColors.CallBtnGradient else Brush.linearGradient(listOf(Color.Gray, Color.Gray)))
+            .background(if (enabled) TcallColors.LogoBlue else TcallColors.SlateLight)
             .border(1.5.dp, Color.White.copy(0.45f), CircleShape)
             .clickable(
                 interactionSource = interaction,

@@ -31,13 +31,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.tcall.ui.components.GradientPrimaryButton
+import uz.tcall.ui.components.LanguagePickerRow
+import uz.tcall.ui.components.LanguagePickerSheet
 import uz.tcall.ui.components.TcallAuthCard
 import uz.tcall.ui.components.TcallLogo
 import uz.tcall.ui.components.TcallLogoLayout
 import uz.tcall.ui.components.TcallLogoVariant
 import uz.tcall.ui.components.TcallTextField
 import uz.tcall.ui.theme.TcallColors
-import uz.tcall.ui.util.TCALL_LANGUAGES
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 @Composable
 fun RegisterScreen(
@@ -69,19 +72,15 @@ fun RegisterScreen(
             Spacer(Modifier.height(10.dp))
             TcallTextField(password, { password = it; onClearError() }, "Parol")
             Spacer(Modifier.height(12.dp))
-            Text("Til", fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary, fontSize = 14.sp)
-            TCALL_LANGUAGES.take(6).forEach { lang ->
-                Row(
-                    Modifier.fillMaxWidth().clickable { language = lang.code }.padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (language == lang.code) "●" else "○",
-                        color = if (language == lang.code) TcallColors.IosBlue else TcallColors.TextMuted,
-                        modifier = Modifier.padding(end = 8.dp),
-                    )
-                    Text(lang.label, color = TcallColors.TextPrimary, fontWeight = FontWeight.Medium)
-                }
+            var langPickerOpen by rememberSaveable { mutableStateOf(false) }
+            LanguagePickerRow(label = "Til", selected = language, onClick = { langPickerOpen = true })
+            if (langPickerOpen) {
+                LanguagePickerSheet(
+                    title = "Tilingizni tanlang",
+                    selected = language,
+                    onSelect = { language = it },
+                    onDismiss = { langPickerOpen = false },
+                )
             }
             Spacer(Modifier.height(16.dp))
             GradientPrimaryButton(
@@ -162,14 +161,33 @@ private fun AuthScaffold(
         verticalArrangement = Arrangement.Center,
     ) {
         AnimatedVisibility(visible, enter = fadeIn() + slideInVertically { it / 4 }) {
-            TcallLogo(
-                variant = TcallLogoVariant.Full,
-                layout = TcallLogoLayout.Horizontal,
-                width = 200.dp,
-                elevatedPlate = true,
-                title = title,
-                subtitle = subtitle,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                TcallLogo(
+                    variant = TcallLogoVariant.Full,
+                    layout = TcallLogoLayout.Vertical,
+                    width = 240.dp,
+                    showPlate = false,
+                )
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TcallColors.Ink,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    subtitle,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TcallColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
         }
         Spacer(Modifier.height(24.dp))
         AnimatedVisibility(visible, enter = fadeIn()) { content() }

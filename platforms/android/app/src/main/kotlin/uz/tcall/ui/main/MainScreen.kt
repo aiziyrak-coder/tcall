@@ -50,6 +50,8 @@ import uz.tcall.ui.room.RoomScreen
 import uz.tcall.ui.room.RoomViewModel
 import uz.tcall.ui.settings.SettingsModal
 import uz.tcall.ui.settings.SettingsViewModel
+import uz.tcall.ui.strings.TcallUiStrings
+import uz.tcall.ui.strings.UiLocaleLoader
 import uz.tcall.ui.strings.uiStrings
 import uz.tcall.ui.support.SupportChatModal
 import uz.tcall.ui.vanity.VanityScreen
@@ -69,6 +71,7 @@ fun MainScreen(
     initialRoomId: String? = null,
     initialConversationId: String? = null,
 ) {
+    var currentUser by remember(user) { mutableStateOf(user) }
     var selectedTab by rememberSaveable { mutableStateOf(PhoneTab.KEYPAD.name) }
     val tab = PhoneTab.valueOf(selectedTab)
     var activeCall by remember { mutableStateOf<ActiveCall?>(null) }
@@ -81,7 +84,10 @@ fun MainScreen(
     var inviteOpen by remember { mutableStateOf(false) }
     var outgoingCall by remember { mutableStateOf<ActiveCall?>(null) }
     val scope = rememberCoroutineScope()
-    val ui = remember(user.language) { uiStrings(user.language) }
+    var ui by remember(currentUser.language) { mutableStateOf(uiStrings(currentUser.language)) }
+    LaunchedEffect(currentUser.language) {
+        ui = UiLocaleLoader.load(services.apiClient.api, currentUser.language)
+    }
 
     val chatListVm: ChatListViewModel = viewModel(
         factory = remember(services) {
@@ -138,11 +144,15 @@ fun MainScreen(
         },
     )
     val settingsVm: SettingsViewModel = viewModel(
-        factory = remember(services) {
+        factory = remember(services, currentUser.userId) {
             object : androidx.lifecycle.ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
-                    SettingsViewModel(services.userRepository, services.pinRepository) as T
+                    SettingsViewModel(
+                        services.userRepository,
+                        services.pinRepository,
+                        services.sessionStore,
+                    ) { updated -> currentUser = updated } as T
             }
         },
     )
@@ -339,9 +349,10 @@ fun MainScreen(
         PhoneShell(
             selectedTab = tab,
             onTabSelected = { selectedTab = it.name },
-            userName = user.name,
-            userTcallId = user.tcallId,
-            userLanguage = user.language,
+            userName = currentUser.name,
+            userTcallId = currentUser.tcallId,
+            ui = ui,
+            userLanguage = currentUser.language,
             onLogout = onLogout,
             onOpenSettings = { settingsOpen = true },
             onOpenVanity = { overlay = Overlay.VANITY },
@@ -380,7 +391,7 @@ fun MainScreen(
                             viewModel = dialerVm,
                             recentsViewModel = recentsVm,
                             ui = ui,
-                            userTcallId = user.tcallId,
+                            userTcallId = currentUser.tcallId,
                             onCall = { roomId -> enterCall(roomId) },
                             onMessage = { convId ->
                                 val digits = dialerVm.state.value.digits

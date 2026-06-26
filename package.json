@@ -15,6 +15,7 @@
     "version:bump": "node scripts/version-bump.mjs",
     "version:major": "node scripts/version-bump.mjs --major",
     "version:sync": "node scripts/version-sync.mjs",
+    "generate:languages": "tsx scripts/generate-languages.ts",
     "platform:android": "cd platforms/android && ./gradlew :app:assembleDebug",
     "publish:android-apk": "node scripts/publish-android-apk.mjs",
     "publish:android-apk:copy": "node scripts/publish-android-apk.mjs --skip-build",

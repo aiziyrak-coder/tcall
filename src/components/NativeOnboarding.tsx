@@ -47,7 +47,7 @@ const CONTENT: Record<string, Content> = {
     notifOn: "Bildirishnomalar yoqildi ✓",
     slides: [
       { icon: Sparkles, title: "Tcall ga xush kelibsiz", desc: "Dunyo bilan o'z tilingizda gaplashing. 9 xonali Tcall raqamingiz bilan audio qo'ng'iroq qiling.", gradient: GRAD[0] },
-      { icon: Globe, title: "Real-time tarjima", desc: "70+ til. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.", gradient: GRAD[1] },
+      { icon: Globe, title: "Real-time tarjima", desc: "Dunyodagi barcha tillar. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.", gradient: GRAD[1] },
       { icon: Phone, title: "Qo'ng'iroq va xabar", desc: "Yuqori sifatli audio qo'ng'iroq va chat — hammasi avtomatik tarjima bilan.", gradient: GRAD[2] },
       { icon: Shield, title: "Xavfsiz va shaxsiy", desc: "PIN qulf, yuz orqali tiklash va himoyalangan muloqot.", gradient: GRAD[4] },
     ],
@@ -70,7 +70,7 @@ const CONTENT: Record<string, Content> = {
     notifOn: "Уведомления включены ✓",
     slides: [
       { icon: Sparkles, title: "Добро пожаловать в Tcall", desc: "Общайтесь с миром на своём языке. Звоните по вашему 9-значному Tcall ID.", gradient: GRAD[0] },
-      { icon: Globe, title: "Перевод в реальном времени", desc: "70+ языков. Собеседник говорит на своём языке — вы слышите на своём.", gradient: GRAD[1] },
+      { icon: Globe, title: "Перевод в реальном времени", desc: "Все языки мира. Собеседник говорит на своём языке — вы слышите на своём.", gradient: GRAD[1] },
       { icon: Phone, title: "Звонки и сообщения", desc: "Качественные аудиозвонки и чат — всё с автоматическим переводом.", gradient: GRAD[2] },
       { icon: Shield, title: "Безопасно и приватно", desc: "PIN-замок, восстановление по лицу и защищённое общение.", gradient: GRAD[4] },
     ],
@@ -93,7 +93,7 @@ const CONTENT: Record<string, Content> = {
     notifOn: "Notifications enabled ✓",
     slides: [
       { icon: Sparkles, title: "Welcome to Tcall", desc: "Talk to the world in your own language. Make audio calls with your 9-digit Tcall ID.", gradient: GRAD[0] },
-      { icon: Globe, title: "Real-time translation", desc: "70+ languages. They speak their language — you hear yours, instantly.", gradient: GRAD[1] },
+      { icon: Globe, title: "Real-time translation", desc: "All languages worldwide. They speak their language — you hear yours, instantly.", gradient: GRAD[1] },
       { icon: Phone, title: "Calls & messaging", desc: "High-quality audio calls and chat — all with automatic translation.", gradient: GRAD[2] },
       { icon: Shield, title: "Secure & private", desc: "PIN lock, face recovery and protected conversations.", gradient: GRAD[4] },
     ],

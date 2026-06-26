@@ -15,10 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
@@ -28,14 +25,13 @@ enum class GlassLevel { Bar, Card, Sheet, Button, Input }
 
 object TcallGlass {
     fun fill(level: GlassLevel): Color = when (level) {
-        GlassLevel.Bar, GlassLevel.Card, GlassLevel.Sheet -> TcallColors.SurfaceGlass
-        GlassLevel.Button -> Color(0xF2FFFFFF)
-        GlassLevel.Input -> Color(0xEEFFFFFF)
+        GlassLevel.Bar -> TcallColors.GlassBar
+        GlassLevel.Card -> TcallColors.GlassCard
+        GlassLevel.Sheet -> TcallColors.GlassSheet
+        GlassLevel.Button -> Color(0xE8FFFFFF)
+        GlassLevel.Input -> Color(0xF0FFFFFF)
     }
 
-    val specular = Brush.verticalGradient(
-        listOf(Color.White.copy(0.75f), Color.White.copy(0.2f), Color.Transparent),
-    )
     val hairline = TcallColors.GlassRim
 }
 
@@ -50,27 +46,11 @@ fun TcallGlassSurface(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val base = modifier
-        .shadow(elevation, shape, ambientColor = Color(0x0D1A2332), spotColor = Color(0x1440E0D0))
+        .shadow(elevation, shape, ambientColor = Color(0x0A1E2A3A), spotColor = Color(0x123BB4E8))
         .then(if (clipContent) Modifier.clip(shape) else Modifier)
         .background(TcallGlass.fill(level))
         .border(1.dp, TcallColors.GlassHairline, shape)
-        .drawBehind {
-            if (accentGlow) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(TcallColors.AccentGlow, Color.Transparent),
-                        center = Offset(size.width * 0.85f, 0f),
-                        radius = size.maxDimension * 0.5f,
-                    ),
-                    radius = size.maxDimension * 0.5f,
-                    center = Offset(size.width * 0.85f, 0f),
-                )
-            }
-        }
-    Box(base) {
-        Box(Modifier.matchParentSize().background(TcallGlass.specular))
-        content()
-    }
+    Box(base, content = content)
 }
 
 @Composable
@@ -100,10 +80,10 @@ fun TcallNeuCircle(
 
     Box(
         modifier
-            .shadow(6.dp, CircleShape, spotColor = Color(0x1A1A2332))
+            .shadow(6.dp, CircleShape, spotColor = Color(0x141E2A3A))
             .clip(CircleShape)
-            .background(TcallColors.KeyGradient)
-            .border(1.dp, Color.White.copy(0.9f), CircleShape)
+            .background(TcallColors.GlassSheet)
+            .border(1.dp, TcallColors.GlassHairline, CircleShape)
             .then(clickableMod),
         contentAlignment = Alignment.Center,
         content = content,

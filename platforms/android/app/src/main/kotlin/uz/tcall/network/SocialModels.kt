@@ -86,6 +86,16 @@ data class UserSettingsDto(
     val status: String? = "available",
     val bio: String? = null,
     val about: String? = null,
+    val age: Int? = null,
+    val city: String? = null,
+    val country: String? = null,
+    val address: String? = null,
+    val workplace: String? = null,
+    val education: String? = null,
+    @SerializedName("graduatedFrom") val graduatedFrom: String? = null,
+    val profession: String? = null,
+    val interests: String? = null,
+    val skills: String? = null,
     @SerializedName("tcallId") val tcallId: String? = null,
     @SerializedName("avatarUrl") val avatarUrl: String? = null,
     val telegramUsername: String? = null,
@@ -103,6 +113,16 @@ data class UpdateSettingsRequest(
     val status: String? = null,
     val bio: String? = null,
     val about: String? = null,
+    val age: Int? = null,
+    val city: String? = null,
+    val country: String? = null,
+    val address: String? = null,
+    val workplace: String? = null,
+    val education: String? = null,
+    @SerializedName("graduatedFrom") val graduatedFrom: String? = null,
+    val profession: String? = null,
+    val interests: String? = null,
+    val skills: String? = null,
     val telegramUsername: String? = null,
 )
 
@@ -220,4 +240,12 @@ data class SendSupportResponse(
     val ok: Boolean? = null,
     val message: SupportMessageDto? = null,
     val error: String? = null,
+)
+
+// ——— UI locale ———
+
+data class UiLocaleResponse(
+    val lang: String,
+    val ui: Map<String, String>,
+    val cached: Boolean? = null,
 )

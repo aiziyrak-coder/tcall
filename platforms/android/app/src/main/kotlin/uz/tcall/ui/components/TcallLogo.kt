@@ -77,6 +77,7 @@ fun TcallLogo(
     title: String? = null,
     subtitle: String? = null,
     elevatedPlate: Boolean = false,
+    showPlate: Boolean = true,
 ) {
     val transition = rememberInfiniteTransition(label = "logoPulse")
     val scale by transition.animateFloat(
@@ -94,7 +95,7 @@ fun TcallLogo(
     val platePadding = if (variant == TcallLogoVariant.Icon) 8.dp else 10.dp
 
     val image = @Composable {
-        TcallLogoPlate(padding = platePadding, elevated = elevatedPlate) {
+        val content = @Composable {
             Image(
                 painter = painter,
                 contentDescription = "Tcall",
@@ -112,6 +113,11 @@ fun TcallLogo(
                     },
                 contentScale = ContentScale.Fit,
             )
+        }
+        if (showPlate) {
+            TcallLogoPlate(padding = platePadding, elevated = elevatedPlate) { content() }
+        } else {
+            content()
         }
     }
 

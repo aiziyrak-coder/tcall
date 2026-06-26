@@ -27,24 +27,28 @@
 }
 
 :root {
-  --bg-primary: #fff9f5;
+  --bg-primary: #f0faf5;
   --bg-secondary: #ffffff;
-  --bg-elevated: #fff5ee;
-  --text-primary: #1f140f;
-  --text-secondary: #4a3428;
-  --text-tertiary: #6b5b52;
-  --separator: rgba(255, 107, 53, 0.22);
-  --key-bg: linear-gradient(180deg, #ffffff 0%, #fff8f4 100%);
-  --key-shadow: 0 6px 18px rgba(45, 27, 20, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --ios-blue: #e85d04;
-  --accent: #ff6b35;
-  --accent-deep: #e85d04;
-  --accent-ink: #9a3412;
-  --accent-blue: #ff8c42;
-  --accent-purple: #e85d04;
-  --warm: #ffb347;
-  --slate: #6b5b52;
-  --call-bg: linear-gradient(180deg, #fff0e6 0%, #fff9f5 50%, #ffffff 100%);
+  --bg-elevated: #f4fbf7;
+  --text-primary: #1e2a3a;
+  --text-secondary: #3d4f63;
+  --text-tertiary: #5c6b7a;
+  --separator: rgba(59, 180, 232, 0.22);
+  --key-bg: #ffffff;
+  --key-shadow: 0 6px 18px rgba(30, 42, 58, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --ios-blue: #4a7fe8;
+  --accent: #3bb4e8;
+  --accent-deep: #4a7fe8;
+  --accent-ink: #4a7fe8;
+  --accent-blue: #3bb4e8;
+  --accent-purple: #6b63e8;
+  --warm: #b8e8d4;
+  --slate: #5c6b7a;
+  --call-bg: #f0faf5;
+  --liquid-glass: rgba(245, 251, 248, 0.72);
+  --liquid-glass-strong: rgba(255, 255, 255, 0.82);
+  --liquid-border: rgba(255, 255, 255, 0.85);
+  --liquid-shadow: 0 8px 28px rgba(30, 42, 58, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.92);
   --tg-safe-top: 0px;
   --tg-safe-bottom: 0px;
   --tg-safe-left: 0px;
@@ -662,7 +666,21 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .ios-icon-btn {
-  @apply w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center touch-manipulation text-slate-700;
+  @apply inline-flex items-center justify-center touch-manipulation text-slate-700;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.ios-icon-btn-glass {
+  @apply ios-icon-btn rounded-full;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 .ios-my-number {
@@ -2516,24 +2534,30 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .chat-bubble-bg-mine {
-  @apply text-white rounded-br-lg;
-  background: linear-gradient(135deg, #9a3412 0%, #e85d04 55%, #7c2d12 100%);
-  box-shadow: 0 3px 12px rgba(154, 52, 18, 0.28);
+  @apply text-slate-900 rounded-br-lg;
+  background: rgba(200, 237, 248, 0.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(59, 180, 232, 0.35);
+  box-shadow: 0 4px 14px rgba(59, 180, 232, 0.12);
 }
 
 .chat-bubble-bg-theirs {
-  @apply text-white rounded-bl-lg;
-  background: linear-gradient(135deg, #5c3d2e 0%, #4a3428 55%, #3d2b20 100%);
-  box-shadow: 0 3px 12px rgba(61, 43, 32, 0.22);
+  @apply text-slate-900 rounded-bl-lg;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(184, 232, 212, 0.55);
+  box-shadow: 0 4px 14px rgba(30, 42, 58, 0.06);
 }
 
 .chat-bubble-text {
-  @apply text-[15px] leading-relaxed break-words;
+  @apply text-[15px] leading-relaxed break-words text-slate-900;
 }
 
 .chat-bubble-bg-mine .chat-bubble-text,
 .chat-bubble-bg-theirs .chat-bubble-text {
-  @apply text-white;
+  @apply text-slate-900;
 }
 
 .chat-view-original {
@@ -3375,11 +3399,11 @@ body.has-mini-call .chat-app-thread .chat-composer {
 }
 
 .friends-action-call {
-  @apply bg-green-50 border-green-200 text-green-700;
+  @apply bg-green-500 border-green-500 text-white shadow-md shadow-green-500/30 active:bg-green-600;
 }
 
 .friends-action-danger {
-  @apply bg-red-50 border-red-200 text-red-600;
+  @apply bg-red-500 border-red-500 text-white shadow-md shadow-red-500/30 active:bg-red-600;
 }
 
 .friends-badge {
@@ -4152,10 +4176,10 @@ body.native-app .chat-conv-item:active {
 }
 
 .liquid-header .ios-icon-btn {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
 }
 
 /* ─── Tab bar shell — floating pill ─── */

@@ -32,9 +32,10 @@ fun TcallPrimaryButton(
             .height(50.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = TcallColors.AccentInk,
-            disabledContainerColor = TcallColors.AccentInk.copy(alpha = 0.5f),
+            containerColor = TcallColors.LogoBlue,
+            disabledContainerColor = TcallColors.LogoBlue.copy(alpha = 0.5f),
             contentColor = Color.White,
+            disabledContentColor = Color.White.copy(alpha = 0.7f),
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
     ) {

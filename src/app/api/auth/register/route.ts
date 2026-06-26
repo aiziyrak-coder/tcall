@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createToken, hashPassword, jsonWithSession } from "@/lib/auth";
-import { LANGUAGES } from "@/lib/languages";
+import { isKnownLanguage } from "@/lib/lang-validators";
 import { generateUniqueTcallId } from "@/lib/tcallId";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -10,7 +10,7 @@ const schema = z.object({
   email: z.string().email().transform((e) => e.trim().toLowerCase()),
   password: z.string().min(6).max(128),
   name: z.string().min(2).max(80).transform((n) => n.trim()),
-  language: z.string().refine((l) => LANGUAGES.some((lang) => lang.code === l)),
+  language: z.string().refine((l) => isKnownLanguage(l)),
   ref: z.string().trim().max(32).optional(),
 });
 

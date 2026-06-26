@@ -309,7 +309,32 @@ data class ReferralResponse(
 )
 
 data class DeleteAccountRequest(
-  val confirm: String,
+    val password: String,
+)
+
+data class AvatarUploadResponse(
+    val ok: Boolean? = null,
+    val url: String? = null,
+    val error: String? = null,
+)
+
+data class TelegramStatusResponse(
+    val configured: Boolean? = false,
+    val linked: Boolean? = false,
+    val username: String? = null,
+    val error: String? = null,
+)
+
+data class TelegramLinkResponse(
+    val url: String?,
+    @SerializedName("botUsername") val botUsername: String? = null,
+    @SerializedName("expiresInSec") val expiresInSec: Int? = null,
+    val error: String? = null,
+)
+
+data class PinChangeRequest(
+    @SerializedName("currentPin") val currentPin: String,
+    val pin: String,
 )
 
 // ——— Chat media ———

@@ -26,4 +26,9 @@ class PinRepository(private val api: TcallApi) {
         val res = api.disablePin(PinVerifyRequest(pin = pin))
         if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "PIN o'chirilmadi")
     }
+
+    suspend fun changePin(currentPin: String, newPin: String): Result<Unit> = runCatching {
+        val res = api.changePin(uz.tcall.network.PinChangeRequest(currentPin = currentPin, pin = newPin))
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "PIN o'zgartirilmadi")
+    }
 }

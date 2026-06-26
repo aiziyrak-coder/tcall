@@ -29,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,13 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.tcall.ui.components.LanguagePickerRow
+import uz.tcall.ui.components.LanguagePickerSheet
 import uz.tcall.ui.components.IosBottomSheet
 import uz.tcall.ui.components.IosListCard
 import uz.tcall.ui.strings.TcallUiStrings
 import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.TcallColors
 import uz.tcall.ui.theme.TcallGlassSurface
-import uz.tcall.ui.util.TCALL_LANGUAGES
 import uz.tcall.ui.util.langLabel
 
 @Composable
@@ -152,34 +156,25 @@ fun InterpreterScreen(viewModel: InterpreterViewModel, ui: TcallUiStrings) {
     }
 
     if (state.showLangPicker) {
-        IosBottomSheet(onDismiss = { viewModel.toggleLangPicker(false) }) {
-            Text("Tillar", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TcallColors.TextPrimary)
-            Spacer(Modifier.height(12.dp))
-            Text("Men gapiraman", fontWeight = FontWeight.SemiBold, color = TcallColors.TextSecondary)
-            LangChipRow(state.sourceLang, viewModel::setSourceLang)
-            Spacer(Modifier.height(10.dp))
-            Text("U gapiradi", fontWeight = FontWeight.SemiBold, color = TcallColors.TextSecondary)
-            LangChipRow(state.targetLang, viewModel::setTargetLang)
-        }
-    }
-}
-
-@Composable
-private fun LangChipRow(selected: String, onSelect: (String) -> Unit) {
-    Column {
-        TCALL_LANGUAGES.forEach { lang ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected == lang.code) TcallColors.GlassCard else Color.Transparent)
-                    .padding(vertical = 8.dp, horizontal = 4.dp)
-                    .clickable { onSelect(lang.code) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(if (selected == lang.code) "●" else "○", color = TcallColors.IosBlue, modifier = Modifier.padding(end = 8.dp))
-                Text(lang.label, color = TcallColors.TextPrimary, fontWeight = FontWeight.Medium)
+        var subPicker by remember { mutableStateOf(false) }
+        var pickSource by remember { mutableStateOf(true) }
+        if (!subPicker) {
+            IosBottomSheet(onDismiss = { viewModel.toggleLangPicker(false) }) {
+                Text("Tillar", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TcallColors.TextPrimary)
+                Spacer(Modifier.height(12.dp))
+                LanguagePickerRow("Men gapiraman", state.sourceLang) { pickSource = true; subPicker = true }
+                Spacer(Modifier.height(8.dp))
+                LanguagePickerRow("U gapiradi", state.targetLang) { pickSource = false; subPicker = true }
             }
+        } else {
+            LanguagePickerSheet(
+                title = if (pickSource) "Men gapiraman" else "U gapiradi",
+                selected = if (pickSource) state.sourceLang else state.targetLang,
+                onSelect = { code ->
+                    if (pickSource) viewModel.setSourceLang(code) else viewModel.setTargetLang(code)
+                },
+                onDismiss = { subPicker = false },
+            )
         }
     }
 }

@@ -52,9 +52,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
 import uz.tcall.ui.strings.TcallUiStrings
 import uz.tcall.ui.strings.tabLabel
-import uz.tcall.ui.strings.uiStrings
 import uz.tcall.ui.theme.TcallColors
 import uz.tcall.ui.theme.TcallGlassBar
 import uz.tcall.ui.theme.TcallMotion
@@ -74,6 +76,7 @@ fun PhoneShell(
     onTabSelected: (PhoneTab) -> Unit,
     userName: String,
     userTcallId: String,
+    ui: TcallUiStrings,
     userLanguage: String = "uz",
     onLogout: () -> Unit,
     onOpenSettings: () -> Unit = {},
@@ -85,11 +88,7 @@ fun PhoneShell(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val ui = remember(userLanguage) { uiStrings(userLanguage) }
-
-    Box(modifier.fillMaxSize().background(TcallColors.MeshGradient)) {
-        MeshOrbs()
-
+    Box(modifier.fillMaxSize().background(TcallColors.Canvas)) {
         Column(Modifier.fillMaxSize()) {
             if (!hideHeader) {
                 PhoneHeader(
@@ -102,15 +101,6 @@ fun PhoneShell(
                 FloatingTabBar(selectedTab, onTabSelected, badges, ui)
             }
         }
-    }
-}
-
-@Composable
-private fun MeshOrbs() {
-    Box(Modifier.fillMaxSize()) {
-        Box(Modifier.size(280.dp).offset((-70).dp, 40.dp).clip(CircleShape).background(TcallColors.OrbBlue))
-        Box(Modifier.size(220.dp).align(Alignment.TopEnd).offset(30.dp, 160.dp).clip(CircleShape).background(TcallColors.OrbPurple))
-        Box(Modifier.size(160.dp).align(Alignment.BottomStart).offset(60.dp, (-100).dp).clip(CircleShape).background(TcallColors.OrbWarm))
     }
 }
 
@@ -172,17 +162,26 @@ private fun PhoneHeader(
 }
 
 @Composable
-fun TcallAvatar(name: String, size: androidx.compose.ui.unit.Dp = 40.dp) {
+fun TcallAvatar(name: String, size: androidx.compose.ui.unit.Dp = 40.dp, avatarUrl: String? = null) {
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
     Box(
         Modifier
             .size(size)
             .shadow(4.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.25f))
             .clip(CircleShape)
-            .background(TcallColors.AccentGradient),
+            .background(TcallColors.LogoBlue),
         contentAlignment = Alignment.Center,
     ) {
-        Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.38f).sp)
+        if (!avatarUrl.isNullOrBlank()) {
+            Image(
+                painter = rememberAsyncImagePainter(avatarUrl),
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Text(initial, color = Color.White, fontWeight = FontWeight.Bold, fontSize = (size.value * 0.38f).sp)
+        }
     }
 }
 
@@ -207,9 +206,6 @@ private fun FloatingTabBar(
                 .clip(shape)
                 .background(TcallColors.TabBarBg)
                 .border(1.dp, TcallColors.GlassHairline, shape)
-                .drawBehind {
-                    drawRect(brush = Brush.verticalGradient(listOf(Color.White.copy(0.7f), Color.Transparent)))
-                }
                 .padding(horizontal = 8.dp, vertical = 10.dp),
         ) {
             Row(

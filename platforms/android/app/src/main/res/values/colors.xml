@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="tcall_bg">#F2F2F7</color>
+    <color name="splash_space_bg">#0A0612</color>
 </resources>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession, createToken, jsonWithSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { LANGUAGES } from "@/lib/languages";
+import { isKnownLanguage } from "@/lib/lang-validators";
 import { userAvatarUrl } from "@/lib/avatar-url";
 
 const optionalStr = (max: number) => z.string().max(max).optional().nullable();
@@ -10,7 +10,7 @@ const optionalStr = (max: number) => z.string().max(max).optional().nullable();
 const schema = z
   .object({
     name: z.string().min(2).max(80).optional(),
-    language: z.string().refine((l) => LANGUAGES.some((lang) => lang.code === l)).optional(),
+    language: z.string().refine((l) => isKnownLanguage(l)).optional(),
     translationMode: z.enum(["text", "voice"]).optional(),
     mode: z.enum(["text", "voice"]).optional(),
     status: z.enum(["available", "busy", "dnd", "away"]).optional(),

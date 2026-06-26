@@ -30,6 +30,7 @@ import {
   WEB_VS_NATIVE,
   type PlatformDownload,
 } from "@/lib/platform-downloads";
+import { GLOBAL_LANGUAGES_TAGLINE, LANGUAGES } from "@/lib/languages";
 
 function PlatformIcon({ id }: { id: PlatformDownload["id"] }) {
   const cls = "w-7 h-7";
@@ -165,7 +166,7 @@ export function LandingPage() {
                 </div>
                 <div className="landing-float-badge landing-float-1">
                   <Languages className="w-4 h-4 text-brand-600" />
-                  <span>15+ til</span>
+                  <span>{GLOBAL_LANGUAGES_TAGLINE}</span>
                 </div>
                 <div className="landing-float-badge landing-float-2">
                   <Shield className="w-4 h-4 text-emerald-600" />
@@ -261,7 +262,7 @@ export function LandingPage() {
           <div className="landing-container">
             <div className="landing-section-head">
               <h2 className="landing-section-title">Qo&apos;llab-quvvatlanadigan tillar</h2>
-              <p className="landing-section-desc">15+ til — va doimiy kengaymoqda.</p>
+              <p className="landing-section-desc">{GLOBAL_LANGUAGES_TAGLINE} — {LANGUAGES.length} ta til va undan ham ko&apos;p.</p>
             </div>
             <div className="landing-lang-grid">
               {SUPPORTED_LANGUAGES.map((lang) => (

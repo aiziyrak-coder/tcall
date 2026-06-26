@@ -1,9 +1,16 @@
-import { LANGUAGES, SPEECH_LOCALES, type LanguageCode } from "./languages-list";
+import { LANGUAGES, SPEECH_LOCALES, getSpeechLocale, type LanguageCode } from "./languages-list";
+import { languageDisplayName, flagForCode, GLOBAL_LANGUAGES_TAGLINE } from "./language-registry";
+import { isKnownLanguage, normalizeLanguageCode } from "./lang-validators";
 
-export { LANGUAGES, SPEECH_LOCALES, type LanguageCode };
+export { LANGUAGES, SPEECH_LOCALES, getSpeechLocale, type LanguageCode, GLOBAL_LANGUAGES_TAGLINE };
 
 export function getLanguage(code: string) {
-  return LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
+  const base = normalizeLanguageCode(code);
+  return LANGUAGES.find((l) => l.code === base) ?? {
+    code: base,
+    name: languageDisplayName(base),
+    flag: flagForCode(base),
+  };
 }
 
 export function getLanguageName(code: string) {
@@ -11,7 +18,7 @@ export function getLanguageName(code: string) {
 }
 
 export function isSupportedLanguage(code: string): boolean {
-  return LANGUAGES.some((l) => l.code === code);
+  return isKnownLanguage(code);
 }
 
 export const UI_TEXT = {

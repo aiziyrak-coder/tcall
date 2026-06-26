@@ -94,7 +94,7 @@ private val pages = listOf(
         PageKind.FEATURE,
         Icons.Default.Language,
         "Real-time tarjima",
-        "70+ til. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.",
+        "Dunyodagi barcha tillar. Sherik boshqa tilda gapirsa ham, aqlli tarjima qiladi va siz o'z tilingizda eshitasiz.",
         gradient = listOf(Color(0x33FFB347), Color(0x1AFF6B35), Color.Transparent),
     ),
     OnboardingPage(
@@ -266,39 +266,51 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 }
             }
 
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f),
-            ) { pageIndex ->
-                val page = pages[pageIndex]
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    TcallLogo(variant = TcallLogoVariant.Icon, width = 64.dp)
-                    Spacer(Modifier.height(28.dp))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                TcallLogo(
+                    variant = TcallLogoVariant.Full,
+                    width = 200.dp,
+                    showPlate = false,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+                )
 
-                    Box(
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.weight(1f),
+                ) { pageIndex ->
+                    val page = pages[pageIndex]
+                    Column(
                         Modifier
-                            .size(88.dp)
-                            .shadow(8.dp, RoundedCornerShape(28.dp))
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(TcallColors.GlassSheet),
-                        contentAlignment = Alignment.Center,
+                            .fillMaxSize()
+                            .padding(horizontal = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                     ) {
-                        Icon(
-                            page.icon,
-                            contentDescription = null,
-                            tint = TcallColors.IconActive,
-                            modifier = Modifier.size(40.dp),
-                        )
-                    }
-                    Spacer(Modifier.height(24.dp))
+                        if (page.kind == PageKind.PERMISSION) {
+                            Box(
+                            Modifier
+                                .size(72.dp)
+                                .shadow(8.dp, RoundedCornerShape(24.dp))
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(TcallColors.GlassSheet),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                page.icon,
+                                contentDescription = null,
+                                tint = TcallColors.IconActive,
+                                modifier = Modifier.size(36.dp),
+                            )
+                        }
+                        Spacer(Modifier.height(20.dp))
+                        }
 
-                    Text(
+                        Text(
                         page.title,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
@@ -360,6 +372,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         )
                     }
                 }
+            }
             }
 
             Column(

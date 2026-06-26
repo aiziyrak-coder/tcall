@@ -251,8 +251,8 @@ fun ChatThreadScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                IosIconButton(Icons.Default.Image, { imagePicker.launch("image/*") }, tint = TcallColors.TextSecondary, modifier = Modifier.size(36.dp))
-                IosIconButton(Icons.Default.EmojiEmotions, { viewModel.toggleEmoji() }, tint = TcallColors.IosBlue, modifier = Modifier.size(36.dp))
+                IosIconButton(Icons.Default.Image, { imagePicker.launch("image/*") }, tint = TcallColors.TextSecondary, size = 40.dp)
+                IosIconButton(Icons.Default.EmojiEmotions, { viewModel.toggleEmoji() }, tint = TcallColors.IosBlue, size = 40.dp)
                 Box(
                     Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(TcallColors.SurfaceHighlight)
                         .border(1.dp, TcallColors.AccentBorderSoft, RoundedCornerShape(20.dp))
@@ -310,7 +310,7 @@ fun ChatThreadScreen(
                         draft = ""
                     },
                     enabled = draft.isNotBlank() && !state.sending,
-                    modifier = Modifier.size(40.dp).clip(CircleShape).background(TcallColors.Brand600),
+                    modifier = Modifier.size(40.dp).clip(CircleShape).background(TcallColors.LogoBlue),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
@@ -412,8 +412,10 @@ private fun TranslationBubble(
         bottomStart = if (mine) 18.dp else 4.dp,
         bottomEnd = if (mine) 4.dp else 18.dp,
     )
-    val bubbleBrush = if (mine) TcallColors.BubbleMineGradient else TcallColors.BubbleTheirGradient
-    val textColor = TcallColors.TextOnGradient
+    val bubbleBrush = if (mine) TcallColors.BubbleMine else TcallColors.BubbleTheir
+    val bubbleBorder = if (mine) TcallColors.BubbleMineBorder else TcallColors.BubbleTheirBorder
+    val textColor = TcallColors.Ink
+    val accentLink = TcallColors.LogoBlue
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = align) {
         if (!mine) {
@@ -423,10 +425,11 @@ private fun TranslationBubble(
             Modifier
                 .clip(shape)
                 .then(
-                    if (selected) Modifier.border(2.dp, TcallColors.FlameBright, shape) else Modifier,
+                    if (selected) Modifier.border(2.dp, TcallColors.LogoCyan, shape) else Modifier,
                 )
                 .combinedClickable(onClick = onTap, onLongClick = onLongPress)
                 .background(bubbleBrush)
+                .border(0.5.dp, bubbleBorder, shape)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             Column {
@@ -435,12 +438,12 @@ private fun TranslationBubble(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(0.18f))
+                            .background(TcallColors.AccentSoft)
                             .padding(8.dp),
                     ) {
                         Column {
-                            Text(reply.senderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TcallColors.Ember)
-                            Text(reply.preview, fontSize = 12.sp, color = textColor.copy(0.92f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(reply.senderName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TcallColors.LogoBlue)
+                            Text(reply.preview, fontSize = 12.sp, color = TcallColors.InkSoft, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     Spacer(Modifier.size(6.dp))
@@ -450,19 +453,19 @@ private fun TranslationBubble(
                         "${msg.sourceLang.uppercase()} ${ui.chatTranslated}",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = textColor.copy(0.85f),
+                        color = TcallColors.Slate,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }
                 Text(body, color = textColor, fontSize = 15.sp, fontWeight = FontWeight.Medium, lineHeight = 21.sp)
                 if (!msg.mediaUrl.isNullOrBlank() && msg.type != "text") {
-                    Text("📎 ${msg.mediaName ?: msg.type}", fontSize = 12.sp, color = textColor.copy(0.9f), modifier = Modifier.padding(top = 4.dp))
+                    Text("📎 ${msg.mediaName ?: msg.type}", fontSize = 12.sp, color = TcallColors.LogoBlue, modifier = Modifier.padding(top = 4.dp))
                 }
                 if (hasTr) {
                     Text(
                         if (showOriginal) ui.chatTranslated else ui.viewOriginal,
                         fontSize = 12.sp,
-                        color = TcallColors.Ember,
+                        color = accentLink,
                         textDecoration = TextDecoration.Underline,
                         modifier = Modifier.padding(top = 6.dp).clickable { showOriginal = !showOriginal },
                     )

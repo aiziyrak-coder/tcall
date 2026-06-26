@@ -6,7 +6,7 @@ Real-time AI tarjima bilan video qo'ng'iroq platformasi. Telefonda gaplashgandek
 
 - **Video qo'ng'iroq** — WebRTC orqali yuqori sifatli 1:1 video chat
 - **Real-time tarjima** — AI avtomatik tarjima qiladi, subtitr ko'rsatadi
-- **15+ til** — O'zbek, Rus, Ingliz, Turk, Arab va boshqalar
+- **Dunyodagi barcha tillar** — O'zbek, Rus, Ingliz, Turk, Arab va yana 180+ til
 - **Ro'yxatdan o'tishda til tanlash** — Tarjima sizning tilingizga keladi
 - **Xavfsiz** — JWT autentifikatsiya, shifrlangan sessiyalar
 

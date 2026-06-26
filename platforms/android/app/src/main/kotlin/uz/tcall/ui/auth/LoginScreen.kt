@@ -77,14 +77,31 @@ fun LoginScreen(
             visible = visible,
             enter = fadeIn() + slideInVertically { it / 4 },
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 TcallLogo(
                     variant = TcallLogoVariant.Full,
-                    layout = TcallLogoLayout.Horizontal,
-                    width = 200.dp,
-                    elevatedPlate = true,
-                    title = "Kirish",
-                    subtitle = "Hisobingizga kiring",
+                    layout = TcallLogoLayout.Vertical,
+                    width = 240.dp,
+                    showPlate = false,
+                )
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    "Kirish",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TcallColors.Ink,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Hisobingizga kiring",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TcallColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }

@@ -23,6 +23,11 @@ class DialerViewModel(
     private val _state = MutableStateFlow(DialerUiState())
     val state: StateFlow<DialerUiState> = _state.asStateFlow()
 
+    fun setDigits(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(9)
+        _state.value = _state.value.copy(digits = digits, error = null)
+    }
+
     fun append(d: String) {
         val cur = _state.value.digits
         if (cur.length >= 9) return

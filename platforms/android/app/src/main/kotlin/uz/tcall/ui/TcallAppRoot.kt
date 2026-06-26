@@ -70,7 +70,7 @@ fun TcallAppRoot(
 
     when {
         authState.loading || onboardingDone == null -> {
-            AppSplashScreen(message = "Tcall")
+            AppSplashScreen()
         }
         authState.user != null -> {
             AppLockGate(pinRepository = services.pinRepository) {

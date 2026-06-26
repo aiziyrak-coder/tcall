@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,12 +23,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,7 +67,7 @@ fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
     Row(
         modifier
             .clip(PillShape)
-            .background(TcallColors.AccentGradientSoft)
+            .background(TcallColors.SaladSoft)
             .border(0.5.dp, TcallColors.AccentBorderSoft, PillShape)
             .padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -114,18 +119,118 @@ fun IosIconButton(
     onClick: () -> Unit,
     tint: Color = TcallColors.IconPrimary,
     modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    iconSize: Dp = 22.dp,
+    glass: Boolean = false,
 ) {
-    TcallGlassSurface(
-        modifier = modifier
-            .size(40.dp)
-            .clickable(onClick = onClick),
-        level = GlassLevel.Button,
-        shape = CircleShape,
-        elevation = 3.dp,
-    ) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+    val shape = CircleShape
+    val boxMod = modifier
+        .size(size)
+        .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick,
+        )
+
+    if (glass) {
+        TcallGlassSurface(
+            modifier = boxMod,
+            level = GlassLevel.Button,
+            shape = shape,
+            elevation = 2.dp,
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(iconSize))
+            }
         }
+    } else {
+        Box(boxMod, contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(iconSize))
+        }
+    }
+}
+
+@Composable
+fun AcceptRejectButtons(
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
+) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        CircleActionButton(
+            color = TcallColors.CallGreen,
+            icon = Icons.Default.Check,
+            contentDescription = "Qabul qilish",
+            onClick = onAccept,
+            enabled = enabled,
+            size = size,
+            iconSize = iconSize,
+        )
+        CircleActionButton(
+            color = TcallColors.Destructive,
+            icon = Icons.Default.Close,
+            contentDescription = "Rad etish",
+            onClick = onReject,
+            enabled = enabled,
+            size = size,
+            iconSize = iconSize,
+        )
+    }
+}
+
+@Composable
+fun CallAcceptRejectButtons(
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 56.dp,
+) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
+        CircleActionButton(
+            color = TcallColors.Destructive,
+            icon = Icons.Default.CallEnd,
+            contentDescription = "Rad etish",
+            onClick = onReject,
+            enabled = enabled,
+            size = size,
+            iconSize = 26.dp,
+        )
+        CircleActionButton(
+            color = TcallColors.CallGreen,
+            icon = Icons.Default.Phone,
+            contentDescription = "Ko'tarish",
+            onClick = onAccept,
+            enabled = enabled,
+            size = size,
+            iconSize = 26.dp,
+        )
+    }
+}
+
+@Composable
+private fun CircleActionButton(
+    color: Color,
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    size: Dp,
+    iconSize: Dp,
+) {
+    Box(
+        Modifier
+            .size(size)
+            .shadow(6.dp, CircleShape, spotColor = color.copy(0.35f))
+            .clip(CircleShape)
+            .background(if (enabled) color else color.copy(0.45f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = Color.White, modifier = Modifier.size(iconSize))
     }
 }
 
@@ -141,12 +246,9 @@ fun GradientPrimaryButton(
         modifier
             .fillMaxWidth()
             .height(48.dp)
-            .shadow(if (enabled) 8.dp else 0.dp, RoundedCornerShape(14.dp), spotColor = TcallColors.Accent.copy(0.4f))
+            .shadow(if (enabled) 6.dp else 0.dp, RoundedCornerShape(14.dp), spotColor = TcallColors.Accent.copy(0.25f))
             .clip(RoundedCornerShape(14.dp))
-            .background(
-                if (enabled) TcallColors.AccentGradient
-                else Brush.linearGradient(listOf(TcallColors.Accent.copy(0.5f), TcallColors.AccentDark.copy(0.5f))),
-            )
+            .background(if (enabled) TcallColors.Accent else TcallColors.Accent.copy(0.45f))
             .clickable(enabled = enabled && !loading, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -266,7 +368,8 @@ fun ChatConvCard(
                     if (unread > 0) {
                         Box(
                             Modifier
-                                .background(TcallColors.AccentGradient, CircleShape)
+                                .clip(CircleShape)
+                                .background(TcallColors.LogoBlue)
                                 .padding(horizontal = 7.dp, vertical = 2.dp),
                         ) {
                             Text(
@@ -355,17 +458,22 @@ fun FilterChipRow(
 }
 
 @Composable
-fun GreenCallButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun GreenCallButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 40.dp,
+) {
     Box(
         modifier
-            .size(44.dp)
-            .shadow(8.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.45f))
+            .size(size)
+            .shadow(4.dp, CircleShape, spotColor = TcallColors.Accent.copy(0.2f))
             .clip(CircleShape)
-            .background(if (enabled) TcallColors.AccentGradient else Brush.linearGradient(listOf(TcallColors.Accent.copy(0.45f), TcallColors.AccentDark.copy(0.45f))))
+            .background(if (enabled) TcallColors.LogoBlue else TcallColors.SlateLight)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(size * 0.48f))
     }
 }
 

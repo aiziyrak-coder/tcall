@@ -1,4 +1,5 @@
 import { getLandingUrl } from "@/lib/domains";
+import { LANGUAGES, GLOBAL_LANGUAGES_TAGLINE } from "@/lib/languages";
 
 export type PlatformId = "android" | "ios" | "windows" | "linux";
 
@@ -69,7 +70,7 @@ export const PLATFORM_DOWNLOADS: PlatformDownload[] = [
 export const LANDING_FEATURES = [
   {
     title: "Real-time tarjima",
-    description: "15+ til. Gapiring — sherigingiz o‘z tilida subtitr va tarjima ko‘radi.",
+    description: `${GLOBAL_LANGUAGES_TAGLINE}. Gapiring — sherigingiz o'z tilida subtitr va tarjima ko'radi.`,
   },
   {
     title: "Video va audio qo‘ng‘iroq",
@@ -112,16 +113,13 @@ export const LANDING_STEPS = [
 ] as const;
 
 export const LANDING_STATS = [
-  { value: "15+", label: "Tillar" },
+  { value: "🌍", label: "Barcha tillar" },
   { value: "4", label: "Platforma" },
   { value: "1 ID", label: "Butun dunyo" },
   { value: "WebView yo‘q", label: "Native ilova" },
 ] as const;
 
-export const SUPPORTED_LANGUAGES = [
-  "O‘zbek", "Rus", "Ingliz", "Turk", "Arab", "Nemis", "Fransuz",
-  "Ispan", "Xitoy", "Koreys", "Hind", "Yapon", "Portugal", "Italiyan", "Polsha",
-] as const;
+export const SUPPORTED_LANGUAGES = LANGUAGES.slice(0, 24).map((l) => l.name);
 
 export const LANDING_FAQ = [
   {

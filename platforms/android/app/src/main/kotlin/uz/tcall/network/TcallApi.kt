@@ -9,6 +9,7 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -138,8 +139,24 @@ interface TcallApi {
     @PATCH("/api/user/settings")
     suspend fun updateSettings(@Body body: UpdateSettingsRequest): Response<UserSettingsResponse>
 
-    @POST("/api/user/password")
+    @PATCH("/api/user/password")
     suspend fun changePassword(@Body body: ChangePasswordRequest): Response<OkResponse>
+
+    @Multipart
+    @POST("/api/user/avatar")
+    suspend fun uploadAvatar(@Part file: MultipartBody.Part): Response<AvatarUploadResponse>
+
+    @DELETE("/api/user/avatar")
+    suspend fun deleteAvatar(): Response<OkResponse>
+
+    @GET("/api/user/telegram")
+    suspend fun telegramStatus(): Response<TelegramStatusResponse>
+
+    @POST("/api/user/telegram")
+    suspend fun linkTelegram(): Response<TelegramLinkResponse>
+
+    @DELETE("/api/user/telegram")
+    suspend fun unlinkTelegram(): Response<OkResponse>
 
     // Rooms & history
     @POST("/api/calls")
@@ -186,6 +203,9 @@ interface TcallApi {
     @POST("/api/security/pin")
     suspend fun setPin(@Body body: PinBodyRequest): Response<OkResponse>
 
+    @PUT("/api/security/pin")
+    suspend fun changePin(@Body body: PinChangeRequest): Response<OkResponse>
+
     @POST("/api/security/pin/verify")
     suspend fun verifyPin(@Body body: PinVerifyRequest): Response<OkResponse>
 
@@ -198,4 +218,7 @@ interface TcallApi {
 
     @POST("/api/user/delete-account")
     suspend fun deleteAccount(@Body body: DeleteAccountRequest): Response<OkResponse>
+
+    @GET("/api/ui/locale")
+    suspend fun uiLocale(@Query("lang") lang: String): Response<UiLocaleResponse>
 }

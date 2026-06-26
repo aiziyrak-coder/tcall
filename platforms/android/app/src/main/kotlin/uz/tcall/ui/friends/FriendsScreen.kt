@@ -50,6 +50,7 @@ import uz.tcall.network.ContactDto
 import uz.tcall.network.IncomingFriendRequestDto
 import uz.tcall.network.LookupUserDto
 import uz.tcall.ui.components.GradientPrimaryButton
+import uz.tcall.ui.components.AcceptRejectButtons
 import uz.tcall.ui.components.GreenCallButton
 import uz.tcall.ui.components.IosIconButton
 import uz.tcall.ui.components.TcallAvatar
@@ -103,7 +104,7 @@ fun FriendsScreen(
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(14.dp))
-                        .background(TcallColors.AccentGradient)
+                        .background(TcallColors.LogoBlue)
                         .clickable { /* search triggers on 9 digits */ }
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 ) {
@@ -188,11 +189,11 @@ private fun FriendRow(
             Text(friend.name, fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary)
             Text(formatTcallId(friend.tcallId), fontSize = 12.sp, color = TcallColors.Slate500)
         }
-        IosIconButton(Icons.Default.Person, {}, tint = TcallColors.Slate500, modifier = Modifier.size(36.dp))
-        IosIconButton(Icons.Default.Message, onMessage, tint = TcallColors.IosBlue, modifier = Modifier.size(36.dp))
-        GreenCallButton(onClick = onCall)
-        Spacer(Modifier.size(6.dp))
-        IosIconButton(Icons.Default.Delete, onRemove, tint = TcallColors.Slate500, modifier = Modifier.size(36.dp))
+        IosIconButton(Icons.Default.Person, {}, tint = TcallColors.Slate500, size = 40.dp, iconSize = 22.dp)
+        IosIconButton(Icons.Default.Message, onMessage, tint = TcallColors.IosBlue, size = 40.dp, iconSize = 22.dp)
+        GreenCallButton(onClick = onCall, size = 40.dp)
+        Spacer(Modifier.size(4.dp))
+        IosIconButton(Icons.Default.Delete, onRemove, tint = TcallColors.Slate500, size = 40.dp, iconSize = 22.dp)
     }
     HorizontalDivider(color = TcallColors.Separator, thickness = 0.5.dp)
 }
@@ -335,11 +336,10 @@ private fun IncomingRequestRow(
             Text(req.sender.name, fontWeight = FontWeight.SemiBold)
             Text(formatTcallId(req.sender.tcallId), fontSize = 12.sp, color = TcallColors.Slate500)
         }
-        IconButton(onClick = { onRespond(req.sender.tcallId, true) }, enabled = !loading) {
-            Icon(Icons.Default.Check, null, tint = TcallColors.CallGreen)
-        }
-        IconButton(onClick = { onRespond(req.sender.tcallId, false) }, enabled = !loading) {
-            Icon(Icons.Default.Close, null, tint = TcallColors.Destructive)
-        }
+        AcceptRejectButtons(
+            onAccept = { onRespond(req.sender.tcallId, true) },
+            onReject = { onRespond(req.sender.tcallId, false) },
+            enabled = !loading,
+        )
     }
 }

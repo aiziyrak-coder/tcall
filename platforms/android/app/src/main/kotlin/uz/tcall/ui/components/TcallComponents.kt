@@ -102,18 +102,20 @@ fun TcallChatBubble(text: String, mine: Boolean, modifier: Modifier = Modifier) 
                 .clip(shape)
                 .then(
                     if (mine) {
-                        Modifier.background(TcallColors.BubbleMineGradient)
+                        Modifier
+                            .background(TcallColors.BubbleMine)
+                            .border(0.5.dp, TcallColors.BubbleMineBorder, shape)
                     } else {
                         Modifier
-                            .background(TcallColors.GlassSheet)
-                            .border(0.5.dp, TcallColors.GlassHairline, shape)
+                            .background(TcallColors.BubbleTheir)
+                            .border(0.5.dp, TcallColors.BubbleTheirBorder, shape)
                     },
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
             Text(
                 text,
-                color = if (mine) Color.White else TcallColors.TextPrimary,
+                color = TcallColors.Ink,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 lineHeight = 21.sp,

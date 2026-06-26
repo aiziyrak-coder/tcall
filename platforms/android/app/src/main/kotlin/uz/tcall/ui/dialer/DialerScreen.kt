@@ -45,6 +45,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import uz.tcall.network.CallHistoryDto
 import uz.tcall.ui.components.DialSubTabBar
 import uz.tcall.ui.components.DialWaveform
@@ -122,12 +126,10 @@ private fun KeypadContent(
 
         Text(
             ui.dialNumber,
-            style = TextStyle(
-                brush = TcallColors.TitleGradient,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            ),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = TcallColors.LogoBlue,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
@@ -138,14 +140,13 @@ private fun KeypadContent(
             modifier = Modifier.padding(top = 6.dp),
         )
 
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = if (state.digits.isBlank()) "— — —" else formatTcallId(state.digits),
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 4.sp,
-            fontFamily = FontFamily.Monospace,
-            color = TcallColors.Ink,
+        Spacer(Modifier.height(16.dp))
+
+        DialNumberField(
+            digits = state.digits,
+            placeholder = ui.dialPlaceholder,
+            onDigitsChange = viewModel::setDigits,
+            modifier = Modifier.fillMaxWidth(),
         )
         state.error?.let {
             Text(it, color = TcallColors.Destructive, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
@@ -203,6 +204,52 @@ private fun KeypadContent(
         }
         Spacer(Modifier.height(12.dp))
     }
+}
+
+@Composable
+private fun DialNumberField(
+    digits: String,
+    placeholder: String,
+    onDigitsChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val display = if (digits.isEmpty()) "" else formatTcallId(digits)
+
+    BasicTextField(
+        value = display,
+        onValueChange = { onDigitsChange(it) },
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(TcallColors.SurfaceHighlight)
+            .border(1.dp, TcallColors.AccentBorderSoft, RoundedCornerShape(16.dp))
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        textStyle = TextStyle(
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            fontFamily = FontFamily.Monospace,
+            color = TcallColors.Ink,
+            textAlign = TextAlign.Center,
+        ),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardActions = KeyboardActions.Default,
+        decorationBox = { inner ->
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (digits.isEmpty()) {
+                    Text(
+                        placeholder,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TcallColors.TextMuted,
+                        textAlign = TextAlign.Center,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                inner()
+            }
+        },
+    )
 }
 
 @Composable
