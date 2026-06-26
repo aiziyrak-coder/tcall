@@ -1,8 +1,8 @@
 import {
   getPublicApiUrl,
   getPublicAppUrl,
-  isAppHost,
   isLocalHost,
+  isWebAppHost,
 } from "@/lib/domains";
 import { fetchWithRetry } from "@/lib/network-resilience";
 
@@ -11,13 +11,13 @@ export function getAppUrl(): string {
   return getPublicAppUrl();
 }
 
-/** Frontend tcall.uz → API api.tcall.uz; localhost → same-origin */
+/** web.tcall.uz va localhost — same-origin (/api nginx orqali); faqat landing api.tcall.uz */
 export function getApiUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     if (isLocalHost(host)) return "";
     if (host === "api.tcall.uz") return "";
-    if (isAppHost(host)) return getPublicApiUrl();
+    if (isWebAppHost(host)) return "";
     return getPublicApiUrl();
   }
   return getPublicApiUrl();

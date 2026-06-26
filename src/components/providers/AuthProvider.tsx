@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -36,26 +37,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshGenRef = useRef(0);
 
   const setUser = useCallback((next: User | null) => {
+    refreshGenRef.current += 1;
     setUserState(next);
     cacheUser(next);
   }, []);
 
   const refreshSession = useCallback(async () => {
+    const gen = ++refreshGenRef.current;
     try {
       const r = await apiFetch("/api/auth/session");
+      if (gen !== refreshGenRef.current) return null;
       if (!r.ok) throw new Error("Session yuklanmadi");
       const d = await r.json();
-      setUser(d.user ?? null);
+      if (gen !== refreshGenRef.current) return null;
+      setUserState(d.user ?? null);
+      cacheUser(d.user ?? null);
       setError(null);
       return d.user ?? null;
     } catch (e) {
-      setUser(null);
+      if (gen !== refreshGenRef.current) return null;
+      const cached = readCachedUser();
+      if (!cached) {
+        setUserState(null);
+        cacheUser(null);
+      }
       setError(e instanceof Error ? e.message : "Xatolik");
-      return null;
+      return cached;
     }
-  }, [setUser]);
+  }, []);
 
   useEffect(() => {
     const cached = readCachedUser();

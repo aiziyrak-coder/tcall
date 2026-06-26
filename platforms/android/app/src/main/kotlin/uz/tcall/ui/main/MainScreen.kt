@@ -73,7 +73,9 @@ fun MainScreen(
 ) {
     var currentUser by remember(user) { mutableStateOf(user) }
     var selectedTab by rememberSaveable { mutableStateOf(PhoneTab.KEYPAD.name) }
-    val tab = PhoneTab.valueOf(selectedTab)
+    val tab = remember(selectedTab) {
+        PhoneTab.entries.find { it.name == selectedTab } ?: PhoneTab.KEYPAD
+    }
     var activeCall by remember { mutableStateOf<ActiveCall?>(null) }
     var openChat by remember { mutableStateOf<OpenChat?>(null) }
     var incomingCall by remember { mutableStateOf<IncomingCallEvent?>(null) }
