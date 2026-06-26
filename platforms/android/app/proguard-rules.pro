@@ -1,3 +1,18 @@
+# Gson / Retrofit API modellari
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses
+-keep class uz.tcall.network.** { *; }
+-keep interface uz.tcall.network.TcallApi { *; }
+-keepclassmembers,allowobfuscation class * {
+  @com.google.gson.annotations.SerializedName <fields>;
+}
+-keep class com.google.gson.** { *; }
+-keep class * extends com.google.gson.TypeAdapter
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
 # Add project specific ProGuard rules here.
 -keep class org.webrtc.** { *; }
 -keep class io.socket.** { *; }

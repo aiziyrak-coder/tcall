@@ -95,7 +95,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, enabled: true });
   }
 
-  // Initial enable
+  // Initial enable — face scan is mandatory
+  if (!body.faceImage || body.faceImage.length < 100) {
+    return NextResponse.json(
+      { error: "PIN o'rnatish uchun yuz skaneri majburiy" },
+      { status: 400 }
+    );
+  }
+
   const newHash = await hashPin(body.pin);
   const descriptor = serializeDescriptor(body.faceDescriptor);
   await prisma.user.update({

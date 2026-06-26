@@ -253,9 +253,10 @@ data class SubscriptionResponse(
     @SerializedName("pricesUzs") val pricesUzs: Map<String, Int>? = null,
     val features: Map<String, List<String>>? = null,
     @SerializedName("pendingPayment") val pendingPayment: PendingPaymentDto? = null,
-    val card: PaymentCardDto? = null,
     @SerializedName("paymentConfigured") val paymentConfigured: Boolean? = false,
     val error: String? = null,
+    val ok: Boolean? = null,
+    val payment: PendingPaymentDto? = null,
 )
 
 data class SubscriptionDto(
@@ -270,11 +271,8 @@ data class PendingPaymentDto(
     val amount: Int,
     val currency: String,
     val status: String,
-)
-
-data class PaymentCardDto(
-    val number: String? = null,
-    val holder: String? = null,
+    @SerializedName("paymentUrl") val paymentUrl: String? = null,
+    @SerializedName("expiresAt") val expiresAt: String? = null,
 )
 
 data class PurchaseSubscriptionRequest(
@@ -292,6 +290,7 @@ data class PinStatusResponse(
 
 data class PinBodyRequest(
     val pin: String,
+    @SerializedName("faceImage") val faceImage: String? = null,
     @SerializedName("currentPin") val currentPin: String? = null,
 )
 

@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,12 @@ import uz.tcall.ui.components.TcallPrimaryButton
 import uz.tcall.ui.splash.CosmicBrandTitle
 import uz.tcall.ui.splash.CosmicStarfield
 import uz.tcall.ui.theme.TcallColors
+
+private val CosmosCard = Color(0xE6181228)
+private val CosmosCardBorder = Color(0x55FFB347)
+private val CosmosTitle = Color(0xFFFFF5EB)
+private val CosmosBody = Color(0xFFE8E0FF)
+private val CosmosMuted = Color(0xB8C4B5FF)
 
 private enum class PageKind { FEATURE, PERMISSION }
 
@@ -295,7 +302,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 .size(72.dp)
                                 .shadow(8.dp, RoundedCornerShape(24.dp))
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(TcallColors.GlassSheet),
+                                .background(CosmosCard)
+                                .border(1.dp, CosmosCardBorder, RoundedCornerShape(24.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
@@ -311,7 +319,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             page.title,
                             fontSize = 26.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFE8D6),
+                            color = CosmosTitle,
                             textAlign = TextAlign.Center,
                             lineHeight = 32.sp,
                         )
@@ -320,7 +328,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             page.desc,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xCCDDD6F3),
+                            color = CosmosBody,
                             textAlign = TextAlign.Center,
                             lineHeight = 24.sp,
                         )
@@ -331,7 +339,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(TcallColors.GlassSheet)
+                                    .background(CosmosCard)
+                                    .border(1.dp, CosmosCardBorder, RoundedCornerShape(16.dp))
                                     .clickable { requestPermission(page) }
                                     .padding(16.dp),
                             ) {
@@ -340,14 +349,14 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                         "Nima uchun kerak?",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
-                                        color = Color(0xFFFFE8D6),
+                                        color = Color(0xFFFFB347),
                                     )
                                     Spacer(Modifier.height(6.dp))
                                     Text(
                                         page.reason,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xCCDDD6F3),
+                                        color = CosmosBody,
                                         lineHeight = 20.sp,
                                     )
                                 }
@@ -364,7 +373,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 "Tugmani bosing — tizim ruxsat oynasi chiqadi",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = Color(0x99C4B5FF),
+                                color = CosmosMuted,
                                 textAlign = TextAlign.Center,
                             )
                         }

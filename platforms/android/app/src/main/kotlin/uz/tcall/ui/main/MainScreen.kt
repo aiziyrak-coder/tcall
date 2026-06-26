@@ -169,10 +169,12 @@ fun MainScreen(
     )
 
     fun enterCall(roomId: String, peerName: String = "Suhbatdosh") {
+        if (!services.webRtcCallManager.initialize()) {
+            return
+        }
         outgoingCall = ActiveCall(roomId, peerName)
         activeCall = ActiveCall(roomId, peerName)
-        services.webRtcCallManager.initialize()
-        services.socketManager.joinRoom(roomId, user)
+        services.socketManager.joinRoom(roomId, currentUser)
     }
 
     fun openChatByTcallId(tcallId: String, title: String = tcallId) {
@@ -212,12 +214,7 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(user) {
-        try {
-            services.webRtcCallManager.initialize()
-        } catch (_: Exception) {
-            /* WebRTC ba'zi qurilmalarda ishga tushmasligi mumkin — ilova ochiq qolsin */
-        }
+    LaunchedEffect(user.userId) {
         services.socketManager.roomUsers.onEach { participants ->
             if (activeCall != null) {
                 services.webRtcCallManager.startCall(activeCall!!.roomId, participants, user.userId)
@@ -304,27 +301,12 @@ fun MainScreen(
         return
     }
 
-    openChat?.let { chat ->
-        val threadVm: ChatThreadViewModel = viewModel(
-            key = chat.conversationId,
-            factory = remember(chat.conversationId, services) {
-                object : androidx.lifecycle.ViewModelProvider.Factory {
-                    @Suppress("UNCHECKED_CAST")
-                    override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
-                        ChatThreadViewModel(
-                            chat.conversationId,
-                            user.userId,
-                            services.chatRepository,
-                            services.socketManager,
-                        ) as T
-                }
-            },
-        )
-        ChatThreadScreen(
-            title = chat.title,
-            peerTcallId = chat.peerTcallId,
+    if (openChat != null) {
+        ChatThreadRoute(
+            chat = openChat!!,
+            userId = currentUser.userId,
+            services = services,
             ui = ui,
-            viewModel = threadVm,
             onBack = { openChat = null },
             onCall = ::dialByTcallId,
         )
@@ -443,4 +425,38 @@ fun MainScreen(
             onClose = { inviteOpen = false },
         )
     }
+}
+
+@Composable
+private fun ChatThreadRoute(
+    chat: OpenChat,
+    userId: String,
+    services: TcallServices,
+    ui: TcallUiStrings,
+    onBack: () -> Unit,
+    onCall: (String) -> Unit,
+) {
+    val threadVm: ChatThreadViewModel = viewModel(
+        key = chat.conversationId,
+        factory = remember(chat.conversationId, services) {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
+                    ChatThreadViewModel(
+                        chat.conversationId,
+                        userId,
+                        services.chatRepository,
+                        services.socketManager,
+                    ) as T
+            }
+        },
+    )
+    ChatThreadScreen(
+        title = chat.title,
+        peerTcallId = chat.peerTcallId,
+        ui = ui,
+        viewModel = threadVm,
+        onBack = onBack,
+        onCall = onCall,
+    )
 }

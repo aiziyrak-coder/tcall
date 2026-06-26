@@ -491,6 +491,9 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
     setNotice(null);
     if (!/^\d{4}$/.test(pinNew)) return setNotice({ type: "error", text: "PIN 4 ta raqamdan iborat bo'lishi kerak" });
     if (pinNew !== pinNew2) return setNotice({ type: "error", text: "PIN lar mos kelmadi" });
+    if (!pinFace?.image || pinFace.image.length < 100) {
+      return setNotice({ type: "error", text: "PIN o'rnatish uchun avval yuzni skaner qiling" });
+    }
     setPinBusy(true);
     try {
       const r = await apiFetch("/api/security/pin", {
@@ -1131,16 +1134,16 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
             onClick={() => setFaceMode("enroll")}
           >
             <ScanFace className="w-4 h-4" />
-            {pinFace ? "Yuz tayyor ✓ — qayta skanerlash" : "Yuzni skanerlash (tiklash uchun, tavsiya etiladi)"}
+            {pinFace ? "Yuz tayyor ✓ — qayta skanerlash" : "Yuzni skanerlash (majburiy)"}
           </button>
           <p className="text-[11px] text-slate-400">
-            Yuz skaneri ixtiyoriy, lekin uni qo‘shsangiz PINni unutib qolsangiz osongina tiklaysiz.
+            PIN o‘rnatish uchun yuz skaneri majburiy — tiklash va xavfsizlik uchun.
           </p>
           <button
             type="button"
             className="btn-primary btn-compact w-full"
             onClick={() => void enablePin()}
-            disabled={pinBusy}
+            disabled={pinBusy || !pinFace?.image}
           >
             {pinBusy ? "..." : "PINni yoqish"}
           </button>

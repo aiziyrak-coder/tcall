@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
+import { hashPin, isValidPin, resetPinAttempts } from "@/lib/pin";
 import { purgeUsersByIds, purgeTestUsers, countTestUsers } from "@/lib/admin-cleanup";
 import { parseUserAgent, lookupIpLocation } from "@/lib/device-geo";
 
@@ -23,6 +24,7 @@ export async function GET(req: NextRequest) {
         workplace: true, education: true, graduatedFrom: true, profession: true,
         interests: true, skills: true, telegramUsername: true, avatar: true,
         createdAt: true, lastSeenAt: true, lastLoginAt: true, lastLoginIp: true, lastUserAgent: true,
+        pinHash: true, faceImage: true,
         subscription: { select: { plan: true, status: true, expiresAt: true, price: true } },
         vanityNumber: { select: { number: true, tier: true } },
         bans: { where: { active: true }, select: { id: true, reason: true, expiresAt: true, createdAt: true } },
@@ -33,8 +35,17 @@ export async function GET(req: NextRequest) {
 
     const device = parseUserAgent(user.lastUserAgent);
     const location = await lookupIpLocation(user.lastLoginIp);
+    const { pinHash, faceImage, ...safeUser } = user;
 
-    return NextResponse.json({ user, device, location });
+    return NextResponse.json({
+      user: {
+        ...safeUser,
+        pinEnabled: !!pinHash,
+        faceEnrolled: !!faceImage,
+      },
+      device,
+      location,
+    });
   }
 
   const q = searchParams.get("q")?.trim() || "";
@@ -63,6 +74,7 @@ export async function GET(req: NextRequest) {
         subscription: { select: { plan: true, status: true, expiresAt: true } },
         bans: { where: { active: true }, select: { id: true, reason: true, expiresAt: true } },
         vanityNumber: { select: { number: true, tier: true } },
+        pinHash: true,
       },
     }),
     prisma.user.count({ where }),
@@ -70,13 +82,33 @@ export async function GET(req: NextRequest) {
 
   const testUsers = await countTestUsers();
 
-  return NextResponse.json({ users, total, page, pages: Math.ceil(total / limit), testUsers });
+  return NextResponse.json({
+    users: users.map((u) => ({
+      ...u,
+      pinEnabled: !!u.pinHash,
+      pinHash: undefined,
+    })),
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+    testUsers,
+  });
 }
 
 const updateSchema = z.object({
   userId: z.string().optional(),
-  action: z.enum(["reset_password", "delete", "ban", "unban", "set_subscription", "purge_test_users"]),
+  action: z.enum([
+    "reset_password",
+    "delete",
+    "ban",
+    "unban",
+    "set_subscription",
+    "purge_test_users",
+    "clear_pin",
+    "admin_set_pin",
+  ]),
   newPassword: z.string().min(6).optional(),
+  newPin: z.string().optional(),
   banReason: z.string().max(500).optional(),
   banDays: z.number().int().min(1).max(365).optional(),
   plan: z.enum(["free", "premium", "premium_plus"]).optional(),
@@ -138,6 +170,31 @@ export async function PATCH(req: NextRequest) {
           update: { plan: body.plan, status: "active", expiresAt, price: prices[body.plan], grantedBy: session.email, note: body.note, updatedAt: new Date() },
         });
         return NextResponse.json({ ok: true, message: "Obuna yangilandi" });
+      }
+      case "clear_pin": {
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            pinHash: null,
+            pinUpdatedAt: new Date(),
+            faceImage: null,
+            faceDescriptor: null,
+          },
+        });
+        resetPinAttempts(userId);
+        return NextResponse.json({ ok: true, message: "Foydalanuvchi PIN qulfi o'chirildi" });
+      }
+      case "admin_set_pin": {
+        if (!body.newPin || !isValidPin(body.newPin)) {
+          return NextResponse.json({ error: "Yangi PIN 4 ta raqam bo'lishi kerak" }, { status: 400 });
+        }
+        const newHash = await hashPin(body.newPin);
+        await prisma.user.update({
+          where: { id: userId },
+          data: { pinHash: newHash, pinUpdatedAt: new Date() },
+        });
+        resetPinAttempts(userId);
+        return NextResponse.json({ ok: true, message: "Foydalanuvchi PIN yangilandi" });
       }
     }
   } catch (e) {

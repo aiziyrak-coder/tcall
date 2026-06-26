@@ -78,10 +78,10 @@ data class LookupResponse(
 // ——— User settings ———
 
 data class UserSettingsDto(
-    val id: String,
-    val email: String,
-    val name: String,
-    val language: String,
+    val id: String? = null,
+    val email: String? = null,
+    val name: String? = null,
+    val language: String? = null,
     @SerializedName("translationMode") val translationMode: String? = "text",
     val status: String? = "available",
     val bio: String? = null,

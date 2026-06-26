@@ -96,7 +96,7 @@ class AuthRepository(
 
     suspend fun cachedUser(): UserDto? = sessionStore.cachedUser()
 
-    /** Serverdan yangilash — sessiyani o'chirmaydi (logout alohida) */
+    /** Serverdan yangilash — sessiyani avtomatik o'chirmaydi */
     suspend fun refreshSession(): SessionRefresh {
         val token = sessionStore.getTokenSync()
         if (token.isNullOrBlank()) return SessionRefresh(null, null)
@@ -112,14 +112,19 @@ class AuthRepository(
                     sessionStore.saveSession(tok, user)
                     SessionRefresh(user, tok)
                 }
-                response.code() == 401 || response.code() == 403 -> {
-                    SessionRefresh(cached, token, tokenRejected = true)
+                response.isSuccessful && user == null -> {
+                    // Server sessiyani tan olmadi — lokal sessiyani saqlab qolamiz
+                    SessionRefresh(cached, token)
                 }
                 else -> SessionRefresh(cached, token)
             }
         } catch (_: Exception) {
             SessionRefresh(cached, token)
         }
+    }
+
+    suspend fun persistSession(token: String, user: UserDto) {
+        sessionStore.saveSession(token, user)
     }
 
     suspend fun logout() {

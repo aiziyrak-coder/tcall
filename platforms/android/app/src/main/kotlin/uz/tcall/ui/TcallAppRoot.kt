@@ -81,7 +81,10 @@ fun TcallAppRoot(
             AppSplashScreen()
         }
         isAuthenticated -> {
-            AppLockGate(pinRepository = services.pinRepository) {
+            AppLockGate(
+                pinRepository = services.pinRepository,
+                onReLogin = authViewModel::logout,
+            ) {
                 MainScreen(
                     user = authState.user!!,
                     services = services,

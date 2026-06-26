@@ -58,9 +58,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import uz.tcall.BuildConfig
 import uz.tcall.push.PushRegistrar
+import uz.tcall.ui.components.FaceScanButton
 import uz.tcall.ui.components.GradientPrimaryButton
 import uz.tcall.ui.components.IosCenterModal
 import uz.tcall.ui.components.IosIconButton
+import uz.tcall.ui.components.ModalScrollColumn
 import uz.tcall.ui.components.LanguagePickerRow
 import uz.tcall.ui.components.LanguagePickerSheet
 import uz.tcall.ui.components.TcallAvatar
@@ -71,6 +73,12 @@ import uz.tcall.ui.theme.TcallColors
 import uz.tcall.ui.theme.formatTcallId
 import java.io.File
 import java.io.FileOutputStream
+
+private fun openExternalUrl(context: android.content.Context, url: String) {
+    runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+}
 
 @Composable
 fun SettingsModal(
@@ -86,6 +94,10 @@ fun SettingsModal(
     if (!open) return
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+
+    androidx.compose.runtime.LaunchedEffect(open) {
+        if (open) viewModel.ensureLoaded()
+    }
 
     IosCenterModal(onDismiss = onClose) {
         when {
@@ -113,7 +125,7 @@ fun SettingsModal(
                     IosIconButton(Icons.Default.Close, onClose)
                 }
                 Spacer(Modifier.height(12.dp))
-                Column(Modifier.verticalScroll(rememberScrollState())) {
+                ModalScrollColumn {
                     when (state.section) {
                         SettingsSection.OVERVIEW -> SettingsOverview(state, ui, viewModel::navigate, onOpenSubscription, onOpenInvite, onOpenSupport)
                         SettingsSection.PROFILE -> ProfileSection(state, viewModel, ui, context)
@@ -149,11 +161,15 @@ private fun SettingsOverview(
     onOpenInvite: () -> Unit,
     onOpenSupport: () -> Unit,
 ) {
-    val user = state.user ?: return
+    val user = state.user
+    if (user == null) {
+        Text("Profil yuklanmadi", color = TcallColors.Destructive, modifier = Modifier.padding(16.dp))
+        return
+    }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        TcallAvatar(user.name, size = 72.dp, avatarUrl = state.avatarUrl)
-        Text(user.name, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
-        Text(user.email, color = TcallColors.Slate500, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        TcallAvatar(user.name.orEmpty(), size = 72.dp, avatarUrl = state.avatarUrl)
+        Text(user.name.orEmpty(), fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
+        Text(user.email.orEmpty(), color = TcallColors.Slate500, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
         user.tcallId?.let {
             Text("${ui.yourNumberLabel}: ${formatTcallId(it)}", color = TcallColors.IosBlue, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         }
@@ -175,7 +191,7 @@ private fun SettingsOverview(
 private fun SettingsRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(14.dp)).background(TcallColors.SurfaceElevated)
-            .border(1.dp, Color(0x0F000000), RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(14.dp),
+            .border(1.dp, TcallColors.BorderLight, RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = TcallColors.Brand600, modifier = Modifier.size(22.dp))
@@ -323,7 +339,7 @@ private fun NotificationsSection(state: SettingsUiState, vm: SettingsViewModel, 
             state.telegramStatus?.configured == false -> Text("Telegram bot tez orada faollashadi.", fontSize = 12.sp, color = TcallColors.Destructive)
             state.telegramStatus?.linked == true -> GradientPrimaryButton("Telegramni uzish", onClick = vm::disconnectTelegram, loading = state.telegramBusy)
             else -> GradientPrimaryButton("Telegramni ulash", onClick = {
-                vm.connectTelegram { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                vm.connectTelegram { url -> openExternalUrl(context, url) }
             }, loading = state.telegramBusy)
         }
     }
@@ -347,6 +363,11 @@ private fun PinSection(state: SettingsUiState, vm: SettingsViewModel) {
         TcallTextField(state.pinInput, vm::updatePinInput, "Yangi PIN (4 raqam)")
         Spacer(Modifier.height(10.dp))
         TcallTextField(state.pinConfirm, vm::updatePinConfirm, "PIN takrori")
+        Spacer(Modifier.height(14.dp))
+        FaceScanButton(
+            scanned = !state.pinFaceImage.isNullOrBlank(),
+            onImageCaptured = vm::updatePinFaceImage,
+        )
         Spacer(Modifier.height(14.dp))
         GradientPrimaryButton("PIN o'rnatish", onClick = vm::savePin, loading = state.saving)
     } else {
@@ -381,10 +402,10 @@ private fun SecuritySection(
     SettingsCard {
         Text("Huquqiy", fontWeight = FontWeight.SemiBold)
         Text("Maxfiylik siyosati", modifier = Modifier.fillMaxWidth().clickable {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.WEB_BASE_URL}/privacy")))
+            openExternalUrl(context, "${BuildConfig.WEB_BASE_URL}/privacy")
         }.padding(vertical = 8.dp), color = TcallColors.IosBlue)
         Text("Foydalanish shartlari", modifier = Modifier.fillMaxWidth().clickable {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("${BuildConfig.WEB_BASE_URL}/terms")))
+            openExternalUrl(context, "${BuildConfig.WEB_BASE_URL}/terms")
         }.padding(vertical = 8.dp), color = TcallColors.IosBlue)
     }
     Spacer(Modifier.height(12.dp))

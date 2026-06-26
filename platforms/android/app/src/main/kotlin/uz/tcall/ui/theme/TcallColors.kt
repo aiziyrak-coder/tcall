@@ -3,54 +3,52 @@ package uz.tcall.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-/** Tcall — salat yashil fon + logo ko'k/cyan, gradient yo'q, liquid glass */
+/** Tcall — doim oq fon, kuchli kontrast, ko'k accent */
 object TcallColors {
-    // Logo ranglari
-    val LogoCyan = Color(0xFF3BB4E8)
-    val LogoBlue = Color(0xFF4A7FE8)
-    val LogoPurple = Color(0xFF6B63E8)
-    val LogoInk = Color(0xFF1E2A3A)
+    val LogoCyan = Color(0xFF2563EB)
+    val LogoBlue = Color(0xFF1D4ED8)
+    val LogoPurple = Color(0xFF4F46E5)
+    val LogoInk = Color(0xFF0F172A)
 
-    // Salat / mint
-    val Salad = Color(0xFFB8E8D4)
-    val SaladLight = Color(0xFFE8F7F0)
-    val SaladSoft = Color(0xFFD4F4E2)
-    val SaladMuted = Color(0xFFC5EBD8)
+    val Salad = Color(0xFFFFFFFF)
+    val SaladLight = Color(0xFFFFFFFF)
+    val SaladSoft = Color(0xFFF8FAFC)
+    val SaladMuted = Color(0xFFF1F5F9)
 
-    val Accent = LogoCyan
-    val AccentLight = Color(0xFF6EC8F0)
+    val Accent = LogoBlue
+    val AccentLight = Color(0xFF3B82F6)
     val AccentDeep = LogoBlue
-    val AccentDark = Color(0xFF3A6AD4)
+    val AccentDark = Color(0xFF1E40AF)
     val AccentInk = LogoBlue
     val AccentBright = LogoCyan
-    val Blue = LogoCyan
+    val Blue = LogoBlue
     val Purple = LogoPurple
-    val Warm = Salad
+    val Warm = Color(0xFFF8FAFC)
 
-    val Canvas = Color(0xFFF0FAF5)
-    val CanvasAlt = Color(0xFFE8F7F0)
-    val Surface = Color(0xF5FFFFFF)
-    val SurfaceGlass = Color(0xD9F5FBF8)
-    val SurfaceHighlight = Color(0xFFE8F7F0)
-    val SurfaceElevated = Color(0xFFF4FBF7)
+    val Canvas = Color(0xFFFFFFFF)
+    val CanvasAlt = Color(0xFFF8FAFC)
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceGlass = Color(0xFFFFFFFF)
+    val SurfaceHighlight = Color(0xFFF1F5F9)
+    val SurfaceElevated = Color(0xFFF8FAFC)
 
-    val BgPrimary = Canvas
-    val BgElevated = SurfaceElevated
-    val AuthBg = SaladLight
+    val BgPrimary = Color(0xFFFFFFFF)
+    val BgElevated = Color(0xFFF8FAFC)
+    val AuthBg = Color(0xFFFFFFFF)
 
-    val Ink = LogoInk
-    val InkSoft = Color(0xFF3D4F63)
-    val Slate = Color(0xFF5C6B7A)
-    val SlateLight = Color(0xFF8A97A6)
-    val TextPrimary = Ink
-    val TextSecondary = InkSoft
-    val TextMuted = Slate
-    val TextCaption = SlateLight
+    val Ink = Color(0xFF0F172A)
+    val InkSoft = Color(0xFF334155)
+    val Slate = Color(0xFF475569)
+    val SlateLight = Color(0xFF64748B)
+    val TextPrimary = Color(0xFF0F172A)
+    val TextSecondary = Color(0xFF334155)
+    val TextMuted = Color(0xFF64748B)
+    val TextCaption = Color(0xFF94A3B8)
     val TextOnGradient = Color.White
     val TextOnAccent = Color.White
 
-    val IconPrimary = InkSoft
-    val IconMuted = Slate
+    val IconPrimary = Color(0xFF334155)
+    val IconMuted = Color(0xFF94A3B8)
     val IconActive = LogoBlue
 
     val Slate900 = Ink
@@ -58,50 +56,48 @@ object TcallColors {
     val Slate500 = Slate
     val Slate400 = SlateLight
 
-    val Separator = Color(0x333BB4E8)
-    val BorderLight = Color(0x55B8E8D4)
-    val GlassHairline = Color(0xCCFFFFFF)
-    val GlassRim = Color(0x66B8E8D4)
+    val Separator = Color(0xFFE2E8F0)
+    val BorderLight = Color(0xFFCBD5E1)
+    val GlassHairline = Color(0xFFE2E8F0)
+    val GlassRim = Color(0xFFCBD5E1)
 
     val IosBlue = LogoBlue
-    val IosBlueLight = LogoCyan
+    val IosBlueLight = AccentLight
     val IosBlueDark = AccentDark
     val Brand600 = LogoBlue
     val BrandPurple = LogoPurple
     val BrandIndigo = AccentDark
-    val CallGreen = Color(0xFF34C759)
-    val Destructive = Color(0xFFE53935)
+    val CallGreen = Color(0xFF16A34A)
+    val Destructive = Color(0xFFDC2626)
 
-    val TabBarBg = Color(0xE8F5FBF8)
+    val TabBarBg = Color(0xFFFFFFFF)
     val TabInactive = Slate
 
-    val GlassBar = Color(0xD9F0FAF6)
-    val GlassCard = Color(0xD9FFFFFF)
-    val GlassSheet = Color(0xF0FFFFFF)
+    val GlassBar = Color(0xFFFFFFFF)
+    val GlassCard = Color(0xFFFFFFFF)
+    val GlassSheet = Color(0xFFFFFFFF)
 
-    val AccentSoft = Color(0x283BB4E8)
-    val AccentMuted = Color(0x18B8E8D4)
-    val AccentBorderSoft = Color(0x553BB4E8)
-    val AccentGlow = Color(0x283BB4E8)
-    val WarmSoft = Color(0x33B8E8D4)
-    val WarmMuted = Color(0x1AB8E8D4)
-    val WarmLight = SaladLight
+    val AccentSoft = Color(0x1A2563EB)
+    val AccentMuted = Color(0x0D2563EB)
+    val AccentBorderSoft = Color(0x662563EB)
+    val AccentGlow = Color(0x142563EB)
+    val WarmSoft = Color(0xFFF1F5F9)
+    val WarmMuted = Color(0xFFE2E8F0)
+    val WarmLight = Color(0xFFF8FAFC)
 
-    // Chat — shaffof liquid glass, to'q matn
-    val BubbleMine = Color(0xD9C8EDF8)
-    val BubbleTheir = Color(0xE6FFFFFF)
-    val BubbleMineBorder = Color(0x663BB4E8)
-    val BubbleTheirBorder = Color(0x55B8E8D4)
+    val BubbleMine = Color(0xFFDBEAFE)
+    val BubbleTheir = Color(0xFFFFFFFF)
+    val BubbleMineBorder = Color(0xFF93C5FD)
+    val BubbleTheirBorder = Color(0xFFE2E8F0)
 
-    // Eski nomlar — barchasi tekis rang (gradient emas)
     private fun flat(c: Color) = Brush.linearGradient(listOf(c, c))
 
     val MeshGradient = flat(Canvas)
     val AccentGradient = flat(LogoBlue)
     val AccentGradientVertical = flat(LogoBlue)
-    val AccentGradientSoft = flat(SaladSoft)
-    val WarmAccentGradient = flat(SaladSoft)
-    val PremiumGradient = flat(SaladLight)
+    val AccentGradientSoft = flat(CanvasAlt)
+    val WarmAccentGradient = flat(CanvasAlt)
+    val PremiumGradient = flat(CanvasAlt)
     val CanvasGradient = flat(Canvas)
     val CallBtnGradient = flat(LogoBlue)
     val BubbleMineGradient = flat(BubbleMine)
@@ -110,11 +106,11 @@ object TcallColors {
     val KeyGradient = flat(Color.White)
     val TitleGradient = flat(LogoBlue)
 
-    val Flame = LogoCyan
-    val FlameBright = LogoCyan
+    val Flame = LogoBlue
+    val FlameBright = AccentLight
     val FlameDeep = LogoBlue
     val FlameDark = AccentDark
-    val Ember = Salad
+    val Ember = Color(0xFFF1F5F9)
     val Ash = Ink
 
     val OrbBlue = Color(0x00000000)
@@ -125,7 +121,7 @@ object TcallColors {
     val OnDark = TextOnAccent
     val CallGradient = flat(Canvas)
 
-    @Deprecated("Use TextSecondary") val TextSecondaryAlpha = Color(0x993D4F63)
+    @Deprecated("Use TextSecondary") val TextSecondaryAlpha = Color(0x99334155)
     @Deprecated("Use TextMuted") val TextTertiary = Slate
 }
 

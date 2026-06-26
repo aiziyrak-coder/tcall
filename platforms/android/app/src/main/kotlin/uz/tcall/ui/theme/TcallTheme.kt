@@ -45,7 +45,8 @@ fun TcallTheme(content: @Composable () -> Unit) {
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val activity = view.context.findActivity() ?: return@SideEffect
+            val window = activity.window
             window.statusBarColor = TcallColors.Canvas.toArgb()
             window.navigationBarColor = TcallColors.Canvas.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
@@ -55,4 +56,10 @@ fun TcallTheme(content: @Composable () -> Unit) {
         }
     }
     MaterialTheme(colorScheme = LightColors, typography = TcallTypography, content = content)
+}
+
+private tailrec fun android.content.Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

@@ -7,14 +7,13 @@ import {
   SUBSCRIPTION_PRICES_UZS,
   PAYMENT_WINDOW_MIN,
   createPendingPayment,
-  getPaymentCard,
   paymentConfigured,
   expireOldPayments,
 } from "@/lib/payments";
 
 function paymentView(p: {
   id: string; plan: string; amount: number; baseAmount: number; currency: string;
-  status: string; expiresAt: Date; createdAt: Date;
+  status: string; expiresAt: Date; createdAt: Date; paymentUrl: string | null;
 } | null) {
   if (!p) return null;
   return {
@@ -26,6 +25,7 @@ function paymentView(p: {
     status: p.status,
     expiresAt: p.expiresAt,
     createdAt: p.createdAt,
+    paymentUrl: p.paymentUrl,
   };
 }
 
@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
     pricesUzs: SUBSCRIPTION_PRICES_UZS,
     features: PLAN_FEATURES,
     pendingPayment: paymentView(pending),
-    card: getPaymentCard(),
     paymentConfigured: paymentConfigured(),
     windowMin: PAYMENT_WINDOW_MIN,
   });
@@ -76,7 +75,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       payment: paymentView(payment),
-      card: getPaymentCard(),
       paymentConfigured: paymentConfigured(),
       windowMin: PAYMENT_WINDOW_MIN,
     });

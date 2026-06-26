@@ -122,9 +122,9 @@ private fun OverviewSection(
 ) {
     val user = state.user ?: return
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        TcallAvatar(user.name, size = 72.dp)
-        Text(user.name, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 12.dp))
-        Text(user.email, color = TcallColors.Slate500, fontSize = 14.sp)
+        TcallAvatar(user.name.orEmpty(), size = 72.dp)
+        Text(user.name.orEmpty(), fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 12.dp))
+        Text(user.email.orEmpty(), color = TcallColors.Slate500, fontSize = 14.sp)
         user.tcallId?.let {
             Text("#${formatTcallId(it)}", fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = TcallColors.Brand600, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp))
         }

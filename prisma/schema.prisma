@@ -112,7 +112,9 @@ model Payment {
   currency      String    @default("UZS")
   durationDays  Int       @default(30)
   status        String    @default("pending") // pending | paid | expired | cancelled
-  provider      String    @default("p2p_card")
+  provider      String    @default("cryptomus")
+  externalId    String?   // Cryptomus invoice UUID
+  paymentUrl    String?   // Cryptomus to'lov sahifasi
   rawSms        String?
   matchedAt     DateTime?
   approvedBy    String?

@@ -27,7 +27,10 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   formatDetection: { telephone: false },
-  other: { "mobile-web-app-capable": "yes" },
+  other: {
+    "mobile-web-app-capable": "yes",
+    cryptomus: "dd45d28b",
+  },
 };
 
 export const viewport: Viewport = {
@@ -45,6 +48,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="uz" data-theme="light">
+      <head>
+        <meta name="cryptomus" content="dd45d28b" />
+      </head>
       <body className={`${inter.className} ${landing ? "landing-body" : "overflow-hidden"}`}>
         <script
           dangerouslySetInnerHTML={{

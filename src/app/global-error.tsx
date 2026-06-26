@@ -15,6 +15,9 @@ export default function GlobalError({
 
   return (
     <html lang="uz">
+      <head>
+        <meta name="cryptomus" content="dd45d28b" />
+      </head>
       <body className="app-error-page-body">
         <div className="app-error-page">
           <h1 className="app-error-page-title">Tcall</h1>

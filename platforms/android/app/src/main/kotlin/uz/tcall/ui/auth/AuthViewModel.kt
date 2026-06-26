@@ -9,6 +9,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import uz.tcall.data.AppPreferences
 import uz.tcall.data.AuthRepository
+import uz.tcall.data.PinUnlockStore
 import uz.tcall.network.UserDto
 
 enum class AuthScreen { LOGIN, REGISTER, FORGOT_PASSWORD }
@@ -49,7 +50,11 @@ class AuthViewModel(
             }
             val cached = authRepository.cachedUser()
             if (gen == sessionGeneration) {
-                _state.value = AuthUiState(loading = false, user = cached, token = token)
+                _state.value = if (cached != null) {
+                    AuthUiState(loading = false, user = cached, token = token)
+                } else {
+                    AuthUiState(loading = true, token = token)
+                }
             }
             withTimeoutOrNull(12_000) {
                 applyRefresh(authRepository.refreshSession(), gen, cached, token)
@@ -64,34 +69,36 @@ class AuthViewModel(
         fallbackToken: String?,
     ) {
         if (gen != sessionGeneration) return
+        val storeToken = authRepository.currentToken()
+        val user = refresh.user ?: fallbackUser ?: _state.value.user
+        val token = refresh.token ?: fallbackToken ?: _state.value.token ?: storeToken
+
         when {
-            refresh.user != null && !refresh.token.isNullOrBlank() -> {
+            user != null && !token.isNullOrBlank() -> {
+                _state.value = AuthUiState(loading = false, user = user, token = token)
+            }
+            _state.value.user != null && !storeToken.isNullOrBlank() -> {
                 _state.value = AuthUiState(
                     loading = false,
-                    user = refresh.user,
-                    token = refresh.token,
+                    user = _state.value.user,
+                    token = storeToken,
                 )
             }
-            refresh.tokenRejected && _state.value.user == null -> {
-                viewModelScope.launch {
-                    authRepository.logout()
-                    if (gen == sessionGeneration) {
-                        _state.value = AuthUiState(loading = false)
-                    }
-                }
+            fallbackUser != null && !storeToken.isNullOrBlank() -> {
+                _state.value = AuthUiState(loading = false, user = fallbackUser, token = storeToken)
+            }
+            storeToken.isNullOrBlank() && _state.value.user == null -> {
+                _state.value = AuthUiState(loading = false)
             }
             else -> {
-                _state.value = AuthUiState(
-                    loading = false,
-                    user = refresh.user ?: fallbackUser ?: _state.value.user,
-                    token = refresh.token ?: fallbackToken ?: _state.value.token,
-                )
+                _state.value = _state.value.copy(loading = false)
             }
         }
     }
 
-    private fun commitSession(user: UserDto, token: String) {
+    private suspend fun commitSession(user: UserDto, token: String) {
         sessionGeneration++
+        authRepository.persistSession(token, user)
         _state.value = AuthUiState(loading = false, user = user, token = token)
     }
 
@@ -172,6 +179,7 @@ class AuthViewModel(
     fun logout() {
         viewModelScope.launch {
             sessionGeneration++
+            PinUnlockStore.clear()
             authRepository.logout()
             _state.value = AuthUiState(loading = false, user = null, token = null)
         }

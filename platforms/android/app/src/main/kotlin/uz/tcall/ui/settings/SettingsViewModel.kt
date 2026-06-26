@@ -47,6 +47,7 @@ data class SettingsUiState(
     val pinCurrent: String = "",
     val pinInput: String = "",
     val pinConfirm: String = "",
+    val pinFaceImage: String? = null,
     val pinEnabled: Boolean = false,
     val pinFaceEnrolled: Boolean = false,
     val pinLoading: Boolean = false,
@@ -70,7 +71,13 @@ class SettingsViewModel(
     private val _state = MutableStateFlow(SettingsUiState())
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
-    init { load() }
+    private var profileLoaded = false
+
+    fun ensureLoaded() {
+        if (profileLoaded && _state.value.user != null) return
+        profileLoaded = true
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -81,13 +88,17 @@ class SettingsViewModel(
         }
     }
 
-    private fun applyUser(user: UserSettingsDto) {
+    private fun applyUser(user: UserSettingsDto, syncToMain: Boolean = false) {
+        if (user.id.isNullOrBlank() || user.name.isNullOrBlank()) {
+            _state.update { it.copy(loading = false, error = "Profil ma'lumotlari to'liq emas") }
+            return
+        }
         _state.update {
             it.copy(
                 loading = false,
                 user = user,
-                name = user.name,
-                language = user.language,
+                name = user.name.orEmpty(),
+                language = user.language ?: "uz",
                 translationMode = user.translationMode ?: "text",
                 status = user.status ?: "available",
                 bio = user.bio.orEmpty(),
@@ -106,25 +117,25 @@ class SettingsViewModel(
                 avatarUrl = user.avatarUrl,
             )
         }
-        syncSession(user)
+        if (syncToMain) syncSession(user)
     }
 
     private fun syncSession(user: UserSettingsDto) {
         val token = sessionStore.getTokenSync() ?: return
-        onUserUpdated(
-            UserDto(
-                userId = user.id,
-                email = user.email,
-                name = user.name,
-                language = user.language,
-                tcallId = user.tcallId.orEmpty(),
-            ),
+        val userId = user.id ?: return
+        val name = user.name.orEmpty()
+        val email = user.email.orEmpty()
+        val language = user.language ?: "uz"
+        val dto = UserDto(
+            userId = userId,
+            email = email,
+            name = name,
+            language = language,
+            tcallId = user.tcallId.orEmpty(),
         )
+        onUserUpdated(dto)
         viewModelScope.launch {
-            sessionStore.saveSession(
-                token,
-                UserDto(user.id, user.email, user.name, user.language, user.tcallId.orEmpty()),
-            )
+            sessionStore.saveSession(token, dto)
         }
     }
 
@@ -160,6 +171,7 @@ class SettingsViewModel(
     fun updatePinCurrent(v: String) { _state.update { it.copy(pinCurrent = v.filter { it.isDigit() }.take(4)) } }
     fun updatePinInput(v: String) { _state.update { it.copy(pinInput = v.filter { it.isDigit() }.take(4)) } }
     fun updatePinConfirm(v: String) { _state.update { it.copy(pinConfirm = v.filter { it.isDigit() }.take(4)) } }
+    fun updatePinFaceImage(v: String?) { _state.update { it.copy(pinFaceImage = v) } }
     fun updateDeletePassword(v: String) { _state.update { it.copy(deletePassword = v) } }
     fun updateLogoutConfirm(v: String) { _state.update { it.copy(logoutConfirm = v) } }
     fun setDeleteOpen(open: Boolean) { _state.update { it.copy(deleteOpen = open) } }
@@ -279,7 +291,7 @@ class SettingsViewModel(
             _state.update { it.copy(saving = true, error = null, saved = false) }
             userRepository.updateSettings(body)
                 .onSuccess { user ->
-                    applyUser(user)
+                    applyUser(user, syncToMain = true)
                     _state.update { it.copy(saving = false, saved = true) }
                 }
                 .onFailure { e -> _state.update { it.copy(saving = false, error = e.message) } }
@@ -322,12 +334,25 @@ class SettingsViewModel(
             _state.update { it.copy(error = "PIN 4 raqam va mos kelishi kerak") }
             return
         }
+        val face = s.pinFaceImage
+        if (face.isNullOrBlank() || face.length < 100) {
+            _state.update { it.copy(error = "PIN o'rnatish uchun yuz skaneri majburiy") }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(saving = true, error = null) }
-            pinRepository.setPin(s.pinInput)
+            pinRepository.setPin(s.pinInput, face)
                 .onSuccess {
                     _state.update {
-                        it.copy(saving = false, saved = true, pinInput = "", pinConfirm = "", pinEnabled = true)
+                        it.copy(
+                            saving = false,
+                            saved = true,
+                            pinInput = "",
+                            pinConfirm = "",
+                            pinFaceImage = null,
+                            pinEnabled = true,
+                            pinFaceEnrolled = true,
+                        )
                     }
                 }
                 .onFailure { e -> _state.update { it.copy(saving = false, error = e.message) } }

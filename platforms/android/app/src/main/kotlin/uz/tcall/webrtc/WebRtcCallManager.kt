@@ -58,13 +58,19 @@ class WebRtcCallManager(
 
     enum class CallState { IDLE, CONNECTING, CONNECTED, FAILED, ENDED }
 
-    fun initialize() {
-        if (factory != null) return
-        val initOpts = PeerConnectionFactory.InitializationOptions.builder(appContext)
-            .setEnableInternalTracer(false)
-            .createInitializationOptions()
-        PeerConnectionFactory.initialize(initOpts)
-        factory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+    fun initialize(): Boolean {
+        if (factory != null) return true
+        return try {
+            val initOpts = PeerConnectionFactory.InitializationOptions.builder(appContext)
+                .setEnableInternalTracer(false)
+                .createInitializationOptions()
+            PeerConnectionFactory.initialize(initOpts)
+            factory = PeerConnectionFactory.builder().createPeerConnectionFactory()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "WebRTC init failed", e)
+            false
+        }
     }
 
     fun startCall(roomId: String, participants: List<RoomParticipantDto>, myUserId: String) {

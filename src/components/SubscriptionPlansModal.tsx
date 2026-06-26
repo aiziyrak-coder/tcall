@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, Copy, CreditCard, Crown, Headset, Loader2, X } from "lucide-react";
+import { Check, Copy, CreditCard, Crown, ExternalLink, Headset, Loader2, X } from "lucide-react";
 import { apiFetch, parseApiJson } from "@/lib/api";
 import { copyToClipboard } from "@/lib/utils";
 import {
@@ -28,12 +28,7 @@ interface PendingPayment {
   currency: string;
   status: string;
   expiresAt: string;
-}
-
-interface CardInfo {
-  number: string;
-  holder: string;
-  bank: string;
+  paymentUrl?: string | null;
 }
 
 interface SubscriptionApiPayload {
@@ -46,7 +41,6 @@ interface SubscriptionApiPayload {
   subscription?: { plan?: ClientSubscriptionPlan; status?: string; expiresAt?: string | null } | null;
   pendingPayment?: PendingPayment | null;
   payment?: PendingPayment | null;
-  card?: CardInfo;
   paymentConfigured?: boolean;
   windowMin?: number;
 }
@@ -69,12 +63,12 @@ const COPY = {
     buyNow: "To'lovga o'tish", needHigherPlan: "Davom etish uchun kamida {plan} ni tanlang",
     monthly: "oy", close: "Yopish", back: "Orqaga",
     plan_free: "Bepul", plan_premium: "Premium", plan_premium_plus: "Premium+",
-    payTitle: "To'lovni amalga oshiring", payDesc: "Quyidagi kartaga AYNAN ko'rsatilgan summani o'tkazing. To'lov avtomatik tasdiqlanadi.",
-    amountLabel: "To'lov summasi (aynan shu)", cardLabel: "Karta raqami", holderLabel: "Karta egasi",
+    payTitle: "To'lovni amalga oshiring", payDesc: "Cryptomus orqali kripto yoki kartadan to'lang. To'lov tasdiqlangach obuna avtomatik yoqiladi.",
+    amountLabel: "To'lov summasi", payButton: "Cryptomus orqali to'lash", openPayment: "To'lov sahifasini ochish",
     copy: "Nusxalash", copied: "Nusxalandi", waiting: "To'lov kutilmoqda — avtomatik tekshirilmoqda...",
     timeLeft: "Qolgan vaqt", expired: "Muddat tugadi. Qaytadan urinib ko'ring.", retry: "Qaytadan",
     successPaid: "To'lov qabul qilindi! Obuna yoqildi.",
-    exactNote: "DIQQAT! Summani tiyingacha AYNAN ko'rsatilganidek yuboring. Aks holda obuna FAOLLASHMAYDI va pulingiz QAYTARILMAYDI!",
+    payNote: "To'lov sahifasida Cryptomus xavfsiz to'lov tizimi orqali to'lovni yakunlang.",
     notConfigured: "To'lov tizimi hozircha sozlanmoqda. Iltimos keyinroq urinib ko'ring yoki admin bilan bog'laning.",
     som: "so'm",
     contact: "Admin bilan bog'lanish", daysLeft: "{n} kun qoldi", expiresWord: "tugaydi",
@@ -86,12 +80,12 @@ const COPY = {
     buyNow: "Перейти к оплате", needHigherPlan: "Выберите минимум {plan}",
     monthly: "мес", close: "Закрыть", back: "Назад",
     plan_free: "Бесплатно", plan_premium: "Premium", plan_premium_plus: "Premium+",
-    payTitle: "Произведите оплату", payDesc: "Переведите ТОЧНО указанную сумму на карту. Оплата подтвердится автоматически.",
-    amountLabel: "Сумма оплаты (именно эта)", cardLabel: "Номер карты", holderLabel: "Владелец карты",
+    payTitle: "Произведите оплату", payDesc: "Оплатите через Cryptomus криптовалютой или картой. Подписка активируется автоматически.",
+    amountLabel: "Сумма оплаты", payButton: "Оплатить через Cryptomus", openPayment: "Открыть страницу оплаты",
     copy: "Копировать", copied: "Скопировано", waiting: "Ожидание оплаты — проверяем автоматически...",
     timeLeft: "Осталось", expired: "Время истекло. Попробуйте снова.", retry: "Заново",
     successPaid: "Оплата принята! Подписка активирована.",
-    exactNote: "ВНИМАНИЕ! Отправьте сумму ТОЧНО до тийина, как указано. Иначе подписка НЕ активируется и деньги НЕ возвращаются!",
+    payNote: "Завершите оплату на защищённой странице Cryptomus.",
     notConfigured: "Платёжная система настраивается. Попробуйте позже или свяжитесь с админом.",
     som: "сум",
     contact: "Связаться с админом", daysLeft: "осталось {n} дн.", expiresWord: "истекает",
@@ -103,12 +97,12 @@ const COPY = {
     buyNow: "Continue to payment", needHigherPlan: "Choose at least {plan}",
     monthly: "month", close: "Close", back: "Back",
     plan_free: "Free", plan_premium: "Premium", plan_premium_plus: "Premium+",
-    payTitle: "Make the payment", payDesc: "Transfer the EXACT amount shown to the card. Payment is confirmed automatically.",
-    amountLabel: "Payment amount (exactly this)", cardLabel: "Card number", holderLabel: "Card holder",
+    payTitle: "Make the payment", payDesc: "Pay via Cryptomus with crypto or card. Your subscription activates automatically after confirmation.",
+    amountLabel: "Payment amount", payButton: "Pay with Cryptomus", openPayment: "Open payment page",
     copy: "Copy", copied: "Copied", waiting: "Waiting for payment — checking automatically...",
     timeLeft: "Time left", expired: "Time expired. Please try again.", retry: "Retry",
     successPaid: "Payment received! Subscription activated.",
-    exactNote: "WARNING! Send the EXACT amount down to the tiyin as shown. Otherwise the subscription will NOT activate and your money is NON-REFUNDABLE!",
+    payNote: "Complete payment on the secure Cryptomus checkout page.",
     notConfigured: "Payment system is being set up. Please try later or contact admin.",
     som: "UZS",
     contact: "Contact support", daysLeft: "{n} days left", expiresWord: "expires",
@@ -143,7 +137,6 @@ export function SubscriptionPlansModal({
   const [pricesUzs, setPricesUzs] = useState<Record<PaidPlan, number>>(DEFAULT_PRICES_UZS);
   const [features, setFeatures] = useState<Record<ClientSubscriptionPlan, string[]>>(DEFAULT_FEATURES);
   const [payment, setPayment] = useState<PendingPayment | null>(null);
-  const [card, setCard] = useState<CardInfo>({ number: "", holder: "", bank: "" });
   const [configured, setConfigured] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [copiedField, setCopiedField] = useState("");
@@ -170,7 +163,6 @@ export function SubscriptionPlansModal({
         premium_plus: Array.isArray(data.features?.premium_plus) && data.features.premium_plus.length ? data.features.premium_plus : prev.premium_plus,
       }));
     }
-    if (data.card) setCard(data.card);
     if (typeof data.paymentConfigured === "boolean") setConfigured(data.paymentConfigured);
   }, []);
 
@@ -264,6 +256,9 @@ export function SubscriptionPlansModal({
       applyPayload(data);
       setPayment(data.payment);
       setStep("pay");
+      if (data.payment?.paymentUrl) {
+        window.open(data.payment.paymentUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Xatolik");
     } finally {
@@ -400,30 +395,20 @@ export function SubscriptionPlansModal({
               </div>
             </div>
 
-            <div className="payment-warning rounded-2xl border-2 border-red-500 bg-red-50 p-3.5 mb-3 flex items-start gap-2.5">
-              <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-sm font-bold text-red-700 leading-snug">{copy.exactNote}</p>
+            <div className="payment-warning rounded-2xl border border-brand-200 bg-brand-50/80 p-3.5 mb-3">
+              <p className="text-sm text-slate-700 leading-snug">{copy.payNote}</p>
             </div>
 
-            {card.number && (
-              <div className="rounded-2xl border border-black/10 bg-white p-4 mb-3 space-y-2">
-                <div>
-                  <p className="text-xs text-slate-500">{copy.cardLabel}{card.bank ? ` · ${card.bank}` : ""}</p>
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-lg font-mono font-semibold tracking-wider text-slate-900">{card.number}</p>
-                    <button type="button" onClick={() => void doCopy("card", card.number.replace(/\s/g, ""))} className="btn-secondary btn-compact text-xs flex items-center gap-1">
-                      {copiedField === "card" ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedField === "card" ? copy.copied : copy.copy}
-                    </button>
-                  </div>
-                </div>
-                {card.holder && (
-                  <div>
-                    <p className="text-xs text-slate-500">{copy.holderLabel}</p>
-                    <p className="text-sm font-medium text-slate-800">{card.holder}</p>
-                  </div>
-                )}
-              </div>
+            {payment.paymentUrl && (
+              <a
+                href={payment.paymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary btn-compact w-full mb-3 flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                {copy.openPayment}
+              </a>
             )}
 
             {expired ? (

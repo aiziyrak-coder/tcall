@@ -27,7 +27,7 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection heading="4. Subscriptions &amp; payments">
-        <p>Premium plans are billed as described in the app. Payments made via bank card transfer must match the exact amount shown; transfers with an incorrect amount may not activate your subscription and may be non-refundable. Subscription benefits apply for the stated period.</p>
+        <p>Premium plans are billed as described in the app. Payments are processed securely via Cryptomus (crypto and card). Subscription benefits apply for the stated period after payment confirmation.</p>
       </LegalSection>
 
       <LegalSection heading="5. Service availability">

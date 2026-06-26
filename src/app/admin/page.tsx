@@ -41,6 +41,7 @@ interface Stats {
 interface UserRow {
   id: string; name: string; email: string; tcallId: string | null;
   createdAt: string; lastSeenAt: string | null;
+  pinEnabled?: boolean;
   subscription: { plan: string; status: string; expiresAt: string | null } | null;
   bans: { id: string; reason: string }[];
   vanityNumber: { number: string; tier: string } | null;
@@ -108,6 +109,7 @@ interface UserDetail {
     bio: string | null; about: string | null; age: number | null; city: string | null; country: string | null;
     address: string | null; workplace: string | null; education: string | null; graduatedFrom: string | null;
     profession: string | null; interests: string | null; skills: string | null; telegramUsername: string | null;
+    pinEnabled?: boolean; faceEnrolled?: boolean;
     createdAt: string; lastSeenAt: string | null; lastLoginAt: string | null; lastLoginIp: string | null; lastUserAgent: string | null;
     subscription: { plan: string; status: string; expiresAt: string | null; price: number } | null;
     vanityNumber: { number: string; tier: string } | null;
@@ -176,7 +178,7 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [actionUser, setActionUser] = useState<UserRow | null>(null);
   const [actionType, setActionType] = useState<string>("");
-  const [actionInput, setActionInput] = useState<{ password?: string; banReason?: string; banDays?: string; plan?: string; planDays?: string }>({});
+  const [actionInput, setActionInput] = useState<{ password?: string; newPin?: string; banReason?: string; banDays?: string; plan?: string; planDays?: string }>({});
   const [newAdmin, setNewAdmin] = useState({ email: "", name: "", password: "", role: "admin" });
   const [chatQ, setChatQ] = useState("");
 
@@ -364,6 +366,7 @@ export default function AdminPage() {
     setError("");
     const body: Record<string, unknown> = { userId: actionUser.id, action: actionType };
     if (actionType === "reset_password") body.newPassword = actionInput.password;
+    if (actionType === "admin_set_pin") body.newPin = actionInput.newPin;
     if (actionType === "ban") { body.banReason = actionInput.banReason; body.banDays = actionInput.banDays ? Number(actionInput.banDays) : undefined; }
     if (actionType === "set_subscription") { body.plan = actionInput.plan; body.planDays = actionInput.planDays ? Number(actionInput.planDays) : undefined; }
     const r = await adminFetch("/api/admin/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -690,6 +693,10 @@ export default function AdminPage() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
                               <button type="button" title="Parol yangilash" onClick={() => { setActionUser(u); setActionType("reset_password"); }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-yellow-400"><Lock className="w-3.5 h-3.5" /></button>
+                              <button type="button" title="PIN yangilash" onClick={() => { setActionUser(u); setActionType("admin_set_pin"); }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-orange-400"><ScanFace className="w-3.5 h-3.5" /></button>
+                              {u.pinEnabled && (
+                                <button type="button" title="PIN o'chirish" onClick={() => { setActionUser(u); setActionType("clear_pin"); }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-amber-400"><X className="w-3.5 h-3.5" /></button>
+                              )}
                               <button type="button" title="Obuna" onClick={() => { setActionUser(u); setActionType("set_subscription"); }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-purple-400"><Crown className="w-3.5 h-3.5" /></button>
                               {u.bans.length > 0 ? (
                                 <button type="button" title="Banni olib tashlash" onClick={() => { setActionUser(u); setActionType("unban"); }} className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-green-400"><ShieldCheck className="w-3.5 h-3.5" /></button>
@@ -806,7 +813,7 @@ export default function AdminPage() {
                                 <button type="button" onClick={() => void reviewPayment(p.id, "reject")} className="flex items-center gap-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-1.5 rounded-lg text-xs font-medium"><X className="w-3.5 h-3.5" /> Rad</button>
                               </div>
                             ) : (
-                              <span className="text-slate-500 text-xs">{p.approvedBy || (p.matchedAt ? "SMS auto" : "—")}</span>
+                              <span className="text-slate-500 text-xs">{p.approvedBy || (p.matchedAt ? (p.provider === "cryptomus" ? "Cryptomus" : "avtomatik") : "—")}</span>
                             )}
                           </td>
                         </tr>
@@ -1331,6 +1338,8 @@ export default function AdminPage() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-white font-bold mb-1">
               {actionType === "reset_password" ? "Parolni yangilash" :
+               actionType === "admin_set_pin" ? "PIN yangilash" :
+               actionType === "clear_pin" ? "PIN o'chirish" :
                actionType === "ban" ? "Ban berish" :
                actionType === "unban" ? "Banni olib tashlash" :
                actionType === "set_subscription" ? "Obuna o'rnatish" :
@@ -1340,6 +1349,22 @@ export default function AdminPage() {
 
             {actionType === "reset_password" && (
               <input type="password" className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none" placeholder="Yangi parol (min 6 belgi)" value={actionInput.password || ""} onChange={(e) => setActionInput(p => ({ ...p, password: e.target.value }))} />
+            )}
+            {actionType === "admin_set_pin" && (
+              <input
+                inputMode="numeric"
+                pattern="\d*"
+                maxLength={4}
+                className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-sm mb-4 focus:outline-none text-center tracking-[0.4em]"
+                placeholder="Yangi PIN (4 raqam)"
+                value={actionInput.newPin || ""}
+                onChange={(e) => setActionInput(p => ({ ...p, newPin: e.target.value.replace(/\D/g, "").slice(0, 4) }))}
+              />
+            )}
+            {actionType === "clear_pin" && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-amber-300 text-sm mb-4">
+                Foydalanuvchining PIN qulfi va yuz ma&apos;lumotlari o&apos;chiriladi. Keyin u yangi PIN o&apos;rnatishi mumkin.
+              </div>
             )}
             {actionType === "ban" && (
               <div className="space-y-3 mb-4">
@@ -1368,7 +1393,7 @@ export default function AdminPage() {
 
             <div className="flex gap-3">
               <button type="button" onClick={() => setActionUser(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium transition-colors">Bekor</button>
-              <button type="button" onClick={() => void doAction()} className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${actionType === "delete" || actionType === "ban" ? "bg-red-600 hover:bg-red-500" : "bg-brand-600 hover:bg-brand-500"}`}>
+              <button type="button" onClick={() => void doAction()} className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-white transition-colors ${actionType === "delete" || actionType === "ban" ? "bg-red-600 hover:bg-red-500" : actionType === "clear_pin" ? "bg-amber-600 hover:bg-amber-500" : "bg-brand-600 hover:bg-brand-500"}`}>
                 Tasdiqlash
               </button>
             </div>
@@ -1477,6 +1502,10 @@ export default function AdminPage() {
                       <p className="text-slate-400 text-xs mb-1">Faollik</p>
                       <p className="text-white text-sm">📞 {u._count.hostedCalls} qo'ng'iroq · 💬 {u._count.chatMessagesSent} xabar · 👥 {u._count.contacts} kontakt</p>
                       <p className="text-slate-500 text-xs mt-1">Til: {u.language} · Status: {u.status}</p>
+                      <p className="text-slate-500 text-xs mt-1">
+                        PIN: {u.pinEnabled ? "yoqilgan" : "yo'q"}
+                        {u.pinEnabled && (u.faceEnrolled ? " · yuz bor" : " · yuz yo'q")}
+                      </p>
                     </div>
                   </div>
 
@@ -1493,6 +1522,11 @@ export default function AdminPage() {
 
                   <div className="flex gap-2 mt-5">
                     <button type="button" onClick={() => { const id = u.id; setDetail(null); setTab("users"); setTimeout(() => { const found = users.find(x => x.id === id); if (found) { setActionUser(found); setActionType("set_subscription"); } }, 50); }} className="flex-1 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 py-2 rounded-xl text-sm font-medium">Obuna boshqarish</button>
+                    {u.pinEnabled ? (
+                      <button type="button" onClick={() => { const found = users.find(x => x.id === u.id); setDetail(null); if (found) { setActionUser(found); setActionType("clear_pin"); } }} className="flex-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 py-2 rounded-xl text-sm font-medium">PIN o&apos;chirish</button>
+                    ) : (
+                      <button type="button" onClick={() => { const found = users.find(x => x.id === u.id); setDetail(null); if (found) { setActionUser(found); setActionType("admin_set_pin"); } }} className="flex-1 bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 py-2 rounded-xl text-sm font-medium">PIN o&apos;rnatish</button>
+                    )}
                     <button type="button" onClick={() => setDetail(null)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-xl text-sm font-medium">Yopish</button>
                   </div>
                 </div>

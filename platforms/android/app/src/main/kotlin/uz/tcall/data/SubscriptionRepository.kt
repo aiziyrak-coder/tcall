@@ -14,6 +14,9 @@ class SubscriptionRepository(private val api: TcallApi) {
     suspend fun purchase(plan: String): Result<SubscriptionResponse> = runCatching {
         val res = api.purchaseSubscription(PurchaseSubscriptionRequest(plan = plan))
         if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "To'lov xatosi")
-        res.body() ?: throw Exception("Javob yo'q")
+        val body = res.body() ?: throw Exception("Javob yo'q")
+        if (body.payment != null) {
+            body.copy(pendingPayment = body.payment)
+        } else body
     }
 }
