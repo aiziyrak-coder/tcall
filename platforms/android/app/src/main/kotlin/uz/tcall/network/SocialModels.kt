@@ -78,9 +78,10 @@ data class LookupResponse(
 // ——— User settings ———
 
 data class UserSettingsDto(
-    val id: String? = null,
-    val email: String? = null,
-    val name: String? = null,
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("userId") val userId: String? = null,
+    @SerializedName("email") val email: String? = null,
+    @SerializedName("name") val name: String? = null,
     val language: String? = null,
     @SerializedName("translationMode") val translationMode: String? = "text",
     val status: String? = "available",
@@ -99,7 +100,10 @@ data class UserSettingsDto(
     @SerializedName("tcallId") val tcallId: String? = null,
     @SerializedName("avatarUrl") val avatarUrl: String? = null,
     val telegramUsername: String? = null,
-)
+) {
+    fun resolvedId(): String = id?.takeIf { it.isNotBlank() } ?: userId.orEmpty()
+    fun resolvedName(): String = name.orEmpty()
+}
 
 data class UserSettingsResponse(
     val user: UserSettingsDto?,

@@ -12,8 +12,8 @@ android {
         applicationId "uz.tcall"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1000002
-        versionName "1.000002"
+        versionCode 1000003
+        versionName "1.000003"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "API_BASE_URL", "\"https://api.tcall.uz\""

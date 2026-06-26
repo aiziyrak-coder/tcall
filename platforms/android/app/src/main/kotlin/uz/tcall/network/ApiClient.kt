@@ -3,6 +3,7 @@ package uz.tcall.network
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import com.google.gson.GsonBuilder
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import uz.tcall.BuildConfig
@@ -37,10 +38,12 @@ class ApiClient(sessionStore: SessionStore) {
         .addInterceptor(logging)
         .build()
 
+    private val gson = GsonBuilder().serializeNulls().create()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
         .client(okHttp)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 
     val api: TcallApi = retrofit.create(TcallApi::class.java)

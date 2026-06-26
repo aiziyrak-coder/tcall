@@ -162,15 +162,16 @@ private fun SettingsOverview(
     onOpenSupport: () -> Unit,
 ) {
     val user = state.user
-    if (user == null) {
+    val displayName = user?.resolvedName()?.takeIf { it.isNotBlank() } ?: state.name
+    if (displayName.isBlank()) {
         Text("Profil yuklanmadi", color = TcallColors.Destructive, modifier = Modifier.padding(16.dp))
         return
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        TcallAvatar(user.name.orEmpty(), size = 72.dp, avatarUrl = state.avatarUrl)
-        Text(user.name.orEmpty(), fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
-        Text(user.email.orEmpty(), color = TcallColors.Slate500, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-        user.tcallId?.let {
+        TcallAvatar(displayName, size = 72.dp, avatarUrl = state.avatarUrl)
+        Text(displayName, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 10.dp))
+        Text(user?.email.orEmpty(), color = TcallColors.Slate500, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        user?.tcallId?.let {
             Text("${ui.yourNumberLabel}: ${formatTcallId(it)}", color = TcallColors.IosBlue, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
         }
     }

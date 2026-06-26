@@ -74,7 +74,7 @@ class SettingsViewModel(
     private var profileLoaded = false
 
     fun ensureLoaded() {
-        if (profileLoaded && _state.value.user != null) return
+        if (profileLoaded && _state.value.user != null && _state.value.error == null) return
         profileLoaded = true
         load()
     }
@@ -82,22 +82,58 @@ class SettingsViewModel(
     fun load() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
+            val cached = sessionStore.cachedUser()
+            if (cached != null && _state.value.user == null) {
+                applyUser(sessionFromCache(cached), syncToMain = false)
+            }
             userRepository.getSettings()
-                .onSuccess { user -> applyUser(user) }
-                .onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } }
+                .onSuccess { user -> applyUser(mergeWithSession(user, cached)) }
+                .onFailure { e ->
+                    if (cached != null) {
+                        applyUser(sessionFromCache(cached), syncToMain = false)
+                    } else {
+                        _state.update { it.copy(loading = false, error = e.message) }
+                    }
+                }
         }
     }
 
+    private fun sessionFromCache(cached: UserDto): UserSettingsDto = UserSettingsDto(
+        id = cached.userId,
+        userId = cached.userId,
+        email = cached.email,
+        name = cached.name,
+        tcallId = cached.tcallId,
+        language = cached.language,
+        translationMode = cached.translationMode,
+    )
+
+    private fun mergeWithSession(user: UserSettingsDto, cached: UserDto?): UserSettingsDto {
+        if (cached == null) return user
+        return user.copy(
+            id = user.id?.takeIf { it.isNotBlank() } ?: cached.userId,
+            userId = user.userId?.takeIf { it.isNotBlank() } ?: cached.userId,
+            name = user.name?.takeIf { it.isNotBlank() } ?: cached.name,
+            email = user.email?.takeIf { it.isNotBlank() } ?: cached.email,
+            tcallId = user.tcallId?.takeIf { it.isNotBlank() } ?: cached.tcallId,
+            language = user.language?.takeIf { it.isNotBlank() } ?: cached.language,
+            translationMode = user.translationMode?.takeIf { it.isNotBlank() } ?: cached.translationMode,
+        )
+    }
+
     private fun applyUser(user: UserSettingsDto, syncToMain: Boolean = false) {
-        if (user.id.isNullOrBlank() || user.name.isNullOrBlank()) {
+        val userId = user.resolvedId()
+        val userName = user.resolvedName()
+        if (userId.isBlank() || userName.isBlank()) {
             _state.update { it.copy(loading = false, error = "Profil ma'lumotlari to'liq emas") }
             return
         }
+        val normalized = user.copy(id = userId, userId = userId, name = userName)
         _state.update {
             it.copy(
                 loading = false,
-                user = user,
-                name = user.name.orEmpty(),
+                user = normalized,
+                name = normalized.name.orEmpty(),
                 language = user.language ?: "uz",
                 translationMode = user.translationMode ?: "text",
                 status = user.status ?: "available",
@@ -117,12 +153,13 @@ class SettingsViewModel(
                 avatarUrl = user.avatarUrl,
             )
         }
-        if (syncToMain) syncSession(user)
+        if (syncToMain) syncSession(normalized)
     }
 
     private fun syncSession(user: UserSettingsDto) {
         val token = sessionStore.getTokenSync() ?: return
-        val userId = user.id ?: return
+        val userId = user.resolvedId()
+        if (userId.isBlank()) return
         val name = user.name.orEmpty()
         val email = user.email.orEmpty()
         val language = user.language ?: "uz"

@@ -61,6 +61,8 @@ function withAvatarUrl(user: { id: string; avatar: string | null } & Record<stri
   const { id, avatar, ...rest } = user;
   return {
     ...rest,
+    id,
+    userId: id,
     avatar,
     avatarUrl: avatar ? userAvatarUrl(id, avatar) : null,
   };

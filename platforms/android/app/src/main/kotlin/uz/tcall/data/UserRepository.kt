@@ -6,6 +6,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import uz.tcall.network.ChangePasswordRequest
 import uz.tcall.network.DeleteAccountRequest
 import uz.tcall.network.SendSupportRequest
+import uz.tcall.network.ApiErrorParser
 import uz.tcall.network.TcallApi
 import uz.tcall.network.TelegramLinkResponse
 import uz.tcall.network.TelegramStatusResponse
@@ -16,13 +17,13 @@ import java.io.File
 class UserRepository(private val api: TcallApi) {
     suspend fun getSettings(): Result<UserSettingsDto> = runCatching {
         val res = api.userSettings()
-        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Xatolik")
+        if (!res.isSuccessful) throw Exception(ApiErrorParser.fromResponse(res, "Xatolik"))
         res.body()?.user ?: throw Exception("Profil topilmadi")
     }
 
     suspend fun updateSettings(body: UpdateSettingsRequest): Result<UserSettingsDto> = runCatching {
         val res = api.updateSettings(body)
-        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Saqlash xatosi")
+        if (!res.isSuccessful) throw Exception(ApiErrorParser.fromResponse(res, "Saqlash xatosi"))
         res.body()?.user ?: throw Exception("Javob yo'q")
     }
 
