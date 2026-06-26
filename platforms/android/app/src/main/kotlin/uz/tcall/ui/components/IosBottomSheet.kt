@@ -1,5 +1,11 @@
 package uz.tcall.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -9,16 +15,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import uz.tcall.ui.theme.GlassLevel
+import uz.tcall.ui.theme.TcallGlassSurface
+import uz.tcall.ui.theme.TcallMotion
 
 @Composable
 fun IosBottomSheet(
@@ -33,26 +39,31 @@ fun IosBottomSheet(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f))
+                .background(Color.Black.copy(alpha = 0.32f))
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.BottomCenter,
         ) {
-            Surface(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 16.dp)
-                    .shadow(12.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .clickable(enabled = false) {},
-                color = Color.White,
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(TcallMotion.fadeTween) + slideInVertically(TcallMotion.slideTween) { it / 2 },
+                exit = fadeOut(TcallMotion.fadeTween) + slideOutVertically(TcallMotion.slideTween) { it },
             ) {
-                Column(
-                    Modifier
+                TcallGlassSurface(
+                    modifier = modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
-                    content = content,
-                )
+                        .padding(horizontal = 10.dp, vertical = 12.dp)
+                        .clickable(enabled = false) {},
+                    level = GlassLevel.Sheet,
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp, bottomStart = 20.dp, bottomEnd = 20.dp),
+                    elevation = 16.dp,
+                ) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 22.dp),
+                        content = content,
+                    )
+                }
             }
         }
     }
@@ -71,20 +82,25 @@ fun IosCenterModal(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.35f))
+                .background(Color.Black.copy(alpha = 0.32f))
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center,
         ) {
-            Surface(
-                modifier = modifier
-                    .fillMaxWidth(0.92f)
-                    .shadow(12.dp, RoundedCornerShape(20.dp))
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable(enabled = false) {},
-                color = Color.White,
-                shape = RoundedCornerShape(20.dp),
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(tween(200)) + slideInVertically(tween(280)) { it / 4 },
+                exit = fadeOut(tween(180)),
             ) {
-                Column(Modifier.fillMaxWidth().padding(20.dp), content = content)
+                TcallGlassSurface(
+                    modifier = modifier
+                        .fillMaxWidth(0.92f)
+                        .clickable(enabled = false) {},
+                    level = GlassLevel.Sheet,
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = 16.dp,
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(22.dp), content = content)
+                }
             }
         }
     }

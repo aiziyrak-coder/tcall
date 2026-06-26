@@ -55,7 +55,24 @@ import uz.tcall.ui.components.GreenCallButton
 import uz.tcall.ui.components.IosIconButton
 import uz.tcall.ui.components.TcallAvatar
 import uz.tcall.ui.strings.TcallUiStrings
+import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.TcallColors
+import uz.tcall.ui.theme.TcallGlassBar
+import uz.tcall.ui.theme.TcallGlassSurface
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.runtime.remember
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import uz.tcall.audio.ChatVoiceRecorder
+import java.io.File
+import java.io.FileOutputStream
 import uz.tcall.ui.util.formatShortTime
 
 @Composable
@@ -69,14 +86,35 @@ fun ChatThreadScreen(
 ) {
     val state by viewModel.state.collectAsState()
     var draft by remember { mutableStateOf("") }
+    var menuOpen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val voiceRecorder = remember { ChatVoiceRecorder(context) }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        runCatching {
+            val file = File(context.cacheDir, "chat_img_${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(file).use { output -> input.copyTo(output) }
+            }
+            viewModel.uploadFile(file, "image/jpeg", "image.jpg")
+        }
+    }
+
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            viewModel.setRecordingVoice(true)
+            voiceRecorder.start()
+        }
+    }
 
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
     }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFFF1F5F9))) {
-        Surface(color = Color.White, shadowElevation = 1.dp) {
+    Column(Modifier.fillMaxSize().background(TcallColors.BgPrimary)) {
+        TcallGlassBar {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -93,9 +131,17 @@ fun ChatThreadScreen(
                     GreenCallButton(onClick = { onCall(peerTcallId) })
                     Spacer(Modifier.size(6.dp))
                 }
-                IosIconButton(Icons.Default.MoreVert, {})
+                IosIconButton(Icons.Default.MoreVert, { menuOpen = true }, tint = TcallColors.TextPrimary)
             }
         }
+
+        ChatThreadMenuSheet(
+            open = menuOpen,
+            ui = ui,
+            onDismiss = { menuOpen = false },
+            onDeleteChat = { viewModel.deleteChat(onBack) },
+            onPin = { },
+        )
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
@@ -112,35 +158,74 @@ fun ChatThreadScreen(
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding().imePadding()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            IosIconButton(Icons.Default.AttachFile, {}, tint = TcallColors.Slate500, modifier = Modifier.size(36.dp))
+        if (state.showEmoji) {
+            EmojiPickerRow(
+                onPick = { emoji -> draft += emoji },
+                modifier = Modifier.padding(horizontal = 10.dp),
+            )
+        }
+
+        TcallGlassBar {
+            Row(
+                Modifier.fillMaxWidth().navigationBarsPadding().imePadding()
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+            IosIconButton(Icons.Default.Image, { imagePicker.launch("image/*") }, tint = TcallColors.TextSecondary, modifier = Modifier.size(36.dp))
+            IosIconButton(Icons.Default.EmojiEmotions, { viewModel.toggleEmoji() }, tint = TcallColors.IosBlue, modifier = Modifier.size(36.dp))
             Box(
-                Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(Color(0xFFF1F5F9))
+                Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(TcallColors.GlassCard)
+                    .border(0.5.dp, TcallColors.GlassHairline, RoundedCornerShape(20.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 BasicTextField(
                     value = draft,
-                    onValueChange = { draft = it },
-                    textStyle = TextStyle(fontSize = 15.sp, color = TcallColors.Slate900),
+                    onValueChange = {
+                        draft = it
+                        viewModel.onDraftChanged(it)
+                    },
+                    textStyle = TextStyle(fontSize = 15.sp, color = TcallColors.TextPrimary, fontWeight = FontWeight.Medium),
                     decorationBox = { inner ->
-                        if (draft.isEmpty()) Text(ui.message, color = TcallColors.Slate500)
+                        if (draft.isEmpty()) Text(ui.message, color = TcallColors.TextMuted, fontWeight = FontWeight.Normal)
                         inner()
                     },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            IosIconButton(Icons.Default.Mic, {}, tint = TcallColors.Slate500, modifier = Modifier.size(36.dp))
+            Box(
+                Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (state.recordingVoice) TcallColors.Destructive.copy(0.2f) else TcallColors.GlassCard)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    return@detectTapGestures
+                                }
+                                viewModel.setRecordingVoice(true)
+                                voiceRecorder.start()
+                                tryAwaitRelease()
+                                viewModel.setRecordingVoice(false)
+                                voiceRecorder.stop()?.let { file ->
+                                    viewModel.uploadFile(file, "audio/mp4", "voice.m4a")
+                                } ?: voiceRecorder.cancel()
+                            },
+                        )
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Default.Mic, null, tint = if (state.recordingVoice) TcallColors.Destructive else TcallColors.TextSecondary, modifier = Modifier.size(20.dp))
+            }
             IconButton(
                 onClick = { viewModel.send(draft); draft = "" },
                 enabled = draft.isNotBlank() && !state.sending,
                 modifier = Modifier.size(40.dp).clip(CircleShape).background(TcallColors.Brand600),
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
             }
         }
     }
@@ -164,14 +249,14 @@ private fun TranslationBubble(msg: ChatMessageDto, mine: Boolean, ui: TcallUiStr
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = align) {
         if (!mine) {
-            Text(msg.sender.name, fontSize = 12.sp, color = TcallColors.Slate500, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
+            Text(msg.sender.name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextSecondary, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
         }
         Box(
             Modifier
                 .clip(shape)
                 .then(
                     if (mine) Modifier.background(TcallColors.BubbleMineGradient)
-                    else Modifier.background(Color.White).border(1.dp, Color(0x12000000), shape).shadow(1.dp, shape),
+                    else Modifier.background(TcallColors.GlassSheet).border(0.5.dp, TcallColors.GlassHairline, shape),
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
@@ -180,11 +265,15 @@ private fun TranslationBubble(msg: ChatMessageDto, mine: Boolean, ui: TcallUiStr
                     Text(
                         "${msg.sourceLang.uppercase()} ${ui.chatTranslated}",
                         fontSize = 10.sp,
-                        color = if (mine) Color.White.copy(0.75f) else TcallColors.Slate500,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (mine) Color.White.copy(0.9f) else TcallColors.TextSecondary,
                         modifier = Modifier.padding(bottom = 4.dp),
                     )
                 }
-                Text(body, color = if (mine) Color.White else TcallColors.Slate900, fontSize = 15.sp, lineHeight = 20.sp)
+                Text(body, color = if (mine) Color.White else TcallColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium, lineHeight = 21.sp)
+                if (!msg.mediaUrl.isNullOrBlank() && msg.type != "text") {
+                    Text("📎 ${msg.mediaName ?: msg.type}", fontSize = 12.sp, color = if (mine) Color.White.copy(0.9f) else TcallColors.IosBlue, modifier = Modifier.padding(top = 4.dp))
+                }
                 if (hasTr) {
                     Text(
                         if (showOriginal) ui.chatTranslated else ui.viewOriginal,
@@ -197,7 +286,7 @@ private fun TranslationBubble(msg: ChatMessageDto, mine: Boolean, ui: TcallUiStr
             }
         }
         formatShortTime(msg.createdAt)?.let {
-            Text(it, fontSize = 10.sp, color = TcallColors.Slate500, modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp))
+            Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextSecondary, modifier = Modifier.padding(top = 2.dp, start = 4.dp, end = 4.dp))
         }
     }
 }

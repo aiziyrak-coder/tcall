@@ -1,11 +1,15 @@
 package uz.tcall.data
 
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import uz.tcall.network.ChatMessageDto
 import uz.tcall.network.ConversationDto
 import uz.tcall.network.CreateDirectChatRequest
 import uz.tcall.network.CreateGroupChatRequest
 import uz.tcall.network.SendMessageRequest
 import uz.tcall.network.TcallApi
+import java.io.File
 
 class ChatRepository(private val api: TcallApi) {
     suspend fun loadConversations(): Result<Pair<List<ConversationDto>, Int>> = runCatching {
@@ -28,8 +32,39 @@ class ChatRepository(private val api: TcallApi) {
         res.body()?.message ?: throw Exception(res.body()?.error ?: "Xatolik")
     }
 
+    suspend fun uploadAndSend(conversationId: String, file: File, mime: String, displayName: String): Result<ChatMessageDto> =
+        runCatching {
+            val part = MultipartBody.Part.createFormData(
+                "file",
+                displayName,
+                file.asRequestBody(mime.toMediaType()),
+            )
+            val up = api.uploadChatFile(part)
+            if (!up.isSuccessful) throw Exception(up.errorBody()?.string() ?: "Yuklash xatosi")
+            val media = up.body() ?: throw Exception("Yuklash javobi yo'q")
+            if (media.url.isNullOrBlank() || media.type.isNullOrBlank()) {
+                throw Exception(media.error ?: "Yuklash xatosi")
+            }
+            val res = api.sendMessage(
+                conversationId,
+                SendMessageRequest(
+                    type = media.type!!,
+                    mediaUrl = media.url,
+                    mediaMime = media.mime,
+                    mediaName = media.name ?: displayName,
+                ),
+            )
+            if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "Yuborilmadi")
+            res.body()?.message ?: throw Exception(res.body()?.error ?: "Xatolik")
+        }
+
     suspend fun markRead(conversationId: String) {
         runCatching { api.markRead(conversationId) }
+    }
+
+    suspend fun deleteConversation(conversationId: String) = runCatching {
+        val res = api.deleteConversation(conversationId)
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "O'chirilmadi")
     }
 
     suspend fun openDirectChat(tcallId: String): Result<String> = runCatching {

@@ -123,7 +123,7 @@ fun TcallLogo(
                     title,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
+                    color = TcallColors.TextPrimary,
                     textAlign = if (layout == TcallLogoLayout.Horizontal) TextAlign.Start else TextAlign.Center,
                 )
             }
@@ -133,7 +133,7 @@ fun TcallLogo(
                     subtitle,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF475569),
+                    color = TcallColors.TextSecondary,
                     textAlign = if (layout == TcallLogoLayout.Horizontal) TextAlign.Start else TextAlign.Center,
                 )
             }

@@ -89,6 +89,9 @@ data class MessagesResponse(
 data class SendMessageRequest(
     val type: String = "text",
     val text: String? = null,
+    @SerializedName("mediaUrl") val mediaUrl: String? = null,
+    @SerializedName("mediaMime") val mediaMime: String? = null,
+    @SerializedName("mediaName") val mediaName: String? = null,
 )
 
 data class SendMessageResponse(
@@ -183,4 +186,106 @@ data class DeviceTokenRequest(
 
 data class OkResponse(
     val ok: Boolean? = null,
+    val error: String? = null,
 )
+
+// ——— Auth ———
+
+data class RegisterRequest(
+    val email: String,
+    val password: String,
+    val name: String,
+    val language: String = "uz",
+    val ref: String? = null,
+)
+
+data class ForgotPasswordRequest(
+    val email: String,
+)
+
+data class ForgotPasswordResponse(
+    val ok: Boolean? = null,
+    val message: String? = null,
+    val error: String? = null,
+)
+
+// ——— Subscription ———
+
+data class SubscriptionResponse(
+    val plan: String? = null,
+    val subscription: SubscriptionDto? = null,
+    val prices: Map<String, Double>? = null,
+    @SerializedName("pricesUzs") val pricesUzs: Map<String, Int>? = null,
+    val features: Map<String, List<String>>? = null,
+    @SerializedName("pendingPayment") val pendingPayment: PendingPaymentDto? = null,
+    val card: PaymentCardDto? = null,
+    @SerializedName("paymentConfigured") val paymentConfigured: Boolean? = false,
+    val error: String? = null,
+)
+
+data class SubscriptionDto(
+    val plan: String?,
+    val status: String?,
+    @SerializedName("expiresAt") val expiresAt: String?,
+)
+
+data class PendingPaymentDto(
+    val id: String,
+    val plan: String,
+    val amount: Int,
+    val currency: String,
+    val status: String,
+)
+
+data class PaymentCardDto(
+    val number: String? = null,
+    val holder: String? = null,
+)
+
+data class PurchaseSubscriptionRequest(
+    val plan: String,
+    @SerializedName("durationDays") val durationDays: Int = 30,
+)
+
+// ——— PIN ———
+
+data class PinStatusResponse(
+    val enabled: Boolean? = false,
+    @SerializedName("faceEnrolled") val faceEnrolled: Boolean? = false,
+    val error: String? = null,
+)
+
+data class PinBodyRequest(
+    val pin: String,
+    @SerializedName("currentPin") val currentPin: String? = null,
+)
+
+data class PinVerifyRequest(
+    val pin: String,
+)
+
+// ——— Referral / account ———
+
+data class ReferralResponse(
+    val code: String?,
+    @SerializedName("inviteUrl") val inviteUrl: String?,
+    @SerializedName("profileUrl") val profileUrl: String?,
+    @SerializedName("referredCount") val referredCount: Int? = 0,
+    val error: String? = null,
+)
+
+data class DeleteAccountRequest(
+  val confirm: String,
+)
+
+// ——— Chat media ———
+
+data class ChatUploadResponse(
+    val url: String?,
+    val mime: String?,
+    val name: String?,
+    val size: Long? = null,
+    val type: String?,
+    val error: String? = null,
+)
+

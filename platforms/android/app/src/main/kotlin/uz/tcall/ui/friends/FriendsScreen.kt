@@ -134,7 +134,7 @@ fun FriendsScreen(
                 "${ui.friendsSection} (${state.friends.size})",
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                color = Color(0xFF334155),
+                color = TcallColors.TextPrimary,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
             )
             if (state.loading) {

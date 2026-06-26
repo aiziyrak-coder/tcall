@@ -69,10 +69,6 @@ import uz.tcall.ui.components.TcallLogoVariant
 import uz.tcall.ui.components.TcallPrimaryButton
 import uz.tcall.ui.theme.TcallColors
 
-private val TitleColor = Color(0xFF0F172A)
-private val BodyColor = Color(0xFF334155)
-private val MutedColor = Color(0xFF475569)
-
 private enum class PageKind { FEATURE, PERMISSION }
 
 private data class OnboardingPage(
@@ -262,7 +258,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     TextButton(onClick = onComplete) {
                         Text(
                             "O'tish",
-                            color = MutedColor,
+                            color = TcallColors.TextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp,
                         )
@@ -306,7 +302,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         page.title,
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TitleColor,
+                        color = TcallColors.TextPrimary,
                         textAlign = TextAlign.Center,
                         lineHeight = 32.sp,
                     )
@@ -315,7 +311,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         page.desc,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = BodyColor,
+                        color = TcallColors.TextSecondary,
                         textAlign = TextAlign.Center,
                         lineHeight = 24.sp,
                     )
@@ -335,14 +331,14 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                     "Nima uchun kerak?",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = TitleColor,
+                                    color = TcallColors.TextPrimary,
                                 )
                                 Spacer(Modifier.height(6.dp))
                                 Text(
                                     page.reason,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = BodyColor,
+                                    color = TcallColors.TextSecondary,
                                     lineHeight = 20.sp,
                                 )
                             }
@@ -359,7 +355,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             "Tugmani bosing — tizim ruxsat oynasi chiqadi",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MutedColor,
+                            color = TcallColors.TextMuted,
                             textAlign = TextAlign.Center,
                         )
                     }
@@ -403,7 +399,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             Icon(
                                 Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = "Orqaga",
-                                tint = TitleColor,
+                                tint = TcallColors.TextPrimary,
                             )
                         }
                     }

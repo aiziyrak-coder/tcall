@@ -52,4 +52,9 @@ class UserRepository(private val api: TcallApi) {
         val res = api.requestVanityNumber(uz.tcall.network.VanityRequestBody(number))
         if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "So'rov xatosi")
     }
+
+    suspend fun deleteAccount() = runCatching {
+        val res = api.deleteAccount(uz.tcall.network.DeleteAccountRequest(confirm = "DELETE"))
+        if (!res.isSuccessful) throw Exception(res.errorBody()?.string() ?: "O'chirilmadi")
+    }
 }

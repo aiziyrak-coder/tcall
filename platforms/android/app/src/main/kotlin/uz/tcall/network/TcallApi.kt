@@ -18,6 +18,12 @@ interface TcallApi {
     @POST("/api/auth/login")
     suspend fun login(@Body body: LoginRequest): Response<LoginResponse>
 
+    @POST("/api/auth/register")
+    suspend fun register(@Body body: RegisterRequest): Response<LoginResponse>
+
+    @POST("/api/auth/forgot-password")
+    suspend fun forgotPassword(@Body body: ForgotPasswordRequest): Response<ForgotPasswordResponse>
+
     @GET("/api/auth/session")
     suspend fun session(): Response<SessionResponse>
 
@@ -45,6 +51,16 @@ interface TcallApi {
         @Path("id") conversationId: String,
         @Body body: SendMessageRequest,
     ): Response<SendMessageResponse>
+
+    @Multipart
+    @POST("/api/chat/upload")
+    suspend fun uploadChatFile(@Part file: MultipartBody.Part): Response<ChatUploadResponse>
+
+    @DELETE("/api/chat/conversations/{id}")
+    suspend fun deleteConversation(@Path("id") conversationId: String): Response<OkResponse>
+
+    @POST("/api/chat/pin")
+    suspend fun pinConversation(@Body body: Map<String, String>): Response<OkResponse>
 
     @PATCH("/api/chat/conversations/{id}")
     suspend fun markRead(@Path("id") conversationId: String): Response<OkResponse>
@@ -142,4 +158,31 @@ interface TcallApi {
 
     @POST("/api/support")
     suspend fun sendSupportMessage(@Body body: SendSupportRequest): Response<SendSupportResponse>
+
+    // Subscription
+    @GET("/api/subscription")
+    suspend fun subscription(): Response<SubscriptionResponse>
+
+    @POST("/api/subscription")
+    suspend fun purchaseSubscription(@Body body: PurchaseSubscriptionRequest): Response<SubscriptionResponse>
+
+    // PIN
+    @GET("/api/security/pin")
+    suspend fun pinStatus(): Response<PinStatusResponse>
+
+    @POST("/api/security/pin")
+    suspend fun setPin(@Body body: PinBodyRequest): Response<OkResponse>
+
+    @POST("/api/security/pin/verify")
+    suspend fun verifyPin(@Body body: PinVerifyRequest): Response<OkResponse>
+
+    @DELETE("/api/security/pin")
+    suspend fun disablePin(@Body body: PinVerifyRequest): Response<OkResponse>
+
+    // Referral & account
+    @GET("/api/user/referral")
+    suspend fun referral(): Response<ReferralResponse>
+
+    @POST("/api/user/delete-account")
+    suspend fun deleteAccount(@Body body: DeleteAccountRequest): Response<OkResponse>
 }

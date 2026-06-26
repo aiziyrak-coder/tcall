@@ -3,7 +3,10 @@ package uz.tcall.ui.main
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import uz.tcall.ui.theme.TcallMotion
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -26,6 +29,10 @@ import uz.tcall.network.IncomingCallEvent
 import uz.tcall.network.UserDto
 import uz.tcall.ui.call.CallScreen
 import uz.tcall.ui.call.IncomingCallDialog
+import uz.tcall.ui.call.OutgoingCallOverlay
+import uz.tcall.ui.invite.InviteModal
+import uz.tcall.ui.subscription.SubscriptionModal
+import uz.tcall.webrtc.WebRtcCallManager
 import uz.tcall.ui.chat.ChatListScreen
 import uz.tcall.ui.chat.ChatListViewModel
 import uz.tcall.ui.chat.ChatThreadScreen
@@ -70,6 +77,9 @@ fun MainScreen(
     var overlay by remember { mutableStateOf(Overlay.NONE) }
     var supportOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var subscriptionOpen by remember { mutableStateOf(false) }
+    var inviteOpen by remember { mutableStateOf(false) }
+    var outgoingCall by remember { mutableStateOf<ActiveCall?>(null) }
     val scope = rememberCoroutineScope()
     val ui = remember(user.language) { uiStrings(user.language) }
 
@@ -132,7 +142,7 @@ fun MainScreen(
             object : androidx.lifecycle.ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(c: Class<T>): T =
-                    SettingsViewModel(services.userRepository) as T
+                    SettingsViewModel(services.userRepository, services.pinRepository) as T
             }
         },
     )
@@ -147,6 +157,7 @@ fun MainScreen(
     )
 
     fun enterCall(roomId: String, peerName: String = "Suhbatdosh") {
+        outgoingCall = ActiveCall(roomId, peerName)
         activeCall = ActiveCall(roomId, peerName)
         services.webRtcCallManager.initialize()
         services.socketManager.joinRoom(roomId, user)
@@ -197,6 +208,10 @@ fun MainScreen(
             }
         }.launchIn(this)
 
+        services.webRtcCallManager.callState.onEach { cs ->
+            if (cs == WebRtcCallManager.CallState.CONNECTED) outgoingCall = null
+        }.launchIn(this)
+
         services.socketManager.incomingCall.onEach { incomingCall = it }.launchIn(this)
 
         services.socketManager.offer.onEach { payload ->
@@ -241,6 +256,19 @@ fun MainScreen(
         Overlay.NONE -> Unit
     }
 
+    if (activeCall != null && outgoingCall != null) {
+        OutgoingCallOverlay(peerName = outgoingCall!!.peerName) {
+            val room = activeCall!!.roomId
+            services.socketManager.leaveRoom(room)
+            services.socketManager.endCall()
+            scope.launch { services.callRepository.end(room) }
+            services.webRtcCallManager.end()
+            activeCall = null
+            outgoingCall = null
+        }
+        return
+    }
+
     if (activeCall != null) {
         CallScreen(
             roomId = activeCall!!.roomId,
@@ -253,6 +281,7 @@ fun MainScreen(
                 scope.launch { services.callRepository.end(room) }
                 services.webRtcCallManager.end()
                 activeCall = null
+                outgoingCall = null
                 recentsVm.refresh()
             },
         )
@@ -323,7 +352,10 @@ fun MainScreen(
         ) {
             AnimatedContent(
                 targetState = tab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                transitionSpec = {
+                    (fadeIn(TcallMotion.tabSpring) + slideInHorizontally(TcallMotion.slideTween) { it / 10 }) togetherWith
+                        (fadeOut(TcallMotion.fadeTween) + slideOutHorizontally(TcallMotion.slideTween) { -it / 10 })
+                },
                 label = "tabContent",
             ) { currentTab ->
                 Box(Modifier.fillMaxSize()) {
@@ -377,6 +409,21 @@ fun MainScreen(
             ui = ui,
             onClose = { settingsOpen = false },
             onLogout = onLogout,
+            onOpenSubscription = { settingsOpen = false; subscriptionOpen = true },
+            onOpenInvite = { settingsOpen = false; inviteOpen = true },
+            onOpenSupport = { settingsOpen = false; supportOpen = true },
+        )
+
+        SubscriptionModal(
+            open = subscriptionOpen,
+            repository = services.subscriptionRepository,
+            onClose = { subscriptionOpen = false },
+        )
+
+        InviteModal(
+            open = inviteOpen,
+            api = services.apiClient.api,
+            onClose = { inviteOpen = false },
         )
     }
 }

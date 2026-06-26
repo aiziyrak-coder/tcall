@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -52,6 +53,8 @@ fun LoginScreen(
     initialEmail: String = "",
     onLogin: (email: String, password: String, remember: Boolean) -> Unit,
     onClearError: () -> Unit,
+    onRegister: () -> Unit = {},
+    onForgotPassword: () -> Unit = {},
 ) {
     var email by rememberSaveable(initialEmail) { mutableStateOf(initialEmail) }
     var password by rememberSaveable { mutableStateOf("") }
@@ -152,7 +155,7 @@ fun LoginScreen(
                             uncheckedColor = TcallColors.Slate400,
                         ),
                     )
-                    Text("Eslab qolish", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF334155))
+                    Text("Eslab qolish", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextPrimary)
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -162,13 +165,31 @@ fun LoginScreen(
                     onClick = { onLogin(email, password, rememberMe) },
                     loading = submitting,
                 )
+
+                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    Text(
+                        "Ro'yxatdan o'tish",
+                        color = TcallColors.IosBlue,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable(onClick = onRegister),
+                    )
+                    Text(
+                        "Parolni unutdingizmi?",
+                        color = TcallColors.IosBlue,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        modifier = Modifier.clickable(onClick = onForgotPassword),
+                    )
+                }
             }
         }
 
         Text(
             "Translate · Call · Connect",
             fontSize = 12.sp,
-            color = TcallColors.Slate400,
+            color = TcallColors.TextSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 20.dp),
         )

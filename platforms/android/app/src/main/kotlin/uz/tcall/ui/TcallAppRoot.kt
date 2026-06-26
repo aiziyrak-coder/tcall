@@ -16,8 +16,12 @@ import uz.tcall.core.TcallServices
 import uz.tcall.data.AuthRepository
 import uz.tcall.data.SessionStore
 import uz.tcall.push.PushRegistrar
+import uz.tcall.ui.applock.AppLockGate
+import uz.tcall.ui.auth.AuthScreen
 import uz.tcall.ui.auth.AuthViewModel
+import uz.tcall.ui.auth.ForgotPasswordScreen
 import uz.tcall.ui.auth.LoginScreen
+import uz.tcall.ui.auth.RegisterScreen
 import uz.tcall.ui.main.MainScreen
 import uz.tcall.ui.onboarding.OnboardingScreen
 import uz.tcall.ui.splash.AppSplashScreen
@@ -69,13 +73,15 @@ fun TcallAppRoot(
             AppSplashScreen(message = "Tcall")
         }
         authState.user != null -> {
-            MainScreen(
-                user = authState.user!!,
-                services = services,
-                onLogout = authViewModel::logout,
-                initialRoomId = initialRoomId,
-                initialConversationId = initialConversationId,
-            )
+            AppLockGate(pinRepository = services.pinRepository) {
+                MainScreen(
+                    user = authState.user!!,
+                    services = services,
+                    onLogout = authViewModel::logout,
+                    initialRoomId = initialRoomId,
+                    initialConversationId = initialConversationId,
+                )
+            }
         }
         onboardingDone == false -> {
             OnboardingScreen(
@@ -87,13 +93,31 @@ fun TcallAppRoot(
                 },
             )
         }
-        else -> {
-            LoginScreen(
+        else -> when (authState.screen) {
+            AuthScreen.REGISTER -> RegisterScreen(
+                submitting = authState.submitting,
+                error = authState.error,
+                onRegister = authViewModel::register,
+                onClearError = authViewModel::clearError,
+                onLogin = authViewModel::showLogin,
+            )
+            AuthScreen.FORGOT_PASSWORD -> ForgotPasswordScreen(
+                submitting = authState.submitting,
+                error = authState.error,
+                info = authState.info,
+                initialEmail = rememberedEmail,
+                onSubmit = authViewModel::forgotPassword,
+                onClearError = authViewModel::clearError,
+                onLogin = authViewModel::showLogin,
+            )
+            AuthScreen.LOGIN -> LoginScreen(
                 submitting = authState.submitting,
                 error = authState.error,
                 initialEmail = rememberedEmail,
                 onLogin = authViewModel::login,
                 onClearError = authViewModel::clearError,
+                onRegister = authViewModel::showRegister,
+                onForgotPassword = authViewModel::showForgotPassword,
             )
         }
     }

@@ -14,30 +14,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.TcallColors
+import uz.tcall.ui.theme.TcallGlassSurface
 
 @Composable
 fun TcallAuthCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x0F0F172A))
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, TcallColors.BorderLight, RoundedCornerShape(16.dp))
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        content = content,
-    )
+    TcallGlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        level = GlassLevel.Sheet,
+        shape = RoundedCornerShape(24.dp),
+        elevation = 8.dp,
+    ) {
+        Column(
+            Modifier.padding(horizontal = 24.dp, vertical = 28.dp),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -57,7 +59,7 @@ fun TcallEmptyState(
             title,
             modifier = Modifier.padding(top = 16.dp),
             fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = TcallColors.TextPrimary,
             textAlign = TextAlign.Center,
         )
@@ -65,7 +67,8 @@ fun TcallEmptyState(
             subtitle,
             modifier = Modifier.padding(top = 8.dp),
             fontSize = 14.sp,
-            color = TcallColors.Slate500,
+            fontWeight = FontWeight.Medium,
+            color = TcallColors.TextSecondary,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp,
         )
@@ -77,9 +80,9 @@ fun TcallSectionTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         title.uppercase(),
         modifier = modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = TcallColors.Slate400,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Bold,
+        color = TcallColors.TextSecondary,
         letterSpacing = 0.8.sp,
     )
 }
@@ -88,10 +91,10 @@ fun TcallSectionTitle(title: String, modifier: Modifier = Modifier) {
 fun TcallChatBubble(text: String, mine: Boolean, modifier: Modifier = Modifier) {
     val align = if (mine) Alignment.End else Alignment.Start
     val shape = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 18.dp,
-        bottomStart = if (mine) 18.dp else 4.dp,
-        bottomEnd = if (mine) 4.dp else 18.dp,
+        topStart = 20.dp,
+        topEnd = 20.dp,
+        bottomStart = if (mine) 20.dp else 6.dp,
+        bottomEnd = if (mine) 6.dp else 20.dp,
     )
     Column(Modifier.fillMaxWidth().then(modifier), horizontalAlignment = align) {
         Box(
@@ -102,9 +105,8 @@ fun TcallChatBubble(text: String, mine: Boolean, modifier: Modifier = Modifier) 
                         Modifier.background(TcallColors.BubbleMineGradient)
                     } else {
                         Modifier
-                            .background(Color.White)
-                            .border(1.dp, TcallColors.BorderLight, shape)
-                            .shadow(1.dp, shape)
+                            .background(TcallColors.GlassSheet)
+                            .border(0.5.dp, TcallColors.GlassHairline, shape)
                     },
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -113,7 +115,8 @@ fun TcallChatBubble(text: String, mine: Boolean, modifier: Modifier = Modifier) 
                 text,
                 color = if (mine) Color.White else TcallColors.TextPrimary,
                 fontSize = 15.sp,
-                lineHeight = 20.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 21.sp,
             )
         }
     }
@@ -124,13 +127,12 @@ fun TcallGlassCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.92f))
-            .border(1.dp, TcallColors.BorderLight, RoundedCornerShape(16.dp))
-            .padding(16.dp),
-        content = content,
-    )
+    TcallGlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        level = GlassLevel.Card,
+        shape = RoundedCornerShape(20.dp),
+        elevation = 4.dp,
+    ) {
+        Column(Modifier.padding(16.dp), content = content)
+    }
 }

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,17 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import uz.tcall.data.UserRepository
 import uz.tcall.network.SupportMessageDto
+import uz.tcall.ui.components.IosCenterModal
 import uz.tcall.ui.components.IosIconButton
 import uz.tcall.ui.components.IosSearchField
 import uz.tcall.ui.strings.TcallUiStrings
@@ -79,29 +76,20 @@ fun SupportChatModal(
         }
     }
 
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black.copy(0.35f)), contentAlignment = Alignment.Center) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .shadow(12.dp, RoundedCornerShape(20.dp))
-                    .clip(RoundedCornerShape(20.dp)),
-                color = Color.White,
-                shape = RoundedCornerShape(20.dp),
-            ) {
-                Column(Modifier.padding(16.dp)) {
+    IosCenterModal(onDismiss = onClose) {
+                Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
-                            Modifier.size(44.dp).clip(CircleShape).background(Color(0x1A6366F1)),
+                            Modifier.size(44.dp).clip(CircleShape).background(Color(0x266366F1)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(Icons.Default.HeadsetMic, null, tint = TcallColors.Brand600)
                         }
                         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                            Text(ui.support, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                            Text(ui.supportSubtitle, fontSize = 12.sp, color = TcallColors.Slate500)
+                            Text(ui.support, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = TcallColors.TextPrimary)
+                            Text(ui.supportSubtitle, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextSecondary)
                         }
-                        IosIconButton(Icons.Default.Close, onClose)
+                        IosIconButton(Icons.Default.Close, onClose, tint = TcallColors.TextPrimary)
                     }
 
                     if (loading) {
@@ -123,13 +111,13 @@ fun SupportChatModal(
                                         Box(
                                             Modifier
                                                 .clip(RoundedCornerShape(16.dp))
-                                                .background(if (mine) TcallColors.Brand600 else Color(0xFFF1F5F9))
+                                                .background(if (mine) TcallColors.Brand600 else TcallColors.GlassCard)
                                                 .padding(horizontal = 14.dp, vertical = 10.dp),
                                         ) {
                                             Text(msg.text, color = if (mine) Color.White else TcallColors.TextPrimary, fontSize = 14.sp)
                                         }
                                         formatShortTime(msg.createdAt)?.let {
-                                            Text(it, fontSize = 10.sp, color = TcallColors.Slate500, modifier = Modifier.padding(top = 2.dp))
+                                            Text(it, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextSecondary, modifier = Modifier.padding(top = 2.dp))
                                         }
                                     }
                                 }
@@ -137,7 +125,7 @@ fun SupportChatModal(
                         }
                     }
 
-                    Text(ui.supportHint, fontSize = 11.sp, color = TcallColors.Slate500, lineHeight = 15.sp)
+                    Text(ui.supportHint, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextSecondary, lineHeight = 16.sp)
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         IosSearchField(
                             value = text,
@@ -166,7 +154,5 @@ fun SupportChatModal(
                         }
                     }
                 }
-            }
-        }
     }
 }

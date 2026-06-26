@@ -11,6 +11,7 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import uz.tcall.ui.theme.TcallColors
@@ -19,21 +20,21 @@ import uz.tcall.ui.theme.TcallColors
 fun tcallTextFieldColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
     focusedTextColor = TcallColors.TextPrimary,
     unfocusedTextColor = TcallColors.TextPrimary,
-    disabledTextColor = TcallColors.Slate400,
+    disabledTextColor = TcallColors.TextMuted,
     errorTextColor = TcallColors.Destructive,
-    focusedContainerColor = Color.White,
-    unfocusedContainerColor = Color.White,
+    focusedContainerColor = TcallColors.GlassSheet,
+    unfocusedContainerColor = Color.White.copy(alpha = 0.85f),
     disabledContainerColor = Color(0xFFF7F8FB),
-    errorContainerColor = Color.White,
+    errorContainerColor = TcallColors.GlassSheet,
     focusedBorderColor = TcallColors.IosBlue,
     unfocusedBorderColor = TcallColors.Separator,
     disabledBorderColor = TcallColors.Separator,
     errorBorderColor = TcallColors.Destructive,
-    focusedLabelColor = TcallColors.Slate500,
-    unfocusedLabelColor = TcallColors.Slate400,
+    focusedLabelColor = TcallColors.TextSecondary,
+    unfocusedLabelColor = TcallColors.TextSecondary,
     cursorColor = TcallColors.IosBlue,
-    focusedPlaceholderColor = TcallColors.Slate400,
-    unfocusedPlaceholderColor = TcallColors.Slate400,
+    focusedPlaceholderColor = TcallColors.TextMuted,
+    unfocusedPlaceholderColor = TcallColors.TextMuted,
 )
 
 @Composable
@@ -54,12 +55,12 @@ fun TcallTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
-        label = { Text(label, color = TcallColors.Slate500) },
-        placeholder = placeholder?.let { { Text(it, color = TcallColors.Slate400) } },
+        label = { Text(label, color = TcallColors.TextSecondary, fontWeight = FontWeight.SemiBold) },
+        placeholder = placeholder?.let { { Text(it, color = TcallColors.TextMuted, fontWeight = FontWeight.Normal) } },
         singleLine = singleLine,
         maxLines = maxLines,
         enabled = enabled,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = tcallTextFieldColors(),
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,

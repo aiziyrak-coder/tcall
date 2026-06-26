@@ -39,6 +39,23 @@ class WebRtcCallManager(
     private val _callState = MutableStateFlow(CallState.IDLE)
     val callState: StateFlow<CallState> = _callState.asStateFlow()
 
+    private val _muted = MutableStateFlow(false)
+    val muted: StateFlow<Boolean> = _muted.asStateFlow()
+
+    private var connectedAt = 0L
+
+    fun callDurationMs(): Long =
+        if (_callState.value == CallState.CONNECTED && connectedAt > 0) {
+            System.currentTimeMillis() - connectedAt
+        } else 0L
+
+    fun setMuted(muted: Boolean) {
+        _muted.value = muted
+        localAudioTrack?.setEnabled(!muted)
+    }
+
+    fun toggleMute() = setMuted(!_muted.value)
+
     enum class CallState { IDLE, CONNECTING, CONNECTED, FAILED, ENDED }
 
     fun initialize() {
@@ -93,7 +110,7 @@ class WebRtcCallManager(
         pc.setRemoteDescription(
             object : SimpleSdpObserver() {
                 override fun onSetSuccess() {
-                    _callState.value = CallState.CONNECTED
+                    markConnected()
                 }
             },
             SessionDescription(SessionDescription.Type.ANSWER, sdp),
@@ -128,7 +145,7 @@ class WebRtcCallManager(
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
                 when (state) {
                     PeerConnection.IceConnectionState.CONNECTED,
-                    PeerConnection.IceConnectionState.COMPLETED -> _callState.value = CallState.CONNECTED
+                    PeerConnection.IceConnectionState.COMPLETED -> markConnected()
                     PeerConnection.IceConnectionState.FAILED -> _callState.value = CallState.FAILED
                     PeerConnection.IceConnectionState.CLOSED -> _callState.value = CallState.ENDED
                     else -> {}
@@ -216,7 +233,16 @@ class WebRtcCallManager(
         peerConnection = null
         roomId = null
         remoteSocketId = null
+        connectedAt = 0L
+        _muted.value = false
         _callState.value = CallState.ENDED
+    }
+
+    private fun markConnected() {
+        if (_callState.value != CallState.CONNECTED) {
+            connectedAt = System.currentTimeMillis()
+        }
+        _callState.value = CallState.CONNECTED
     }
 
     fun dispose() {

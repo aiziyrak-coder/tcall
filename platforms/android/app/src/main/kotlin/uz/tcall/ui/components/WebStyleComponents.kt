@@ -38,21 +38,21 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import uz.tcall.ui.theme.GlassLevel
 import uz.tcall.ui.theme.TcallColors
+import uz.tcall.ui.theme.TcallGlassSurface
 
-private val CardShape = RoundedCornerShape(16.dp)
-private val Slate900 = Color(0xFF0F172A)
-private val Slate500 = Color(0xFF64748B)
-private val Slate700 = Color(0xFF334155)
+private val CardShape = RoundedCornerShape(20.dp)
+private val PillShape = RoundedCornerShape(99.dp)
 
 @Composable
 fun IosPageTitle(title: String, modifier: Modifier = Modifier) {
     Text(
         title,
         modifier = modifier,
+        style = androidx.compose.material3.MaterialTheme.typography.headlineSmall,
         fontSize = 24.sp,
-        fontWeight = FontWeight.Bold,
-        color = Slate900,
+        color = TcallColors.TextPrimary,
         letterSpacing = (-0.3).sp,
     )
 }
@@ -61,13 +61,13 @@ fun IosPageTitle(title: String, modifier: Modifier = Modifier) {
 fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
     Row(
         modifier
-            .clip(RoundedCornerShape(99.dp))
+            .clip(PillShape)
             .background(
                 Brush.linearGradient(
-                    listOf(Color(0x1A007AFF), Color(0x146366F1)),
+                    listOf(Color(0x26007AFF), Color(0x1A5856D6)),
                 ),
             )
-            .border(1.dp, Color(0x26007AFF), RoundedCornerShape(99.dp))
+            .border(0.5.dp, Color(0x33007AFF), PillShape)
             .padding(start = 4.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -76,26 +76,39 @@ fun PhoneTabPill(tab: PhoneTab, label: String, modifier: Modifier = Modifier) {
             Modifier
                 .size(26.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White),
+                .background(TcallColors.GlassSheet),
             contentAlignment = Alignment.Center,
         ) {
             Icon(tab.icon, null, tint = TcallColors.IosBlue, modifier = Modifier.size(14.dp))
         }
-        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D4ED8))
+        Text(label, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlueDark)
     }
 }
 
 @Composable
 fun UserNumberChip(yourNumberLabel: String, number: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0x12000000), RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+    TcallGlassSurface(
+        modifier = modifier,
+        level = GlassLevel.Button,
+        shape = RoundedCornerShape(12.dp),
+        elevation = 2.dp,
     ) {
-        Text(yourNumberLabel, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Slate500, letterSpacing = 0.5.sp)
-        Text(number, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Slate900, letterSpacing = 1.sp)
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Text(
+                yourNumberLabel,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                color = TcallColors.TextSecondary,
+                letterSpacing = 0.5.sp,
+            )
+            Text(
+                number,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = TcallColors.TextPrimary,
+                letterSpacing = 1.sp,
+            )
+        }
     }
 }
 
@@ -103,20 +116,20 @@ fun UserNumberChip(yourNumberLabel: String, number: String, modifier: Modifier =
 fun IosIconButton(
     icon: ImageVector,
     onClick: () -> Unit,
-    tint: Color = Slate700,
+    tint: Color = TcallColors.TextSecondary,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier
+    TcallGlassSurface(
+        modifier = modifier
             .size(40.dp)
-            .shadow(1.dp, CircleShape, ambientColor = Color(0x0A000000))
-            .clip(CircleShape)
-            .background(Color.White)
-            .border(1.dp, Color(0x0F000000), CircleShape)
             .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+        level = GlassLevel.Button,
+        shape = CircleShape,
+        elevation = 3.dp,
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+        }
     }
 }
 
@@ -131,9 +144,9 @@ fun GradientPrimaryButton(
     Box(
         modifier
             .fillMaxWidth()
-            .height(44.dp)
-            .shadow(if (enabled) 4.dp else 0.dp, RoundedCornerShape(12.dp), spotColor = TcallColors.Brand600.copy(0.3f))
-            .clip(RoundedCornerShape(12.dp))
+            .height(48.dp)
+            .shadow(if (enabled) 6.dp else 0.dp, RoundedCornerShape(14.dp), spotColor = TcallColors.Brand600.copy(0.35f))
+            .clip(RoundedCornerShape(14.dp))
             .background(
                 if (enabled) Brush.linearGradient(listOf(Color(0xFF6366F1), Color(0xFF4F46E5)))
                 else Brush.linearGradient(listOf(Color(0x806366F1), Color(0x804F46E5))),
@@ -142,7 +155,7 @@ fun GradientPrimaryButton(
         contentAlignment = Alignment.Center,
     ) {
         if (loading) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
-        else Text(text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        else Text(text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
     }
 }
 
@@ -151,17 +164,17 @@ fun RowScope.ChatActionButton(text: String, icon: ImageVector, onClick: () -> Un
     Row(
         modifier
             .weight(1f)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x1A007AFF))
-            .border(1.dp, Color(0x29007AFF), RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0x26007AFF))
+            .border(0.5.dp, Color(0x40007AFF), RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 12.dp),
+            .padding(vertical = 13.dp, horizontal = 12.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = TcallColors.IosBlue, modifier = Modifier.size(16.dp))
+        Icon(icon, null, tint = TcallColors.IosBlue, modifier = Modifier.size(17.dp))
         Spacer(Modifier.size(6.dp))
-        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF1D4ED8))
+        Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.IosBlueDark)
     }
 }
 
@@ -173,27 +186,33 @@ fun IosSearchField(
     modifier: Modifier = Modifier,
     trailing: @Composable (() -> Unit)? = null,
 ) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(1.dp, Color(0x12000000), RoundedCornerShape(14.dp))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    TcallGlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        level = GlassLevel.Input,
+        shape = RoundedCornerShape(14.dp),
+        elevation = 2.dp,
     ) {
-        Icon(Icons.Default.Search, null, tint = Slate500, modifier = Modifier.size(18.dp))
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 10.dp),
-            textStyle = TextStyle(fontSize = 15.sp, color = Slate900),
-            decorationBox = { inner ->
-                if (value.isEmpty()) Text(placeholder, color = Slate500, fontSize = 15.sp)
-                inner()
-            },
-        )
-        trailing?.invoke()
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Search, null, tint = TcallColors.TextSecondary, modifier = Modifier.size(18.dp))
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 10.dp),
+                textStyle = TextStyle(fontSize = 15.sp, color = TcallColors.TextPrimary, fontWeight = FontWeight.Medium),
+                decorationBox = { inner ->
+                    if (value.isEmpty()) {
+                        Text(placeholder, color = TcallColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.Normal)
+                    }
+                    inner()
+                },
+            )
+            trailing?.invoke()
+        }
     }
 }
 
@@ -206,38 +225,61 @@ fun ChatConvCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier
+    TcallGlassSurface(
+        modifier = modifier
             .fillMaxWidth()
-            .shadow(2.dp, CardShape, ambientColor = Color(0x0D0F172A))
-            .clip(CardShape)
-            .background(Color.White)
-            .border(1.dp, Color(0x12000000), CardShape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+            .clickable(onClick = onClick),
+        level = GlassLevel.Card,
+        shape = CardShape,
+        elevation = 4.dp,
     ) {
-        TcallAvatar(name = name, size = 48.dp)
-        Column(Modifier.weight(1f)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = Slate900, maxLines = 1)
-                time?.let { Text(it, fontSize = 12.sp, color = Slate500) }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text(preview, fontSize = 14.sp, color = Slate500, maxLines = 1, modifier = Modifier.weight(1f))
-                if (unread > 0) {
-                    Box(
-                        Modifier
-                            .background(TcallColors.Brand600, CircleShape)
-                            .padding(horizontal = 7.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            if (unread > 9) "9+" else unread.toString(),
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            TcallAvatar(name = name, size = 48.dp)
+            Column(Modifier.weight(1f)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        name,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        color = TcallColors.TextPrimary,
+                        maxLines = 1,
+                    )
+                    time?.let {
+                        Text(it, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextSecondary)
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        preview,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = TcallColors.TextSecondary,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (unread > 0) {
+                        Box(
+                            Modifier
+                                .background(TcallColors.Brand600, CircleShape)
+                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                if (unread > 9) "9+" else unread.toString(),
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
             }
@@ -254,30 +296,31 @@ fun DialSubTabBar(
     onRecents: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0x0F000000))
-            .padding(4.dp),
+    TcallGlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        level = GlassLevel.Input,
+        shape = RoundedCornerShape(14.dp),
+        elevation = 2.dp,
     ) {
-        listOf("keypad" to keypadLabel, "recents" to recentsLabel).forEach { (id, label) ->
-            val active = selected == id
-            Box(
-                Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (active) Color.White else Color.Transparent)
-                    .clickable { if (id == "keypad") onKeypad() else onRecents() }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                    color = if (active) TcallColors.IosBlue else Slate500,
-                    fontSize = 14.sp,
-                )
+        Row(Modifier.fillMaxWidth().padding(4.dp)) {
+            listOf("keypad" to keypadLabel, "recents" to recentsLabel).forEach { (id, label) ->
+                val active = selected == id
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (active) TcallColors.GlassSheet else Color.Transparent)
+                        .clickable { if (id == "keypad") onKeypad() else onRecents() }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        label,
+                        fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (active) TcallColors.IosBlue else TcallColors.TextSecondary,
+                        fontSize = 14.sp,
+                    )
+                }
             }
         }
     }
@@ -298,16 +341,17 @@ fun FilterChipRow(
             val active = selected == id
             Box(
                 Modifier
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(if (active) TcallColors.Brand600 else Color(0x0F000000))
+                    .clip(PillShape)
+                    .background(if (active) TcallColors.Brand600 else Color(0x1A1C1C1E))
+                    .border(0.5.dp, if (active) Color.Transparent else TcallColors.GlassHairline, PillShape)
                     .clickable { onSelect(id) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 Text(
                     label,
                     fontSize = 12.sp,
-                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (active) Color.White else Slate700,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+                    color = if (active) Color.White else TcallColors.TextPrimary,
                 )
             }
         }
@@ -318,28 +362,27 @@ fun FilterChipRow(
 fun GreenCallButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Box(
         modifier
-            .size(40.dp)
-            .shadow(4.dp, CircleShape, spotColor = TcallColors.CallGreen.copy(0.35f))
+            .size(44.dp)
+            .shadow(6.dp, CircleShape, spotColor = TcallColors.CallGreen.copy(0.4f))
             .clip(CircleShape)
-            .background(if (enabled) TcallColors.CallGreen else TcallColors.CallGreen.copy(0.4f))
+            .background(if (enabled) TcallColors.CallGreen else TcallColors.CallGreen.copy(0.45f))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(20.dp))
     }
 }
 
 @Composable
 fun IosListCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .shadow(2.dp, CardShape, ambientColor = Color(0x0D0F172A))
-            .clip(CardShape)
-            .background(Color.White)
-            .border(1.dp, Color(0x12000000), CardShape)
-            .padding(16.dp),
+    TcallGlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        level = GlassLevel.Card,
+        shape = CardShape,
+        elevation = 4.dp,
     ) {
-        content()
+        Column(Modifier.padding(16.dp)) {
+            content()
+        }
     }
 }

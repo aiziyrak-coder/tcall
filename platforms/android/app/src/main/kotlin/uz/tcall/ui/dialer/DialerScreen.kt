@@ -111,16 +111,17 @@ private fun KeypadContent(
         Text(
             ui.dialNumber,
             fontSize = 14.sp,
-            color = TcallColors.Slate500,
+            fontWeight = FontWeight.SemiBold,
+            color = TcallColors.TextSecondary,
             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
         )
         Text(
             text = if (state.digits.isBlank()) "— — —" else formatTcallId(state.digits),
             fontSize = 34.sp,
-            fontWeight = FontWeight.Light,
+            fontWeight = FontWeight.SemiBold,
             letterSpacing = 3.sp,
             fontFamily = FontFamily.Monospace,
-            color = TcallColors.Slate900,
+            color = TcallColors.TextPrimary,
         )
         state.error?.let {
             Text(it, color = TcallColors.Destructive, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
@@ -144,7 +145,7 @@ private fun KeypadContent(
                                     ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Backspace, null, tint = TcallColors.Slate500)
+                                Icon(Icons.AutoMirrored.Filled.Backspace, null, tint = TcallColors.TextSecondary)
                             }
                         }
                         else -> IosDialKey(key.digit, key.letters, { viewModel.append(key.digit) }, Modifier.weight(1f))
@@ -178,9 +179,10 @@ private fun KeypadContent(
             Box(
                 Modifier
                     .size(52.dp)
+                    .shadow(4.dp, CircleShape, spotColor = TcallColors.IosBlue.copy(0.25f))
                     .clip(CircleShape)
-                    .background(Color.White)
-                    .border(1.dp, TcallColors.BorderLight, CircleShape)
+                    .background(TcallColors.GlassSheet)
+                    .border(0.5.dp, TcallColors.GlassHairline, CircleShape)
                     .clickable(
                         enabled = !state.loading && state.digits.length == 9,
                         interactionSource = remember { MutableInteractionSource() },
@@ -310,15 +312,15 @@ private fun IosDialKey(
             .padding(4.dp)
             .shadow(2.dp, CircleShape)
             .clip(CircleShape)
-            .background(TcallColors.KeyGradient)
-            .border(1.dp, Color.Black.copy(alpha = 0.045f), CircleShape)
+            .background(TcallColors.GlassSheet)
+            .border(0.5.dp, TcallColors.GlassHairline, CircleShape)
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(digit, fontSize = 28.sp, fontWeight = FontWeight.Light, color = TcallColors.Slate900)
+            Text(digit, fontSize = 28.sp, fontWeight = FontWeight.Medium, color = TcallColors.TextPrimary)
             if (letters.isNotBlank()) {
-                Text(letters, fontSize = 9.sp, fontWeight = FontWeight.Medium, color = TcallColors.Slate500, letterSpacing = 1.sp)
+                Text(letters, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = TcallColors.TextSecondary, letterSpacing = 1.sp)
             }
         }
     }

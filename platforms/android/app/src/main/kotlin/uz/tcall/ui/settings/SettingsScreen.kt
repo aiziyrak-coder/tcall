@@ -67,8 +67,12 @@ fun SettingsScreen(
                 when (state.section) {
                     SettingsSection.OVERVIEW -> "Sozlamalar"
                     SettingsSection.PROFILE -> "Mening ma'lumotlarim"
+                    SettingsSection.PROFILE_DETAILS -> "Profil tafsilotlari"
                     SettingsSection.PREFERENCES -> "Afzalliklar"
+                    SettingsSection.NOTIFICATIONS -> "Bildirishnomalar"
                     SettingsSection.PASSWORD -> "Parolni o'zgartirish"
+                    SettingsSection.PIN -> "PIN qulf"
+                    SettingsSection.SECURITY -> "Xavfsizlik"
                 },
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
@@ -92,8 +96,12 @@ fun SettingsScreen(
             when (state.section) {
                 SettingsSection.OVERVIEW -> OverviewSection(state, viewModel::navigate, onLogout)
                 SettingsSection.PROFILE -> ProfileSection(state, viewModel)
+                SettingsSection.PROFILE_DETAILS -> ProfileSection(state, viewModel)
                 SettingsSection.PREFERENCES -> PreferencesSection(state, viewModel)
+                SettingsSection.NOTIFICATIONS -> Text("Bildirishnomalar tizim sozlamalaridan yoqiladi.", color = TcallColors.TextSecondary)
                 SettingsSection.PASSWORD -> PasswordSection(state, viewModel)
+                SettingsSection.PIN -> Text("PIN ni modal sozlamalardan o'rnating.", color = TcallColors.TextSecondary)
+                SettingsSection.SECURITY -> Text("Hisobni o'chirish modal orqali.", color = TcallColors.TextSecondary)
             }
             state.error?.let {
                 Text(it, color = TcallColors.Destructive, fontSize = 13.sp, modifier = Modifier.padding(vertical = 8.dp))
