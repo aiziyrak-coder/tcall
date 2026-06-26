@@ -1,17 +1,16 @@
 package uz.tcall.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import uz.tcall.core.TcallServices
 import uz.tcall.data.AuthRepository
@@ -20,6 +19,8 @@ import uz.tcall.push.PushRegistrar
 import uz.tcall.ui.auth.AuthViewModel
 import uz.tcall.ui.auth.LoginScreen
 import uz.tcall.ui.main.MainScreen
+import uz.tcall.ui.onboarding.OnboardingScreen
+import uz.tcall.ui.splash.AppSplashScreen
 
 @Composable
 fun TcallAppRoot(
@@ -32,17 +33,25 @@ fun TcallAppRoot(
     val services = remember { TcallServices.get(context) }
 
     val authViewModel: AuthViewModel = viewModel(
-        factory = remember(authRepository) {
+        factory = remember(authRepository, services.appPreferences) {
             object : androidx.lifecycle.ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                    return AuthViewModel(authRepository) as T
+                    return AuthViewModel(authRepository, services.appPreferences) as T
                 }
             }
         },
     )
 
     val authState by authViewModel.state.collectAsState()
+    var onboardingDone by remember { mutableStateOf<Boolean?>(null) }
+    var rememberedEmail by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        onboardingDone = services.appPreferences.onboardingComplete.first()
+        rememberedEmail = services.appPreferences.rememberedEmail.first().orEmpty()
+    }
 
     LaunchedEffect(authState.user, authState.token) {
         val token = authState.token ?: sessionStore.getTokenSync()
@@ -56,10 +65,8 @@ fun TcallAppRoot(
     }
 
     when {
-        authState.loading -> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        authState.loading || onboardingDone == null -> {
+            AppSplashScreen(message = "Tcall")
         }
         authState.user != null -> {
             MainScreen(
@@ -70,10 +77,21 @@ fun TcallAppRoot(
                 initialConversationId = initialConversationId,
             )
         }
+        onboardingDone == false -> {
+            OnboardingScreen(
+                onComplete = {
+                    scope.launch {
+                        services.appPreferences.completeOnboarding()
+                        onboardingDone = true
+                    }
+                },
+            )
+        }
         else -> {
             LoginScreen(
                 submitting = authState.submitting,
                 error = authState.error,
+                initialEmail = rememberedEmail,
                 onLogin = authViewModel::login,
                 onClearError = authViewModel::clearError,
             )

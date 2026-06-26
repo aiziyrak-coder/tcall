@@ -52,7 +52,7 @@ fun TcallEmptyState(
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        TcallLogoIcon(Modifier.size(56.dp))
+        TcallLogo(variant = TcallLogoVariant.Icon, width = 56.dp)
         Text(
             title,
             modifier = Modifier.padding(top = 16.dp),

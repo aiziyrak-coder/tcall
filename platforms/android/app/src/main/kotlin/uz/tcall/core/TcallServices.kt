@@ -3,6 +3,7 @@ package uz.tcall.core
 import android.content.Context
 import com.google.gson.Gson
 import uz.tcall.audio.InterpreterAudioRecorder
+import uz.tcall.data.AppPreferences
 import uz.tcall.data.CallRepository
 import uz.tcall.data.ChatRepository
 import uz.tcall.data.SessionStore
@@ -13,6 +14,7 @@ import uz.tcall.webrtc.WebRtcCallManager
 class TcallServices private constructor(
     context: Context,
     val sessionStore: SessionStore,
+    val appPreferences: AppPreferences,
     val apiClient: ApiClient,
     val chatRepository: ChatRepository,
     val callRepository: CallRepository,
@@ -33,11 +35,13 @@ class TcallServices private constructor(
     private fun build(context: Context): TcallServices {
       val gson = Gson()
       val sessionStore = SessionStore(context)
+      val appPreferences = AppPreferences(context)
       val apiClient = ApiClient(sessionStore)
       val socketManager = TcallSocketManager(gson)
       return TcallServices(
         context = context,
         sessionStore = sessionStore,
+        appPreferences = appPreferences,
         apiClient = apiClient,
         chatRepository = ChatRepository(apiClient.api),
         callRepository = CallRepository(apiClient.api),

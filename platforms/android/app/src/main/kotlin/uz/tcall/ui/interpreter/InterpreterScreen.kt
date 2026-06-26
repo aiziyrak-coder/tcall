@@ -21,7 +21,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,17 +34,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import uz.tcall.ui.components.TcallGlassCard
 import uz.tcall.ui.components.TcallSectionTitle
+import uz.tcall.ui.components.tcallTextFieldColors
 import uz.tcall.ui.theme.TcallColors
 
 @Composable
 fun InterpreterScreen(viewModel: InterpreterViewModel) {
     val state by viewModel.state.collectAsState()
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = TcallColors.IosBlue,
-        unfocusedBorderColor = TcallColors.Separator,
-        focusedContainerColor = Color.White,
-        unfocusedContainerColor = Color.White,
-    )
+    val fieldColors = tcallTextFieldColors()
 
     Column(
         Modifier
@@ -127,7 +122,7 @@ private fun LangField(
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
-        label = { Text(label) },
+        label = { Text(label, color = TcallColors.Slate500) },
         modifier = modifier,
         singleLine = true,
         shape = RoundedCornerShape(12.dp),

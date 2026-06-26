@@ -22,8 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import uz.tcall.ui.components.TcallTextField
+import uz.tcall.ui.components.tcallTextFieldColors
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -106,19 +106,13 @@ fun ChatThreadScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
+            TcallTextField(
                 value = draft,
                 onValueChange = { draft = it },
+                label = "Xabar",
+                placeholder = "Xabar yozing...",
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Xabar...", color = TcallColors.Slate400) },
                 maxLines = 4,
-                shape = RoundedCornerShape(20.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = TcallColors.IosBlue,
-                    unfocusedBorderColor = TcallColors.Separator,
-                    focusedContainerColor = TcallColors.BgPrimary,
-                    unfocusedContainerColor = TcallColors.BgPrimary,
-                ),
             )
             IconButton(
                 onClick = {

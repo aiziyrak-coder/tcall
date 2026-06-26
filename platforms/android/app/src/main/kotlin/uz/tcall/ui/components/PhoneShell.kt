@@ -146,7 +146,7 @@ private fun PhoneHeader(
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TcallLogoIcon(Modifier.size(32.dp))
+            TcallLogo(variant = TcallLogoVariant.Icon, width = 32.dp)
 
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Row(
@@ -192,19 +192,6 @@ private fun PhoneHeader(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun TcallLogoIcon(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Brush.linearGradient(listOf(TcallColors.IosBlue, TcallColors.BrandPurple)))
-            .then(modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("T", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }
 

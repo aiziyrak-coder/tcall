@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import uz.tcall.data.AppPreferences
 import uz.tcall.data.AuthRepository
 import uz.tcall.network.UserDto
 
@@ -19,6 +20,7 @@ data class AuthUiState(
 
 class AuthViewModel(
     private val authRepository: AuthRepository,
+    private val appPreferences: AppPreferences,
 ) : ViewModel() {
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
@@ -31,13 +33,18 @@ class AuthViewModel(
         }
     }
 
-    fun login(email: String, password: String) {
+    fun login(email: String, password: String, remember: Boolean = true) {
         if (email.isBlank() || password.isBlank()) {
             _state.value = _state.value.copy(error = "Email va parolni kiriting")
             return
         }
         viewModelScope.launch {
             _state.value = _state.value.copy(submitting = true, error = null)
+            if (remember) {
+                appPreferences.saveRememberedEmail(email)
+            } else {
+                appPreferences.saveRememberedEmail(null)
+            }
             authRepository.login(email, password)
                 .onSuccess { user ->
                     _state.value = AuthUiState(
