@@ -1,6 +1,6 @@
-# Tcall Android — WebView (web.tcall.uz)
+# Tcall Android — WebView (Play Market)
 
-Android ilova **web.tcall.uz** ni to‘liq WebView ichida ochadi — dizayn va funksiyalar veb bilan **bir xil**.
+Professional WebView ilova: **web.tcall.uz** ni yuklaydi. Dizayn va funksiyalar veb bilan bir xil.
 
 ## Qurish
 
@@ -9,22 +9,32 @@ cd platforms/android
 ./gradlew :app:assembleDebug
 ```
 
-APK: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
+Nashr (loyiha ildizida):
 
-Nashr: `npm run publish:android-apk` (loyiha ildizida)
+```bash
+npm run publish:android-apk
+```
 
-## Imkoniyatlar
+APK: `public/downloads/tcall-android.apk`
 
-| Funksiya | Holat |
-|----------|--------|
-| Login / dashboard / chat / qo‘ng‘iroq | ✅ veb bilan bir xil |
-| Sozlamalar / obuna / Cryptomus | ✅ veb bilan bir xil |
-| WebRTC (mikrofon/kamera) | ✅ WebView ruxsatlari |
-| Push (FCM) | ✅ |
-| Deep link `/call/ROOM` | ✅ |
+## Arxitektura
 
-## Texnik
+| Komponent | Vazifa |
+|-----------|--------|
+| `MainActivity` | WebView shell, progress, offline UI |
+| `TcallSessionStore` | EncryptedSharedPreferences — sessiya saqlash |
+| `TcallAndroidBridge` | JS ↔ native (auth, push, tashqi havolalar) |
+| `TcallWebViewClient` | URL filtri, Custom Tabs, xato/offline |
+| `TcallWebChromeClient` | WebRTC ruxsatlari, fayl yuklash |
+| `TcallFirebaseMessagingService` | Push bildirishnomalar |
 
-- `MainActivity` → `https://web.tcall.uz/login` (sessiya bo‘lsa dashboard)
-- `TcallAndroidBridge` — native push ro‘yxatdan o‘tish
-- Eski native Compose kod arxivda (`app/src/main/kotlin/uz/tcall/ui/`)
+## Sessiya
+
+Login muvaffaqiyatli bo‘lganda token **localStorage** va **native xavfsiz xotira**da saqlanadi. Ilova qayta ochilganda sessiya avtomatik tiklanadi — login flash yo‘q.
+
+## Play Market
+
+- Target SDK 36, min SDK 24
+- Release: ProGuard + shrink
+- Deep link: `https://tcall.uz/call/*`, `https://web.tcall.uz/*`, `tcall://call/*`
+- Tashqi havolalar Chrome Custom Tabs orqali ochiladi

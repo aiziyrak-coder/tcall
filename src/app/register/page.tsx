@@ -45,9 +45,6 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error(data.error);
       if (data.token) cacheToken(data.token);
       setUser(data.user);
-      try {
-        (window as unknown as { TcallAndroidBridge?: { syncCookies?: () => void } }).TcallAndroidBridge?.syncCookies?.();
-      } catch { /* ignore */ }
       if (isNativeApp()) {
         window.location.replace("/dashboard");
         return;

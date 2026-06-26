@@ -12,6 +12,7 @@ import {
 import { apiFetch } from "@/lib/api";
 import { cacheUser, readCachedUser, cacheToken, clearAuthCache, readCachedToken } from "@/lib/auth-cache";
 import { isNativeApp } from "@/lib/native-app";
+import { androidBridge } from "@/lib/android-bridge";
 
 export interface User {
   userId: string;
@@ -97,11 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   useEffect(() => {
+    const bridge = androidBridge();
     if (!user) return;
-    const bridge = (window as unknown as { TcallAndroidBridge?: { registerPush: (t: string) => void } })
-      .TcallAndroidBridge;
     const token = readCachedToken();
     if (bridge?.registerPush && token) bridge.registerPush(token);
+    bridge?.requestNotifications?.();
   }, [user]);
 
   const logout = useCallback(async () => {

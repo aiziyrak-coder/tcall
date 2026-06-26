@@ -16,6 +16,7 @@ class TcallWebChromeClient(
     private val activity: Activity,
     private val permissionLauncher: ActivityResultLauncher<Array<String>>,
     private val fileChooserLauncher: ActivityResultLauncher<Intent>,
+    private val onProgress: (Int) -> Unit = {},
 ) : WebChromeClient() {
 
     private var pendingMediaRequest: PermissionRequest? = null
@@ -24,9 +25,7 @@ class TcallWebChromeClient(
     fun onPermissionsResult(grants: Map<String, Boolean>) {
         val req = pendingMediaRequest ?: return
         pendingMediaRequest = null
-        val allGranted = grants.values.all { it }
-        if (allGranted) req.grant(req.resources)
-        else req.deny()
+        if (grants.values.all { it }) req.grant(req.resources) else req.deny()
     }
 
     fun onFileChooserResult(uris: Array<Uri>?) {
@@ -34,12 +33,20 @@ class TcallWebChromeClient(
         fileChooserCallback = null
     }
 
+    override fun onProgressChanged(view: WebView?, newProgress: Int) {
+        onProgress(newProgress)
+    }
+
     override fun onPermissionRequest(request: PermissionRequest?) {
         request ?: return
         val needs = request.resources.toList()
         val androidPerms = mutableListOf<String>()
-        if (needs.any { it.contains("AUDIO") }) androidPerms.add(Manifest.permission.RECORD_AUDIO)
-        if (needs.any { it.contains("VIDEO") }) androidPerms.add(Manifest.permission.CAMERA)
+        if (needs.any { it.contains("AUDIO", ignoreCase = true) }) {
+            androidPerms.add(Manifest.permission.RECORD_AUDIO)
+        }
+        if (needs.any { it.contains("VIDEO", ignoreCase = true) }) {
+            androidPerms.add(Manifest.permission.CAMERA)
+        }
 
         if (androidPerms.isEmpty()) {
             request.grant(request.resources)

@@ -1,4 +1,5 @@
 import type { User } from "@/components/providers/AuthProvider";
+import { clearNativeSession, syncNativeSession } from "@/lib/android-bridge";
 
 export const USER_CACHE_KEY = "tcall:user";
 export const TOKEN_CACHE_KEY = "tcall:token";
@@ -23,7 +24,7 @@ function storage(): Storage | null {
   }
 }
 
-/** Eski Android build sessionStorage ishlatgan — bir marta localStorage ga ko'chirish */
+/** Eski build sessionStorage ishlatgan — bir marta localStorage ga ko'chirish */
 function migrateNativeCache() {
   if (!isAndroidStorage()) return;
   try {
@@ -40,8 +41,25 @@ function migrateNativeCache() {
   }
 }
 
+/** Native bridge dan localStorage ga tiklash (sahifa yuklanishidan oldin ham ishlaydi) */
+export function restoreFromNativeBridge() {
+  if (!isAndroidStorage()) return;
+  try {
+    const bridge = (window as unknown as { TcallAndroidBridge?: { getStoredToken?: () => string; getStoredUser?: () => string } })
+      .TcallAndroidBridge;
+    if (!bridge) return;
+    const t = bridge.getStoredToken?.();
+    const u = bridge.getStoredUser?.();
+    if (t) localStorage.setItem(TOKEN_CACHE_KEY, t);
+    if (u) localStorage.setItem(USER_CACHE_KEY, u);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function readCachedUser(): User | null {
   migrateNativeCache();
+  restoreFromNativeBridge();
   const s = storage();
   if (!s) return null;
   try {
@@ -54,6 +72,7 @@ export function readCachedUser(): User | null {
 
 export function readCachedToken(): string | null {
   migrateNativeCache();
+  restoreFromNativeBridge();
   const s = storage();
   if (!s) return null;
   try {
@@ -69,6 +88,8 @@ export function cacheUser(user: User | null) {
   try {
     if (user) s.setItem(USER_CACHE_KEY, JSON.stringify(user));
     else s.removeItem(USER_CACHE_KEY);
+    const token = readCachedToken();
+    syncNativeSession(token, user);
   } catch {
     /* ignore */
   }
@@ -80,6 +101,8 @@ export function cacheToken(token: string | null) {
   try {
     if (token) s.setItem(TOKEN_CACHE_KEY, token);
     else s.removeItem(TOKEN_CACHE_KEY);
+    const user = readCachedUser();
+    syncNativeSession(token, user);
   } catch {
     /* ignore */
   }
@@ -88,4 +111,5 @@ export function cacheToken(token: string | null) {
 export function clearAuthCache() {
   cacheUser(null);
   cacheToken(null);
+  clearNativeSession();
 }
