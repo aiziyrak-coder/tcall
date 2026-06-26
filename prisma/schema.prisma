@@ -64,6 +64,7 @@ model User {
   conversationsCreated Conversation[] @relation("ConversationCreator")
   conversationMembers  ConversationMember[]
   chatMessagesSent     ChatMessage[]  @relation("ChatMessageSender")
+  pinnedChatMessages   ConversationPinnedMessage[] @relation("PinnedByUser")
   deviceTokens         DeviceToken[]
   pushSubscriptions    PushSubscription[]
   passwordResetTokens  PasswordResetToken[]
@@ -397,6 +398,7 @@ model Conversation {
 
   members  ConversationMember[]
   messages ChatMessage[]
+  pinnedMessages ConversationPinnedMessage[]
 
   @@index([updatedAt])
 }
@@ -442,6 +444,7 @@ model ChatMessage {
 
   translations MessageTranslation[]
   reactions    MessageReaction[]
+  pins         ConversationPinnedMessage[]
 
   @@index([conversationId, createdAt(sort: Desc)])
   @@index([senderId, createdAt])
@@ -470,4 +473,19 @@ model MessageTranslation {
 
   @@unique([messageId, targetLang])
   @@index([messageId])
+}
+
+model ConversationPinnedMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId      String
+  message        ChatMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedById     String
+  pinnedBy       User         @relation("PinnedByUser", fields: [pinnedById], references: [id])
+  pinnedAt       DateTime     @default(now())
+  order          Int          @default(0)
+
+  @@unique([conversationId, messageId])
+  @@index([conversationId, order])
 }

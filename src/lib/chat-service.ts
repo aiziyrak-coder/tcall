@@ -627,6 +627,133 @@ export async function getConversationsForUser(userId: string, userLang: string) 
   return { conversations, unreadTotal };
 }
 
+const MAX_PINNED_MESSAGES = 5;
+
+export async function getReactionSummariesForMessages(
+  messageIds: string[],
+  userId: string
+): Promise<Map<string, { emoji: string; count: number; mine: boolean }[]>> {
+  const result = new Map<string, { emoji: string; count: number; mine: boolean }[]>();
+  if (messageIds.length === 0) return result;
+
+  const rows = await prisma.messageReaction.findMany({
+    where: { messageId: { in: messageIds } },
+    select: { messageId: true, emoji: true, userId: true },
+  });
+
+  const grouped = new Map<string, Map<string, { count: number; mine: boolean }>>();
+  for (const row of rows) {
+    if (!grouped.has(row.messageId)) grouped.set(row.messageId, new Map());
+    const emojis = grouped.get(row.messageId)!;
+    const cur = emojis.get(row.emoji) || { count: 0, mine: false };
+    emojis.set(row.emoji, {
+      count: cur.count + 1,
+      mine: cur.mine || row.userId === userId,
+    });
+  }
+
+  for (const [messageId, emojis] of grouped) {
+    result.set(
+      messageId,
+      [...emojis.entries()].map(([emoji, v]) => ({ emoji, ...v }))
+    );
+  }
+  return result;
+}
+
+export async function getPinnedMessageIds(conversationId: string): Promise<Set<string>> {
+  const pins = await prisma.conversationPinnedMessage.findMany({
+    where: { conversationId },
+    select: { messageId: true },
+  });
+  return new Set(pins.map((p) => p.messageId));
+}
+
+export async function getPinnedMessagesForConversation(
+  conversationId: string,
+  userId: string,
+  userLang: string
+) {
+  await assertMember(conversationId, userId);
+  const pins = await prisma.conversationPinnedMessage.findMany({
+    where: { conversationId },
+    orderBy: { order: "asc" },
+    include: {
+      message: {
+        include: {
+          sender: { select: { id: true, name: true, tcallId: true, language: true } },
+          translations: true,
+          replyTo: {
+            select: {
+              id: true,
+              type: true,
+              originalText: true,
+              deletedAt: true,
+              sender: { select: { id: true, name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const ids = pins.map((p) => p.message.id);
+  const reactions = await getReactionSummariesForMessages(ids, userId);
+
+  return pins.map((p) => {
+    const m = p.message;
+    const translations = m.translations.map((t) => ({ targetLang: t.targetLang, text: t.text }));
+    return {
+      ...formatMessageForUser(m, translations, userLang),
+      reactions: reactions.get(m.id) || [],
+      pinned: true,
+    };
+  });
+}
+
+export async function setChatMessagePinned(
+  conversationId: string,
+  messageId: string,
+  userId: string,
+  pinned: boolean
+) {
+  await assertMember(conversationId, userId);
+  const msg = await prisma.chatMessage.findUnique({ where: { id: messageId } });
+  if (!msg || msg.conversationId !== conversationId || msg.deletedAt) {
+    throw new Error("NOT_FOUND");
+  }
+
+  if (pinned) {
+    const count = await prisma.conversationPinnedMessage.count({ where: { conversationId } });
+    if (count >= MAX_PINNED_MESSAGES) throw new Error("PIN_LIMIT");
+    await prisma.conversationPinnedMessage.upsert({
+      where: { conversationId_messageId: { conversationId, messageId } },
+      create: {
+        conversationId,
+        messageId,
+        pinnedById: userId,
+        order: count,
+      },
+      update: {},
+    });
+  } else {
+    await prisma.conversationPinnedMessage.deleteMany({
+      where: { conversationId, messageId },
+    });
+  }
+
+  const members = await prisma.conversationMember.findMany({
+    where: { conversationId },
+    select: { userId: true },
+  });
+  const payload = { conversationId, messageId, pinned, userId };
+  for (const m of members) {
+    emitToUser(m.userId, "chat-message-pin", payload);
+  }
+
+  return { ok: true };
+}
+
 export async function getMessagesForConversation(
   conversationId: string,
   userId: string,
@@ -679,6 +806,11 @@ export async function getMessagesForConversationWithBackfill(
 
   const hasMore = messages.length === 50;
   const ordered = messages.reverse();
+  const messageIds = ordered.map((m) => m.id);
+  const [reactionMap, pinnedIds] = await Promise.all([
+    getReactionSummariesForMessages(messageIds, userId),
+    getPinnedMessageIds(conversationId),
+  ]);
   const formatted = [];
 
   for (const m of ordered) {
@@ -700,10 +832,12 @@ export async function getMessagesForConversationWithBackfill(
     formatted.push({
       ...formatMessageForUser(m, translations, userLang),
       readStatus: isDirect ? computeMessageReadStatus(m, members, userId) : undefined,
+      reactions: reactionMap.get(m.id) || [],
+      pinned: pinnedIds.has(m.id),
     });
   }
 
-  return { messages: formatted, hasMore };
+  return { messages: formatted, hasMore, pinnedMessageIds: [...pinnedIds] };
 }
 
 export async function markConversationRead(conversationId: string, userId: string) {
@@ -746,13 +880,32 @@ export async function deleteChatMessage(
   await assertMember(conversationId, userId);
   const msg = await prisma.chatMessage.findUnique({ where: { id: messageId } });
   if (!msg || msg.conversationId !== conversationId) throw new Error("NOT_FOUND");
-  if (msg.senderId !== userId) throw new Error("FORBIDDEN");
   if (msg.deletedAt) return { ok: true };
+
+  if (msg.senderId !== userId) {
+    const [member, conv] = await Promise.all([
+      prisma.conversationMember.findUnique({
+        where: { conversationId_userId: { conversationId, userId } },
+        select: { role: true },
+      }),
+      prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { type: true, createdById: true },
+      }),
+    ]);
+    const canModerate =
+      conv?.type === "group" &&
+      (member?.role === "owner" ||
+        member?.role === "admin" ||
+        conv.createdById === userId);
+    if (!canModerate) throw new Error("FORBIDDEN");
+  }
 
   await prisma.chatMessage.update({
     where: { id: messageId },
     data: { deletedAt: new Date() },
   });
+  await prisma.conversationPinnedMessage.deleteMany({ where: { messageId } });
 
   const members = await prisma.conversationMember.findMany({
     where: { conversationId },

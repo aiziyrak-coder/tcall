@@ -340,6 +340,12 @@ export function CallProvider({ user, children }: CallProviderProps) {
         }
       });
 
+      socket.on("chat-message-pin", (data: unknown) => {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("tcall:chat-message-pin", { detail: data }));
+        }
+      });
+
       socket.on("message-reaction", (data: unknown) => {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("tcall:message-reaction", { detail: data }));

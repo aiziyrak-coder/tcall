@@ -21,6 +21,8 @@ import {
   X,
   Pin,
   Play,
+  Pencil,
+  CornerUpLeft,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { prepareAvatarFile } from "@/lib/prepare-avatar-file";
@@ -77,6 +79,9 @@ export interface ChatMessageItem {
   hasTranslation: boolean;
   readStatus?: "sent" | "read";
   deleted?: boolean;
+  edited?: boolean;
+  pinned?: boolean;
+  replyTo?: { id: string; senderName: string; preview: string } | null;
   reactions?: { emoji: string; count: number; mine?: boolean }[];
 }
 
@@ -386,6 +391,9 @@ export function ChatMessenger({
         return [...fetched, ...extra].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       });
       setHasMore(!!d.hasMore);
+      setPinnedMessages(d.pinnedMessages || []);
+      setReplyTarget(null);
+      setEditingMessage(null);
 
       if (d.peer) {
         setPeerPresence(d.peer);
@@ -550,15 +558,66 @@ export function ChatMessenger({
                 mediaName: null,
                 deleted: true,
                 hasTranslation: false,
+                replyTo: null,
               }
             : m
         )
       );
+      setPinnedMessages((prev) => prev.filter((m) => m.id !== detail.messageId));
       void loadConversations();
     };
     window.addEventListener("tcall:chat-message-deleted", onDeleted);
     return () => window.removeEventListener("tcall:chat-message-deleted", onDeleted);
   }, [activeId, loadConversations, ui.chatMessageDeleted]);
+
+  useEffect(() => {
+    const onEdited = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        conversationId: string;
+        messageId: string;
+        message: ChatMessageItem;
+      };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === detail.messageId ? { ...m, ...detail.message } : m))
+      );
+      setPinnedMessages((prev) =>
+        prev.map((m) => (m.id === detail.messageId ? { ...m, ...detail.message } : m))
+      );
+      void loadConversations();
+    };
+    window.addEventListener("tcall:chat-message-edited", onEdited);
+    return () => window.removeEventListener("tcall:chat-message-edited", onEdited);
+  }, [activeId, loadConversations]);
+
+  useEffect(() => {
+    const onPin = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        conversationId: string;
+        messageId: string;
+        pinned: boolean;
+      };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === detail.messageId ? { ...m, pinned: detail.pinned } : m))
+      );
+      if (detail.pinned) {
+        const msg = messages.find((m) => m.id === detail.messageId);
+        if (msg) {
+          setPinnedMessages((prev) => {
+            if (prev.some((p) => p.id === detail.messageId)) return prev;
+            return [...prev, { ...msg, pinned: true }];
+          });
+        } else {
+          void openConversation(activeId!);
+        }
+      } else {
+        setPinnedMessages((prev) => prev.filter((m) => m.id !== detail.messageId));
+      }
+    };
+    window.addEventListener("tcall:chat-message-pin", onPin);
+    return () => window.removeEventListener("tcall:chat-message-pin", onPin);
+  }, [activeId, messages, openConversation]);
 
   useEffect(() => {
     const onTyping = (e: Event) => {
@@ -666,6 +725,9 @@ export function ChatMessenger({
   }, []);
 
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [replyTarget, setReplyTarget] = useState<ChatMessageItem | null>(null);
+  const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
+  const [pinnedMessages, setPinnedMessages] = useState<ChatMessageItem[]>([]);
 
   const deleteMessage = (messageId: string) => {
     setPendingDeleteId(messageId);
@@ -705,6 +767,89 @@ export function ChatMessenger({
     }
   };
 
+  const toggleMessagePin = async (msg: ChatMessageItem) => {
+    if (!activeId) return;
+    const pinned = !msg.pinned;
+    const r = await apiFetch("/api/chat/message-pin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: activeId, messageId: msg.id, pinned }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setActionError((d as { error?: string }).error || ui.chatPinLimit);
+      return;
+    }
+    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, pinned } : m)));
+    if (pinned) {
+      setPinnedMessages((prev) => (prev.some((p) => p.id === msg.id) ? prev : [...prev, { ...msg, pinned: true }]));
+    } else {
+      setPinnedMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    }
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const el = document.getElementById(`chat-msg-${messageId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const startReply = (msg: ChatMessageItem) => {
+    setReplyTarget(msg);
+    setEditingMessage(null);
+    inputRef.current?.focus();
+  };
+
+  const startEdit = (msg: ChatMessageItem) => {
+    if (msg.type !== "text" || msg.deleted) return;
+    setEditingMessage(msg);
+    setReplyTarget(null);
+    setText(msg.originalText || msg.displayText || "");
+    requestAnimationFrame(() => syncInputHeight());
+    inputRef.current?.focus();
+  };
+
+  const cancelComposerMode = () => {
+    setReplyTarget(null);
+    setEditingMessage(null);
+    if (activeId) {
+      const saved = localStorage.getItem(`tcall:draft:${activeId}`);
+      setText(saved || "");
+    } else {
+      setText("");
+    }
+    requestAnimationFrame(() => syncInputHeight());
+  };
+
+  const saveEdit = async () => {
+    if (!activeId || !editingMessage || !text.trim()) return;
+    setSending(true);
+    try {
+      const r = await apiFetch(
+        `/api/chat/conversations/${activeId}/messages/${editingMessage.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text.trim() }),
+        }
+      );
+      const d = await r.json();
+      if (r.ok && d.message) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === editingMessage.id ? { ...m, ...d.message } : m))
+        );
+        setPinnedMessages((prev) =>
+          prev.map((m) => (m.id === editingMessage.id ? { ...m, ...d.message } : m))
+        );
+        cancelComposerMode();
+        void loadConversations();
+      } else {
+        setActionError((d as { error?: string }).error || ui.chatActionFailed);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
   const openMediaGallery = useCallback((msg: ChatMessageItem) => {
     type GalleryEntry = ChatViewerItem & { id: string };
     const gallery: GalleryEntry[] = [];
@@ -726,16 +871,23 @@ export function ChatMessenger({
 
   const sendText = async () => {
     if (!activeId || !text.trim() || sending) return;
+    if (editingMessage) {
+      await saveEdit();
+      return;
+    }
     setSending(true);
     try {
+      const payload: Record<string, string> = { text: text.trim(), type: "text" };
+      if (replyTarget) payload.replyToId = replyTarget.id;
       const res = await apiFetch(`/api/chat/conversations/${activeId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.trim(), type: "text" }),
+        body: JSON.stringify(payload),
       });
       const d = await res.json();
       if (res.ok) {
         setText("");
+        setReplyTarget(null);
         setShowEmoji(false);
         setShowAttachMenu(false);
         localStorage.removeItem(`tcall:draft:${activeId}`);
@@ -808,6 +960,7 @@ export function ChatMessenger({
           mediaName: media.name,
           mediaSize: media.size,
           text: text.trim() || undefined,
+          ...(replyTarget ? { replyToId: replyTarget.id } : {}),
         }),
       });
       if (!msgRes.ok) {
@@ -821,6 +974,7 @@ export function ChatMessenger({
       }
       const sent = await msgRes.json();
       setText("");
+      setReplyTarget(null);
       if (sent.message) {
         setMessages((prev) =>
           prev.some((m) => m.id === sent.message.id) ? prev : [...prev, sent.message]
@@ -1069,6 +1223,9 @@ export function ChatMessenger({
               ui
             )
         : null;
+
+    const canModerateMessages = isGroup && (canManageGroup || isGroupCreator);
+
     return (
       <div className="chat-app chat-app-thread">
         <div className="chat-thread">
@@ -1164,6 +1321,27 @@ export function ChatMessenger({
 
         {actionError && <div className="chat-upload-error mx-5 mt-2">{actionError}</div>}
 
+        {pinnedMessages.length > 0 && (
+          <div className="chat-pinned-bar">
+            <Pin className="w-4 h-4 text-brand-600 shrink-0" aria-hidden />
+            <div className="chat-pinned-list">
+              {pinnedMessages.map((pm) => (
+                <button
+                  key={pm.id}
+                  type="button"
+                  className="chat-pinned-item"
+                  onClick={() => scrollToMessage(pm.id)}
+                >
+                  <span className="chat-pinned-author">{pm.sender.name}</span>
+                  <span className="chat-pinned-preview">
+                    {pm.deleted ? ui.chatMessageDeleted : (pm.displayText || pm.mediaName || "…").slice(0, 80)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div
           className="chat-messages-wrap"
           ref={messagesWrapRef}
@@ -1194,9 +1372,21 @@ export function ChatMessenger({
                     msg={m}
                     isMine={m.sender.id === userId}
                     ui={ui}
-                    onDelete={m.sender.id === userId && !m.deleted ? () => void deleteMessage(m.id) : undefined}
+                    onDelete={
+                      !m.deleted && (m.sender.id === userId || canModerateMessages)
+                        ? () => void deleteMessage(m.id)
+                        : undefined
+                    }
+                    onReply={!m.deleted ? () => startReply(m) : undefined}
+                    onEdit={
+                      m.sender.id === userId && !m.deleted && m.type === "text"
+                        ? () => startEdit(m)
+                        : undefined
+                    }
+                    onPin={!m.deleted ? () => void toggleMessagePin(m) : undefined}
                     onReact={!m.deleted ? (emoji) => void handleReaction(m.id, emoji) : undefined}
                     onOpenMedia={() => openMediaGallery(m)}
+                    onQuoteClick={m.replyTo ? () => scrollToMessage(m.replyTo!.id) : undefined}
                   />
                 </Fragment>
               );
@@ -1212,7 +1402,54 @@ export function ChatMessenger({
         )}
         </div>
 
+        {pinnedMessages.length > 0 && (
+          <div className="chat-pinned-bar">
+            <Pin className="w-4 h-4 text-brand-600 shrink-0" aria-hidden />
+            <div className="chat-pinned-list">
+              {pinnedMessages.map((pm) => (
+                <button
+                  key={pm.id}
+                  type="button"
+                  className="chat-pinned-item"
+                  onClick={() => scrollToMessage(pm.id)}
+                >
+                  <span className="chat-pinned-author">{pm.sender.name}</span>
+                  <span className="chat-pinned-preview">
+                    {pm.deleted ? ui.chatMessageDeleted : (pm.displayText || pm.mediaName || "…").slice(0, 80)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="chat-composer">
+          {replyTarget && !editingMessage && (
+            <div className="chat-reply-bar">
+              <div className="chat-reply-bar-accent" />
+              <div className="chat-reply-bar-body">
+                <span className="chat-reply-bar-label">{ui.chatReplyTo} {replyTarget.sender.name}</span>
+                <span className="chat-reply-bar-text">
+                  {(replyTarget.displayText || replyTarget.mediaName || "").slice(0, 120)}
+                </span>
+              </div>
+              <button type="button" className="chat-reply-bar-close" onClick={cancelComposerMode} aria-label={ui.chatCancelEdit}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {editingMessage && (
+            <div className="chat-reply-bar chat-edit-bar">
+              <div className="chat-reply-bar-accent chat-edit-bar-accent" />
+              <div className="chat-reply-bar-body">
+                <span className="chat-reply-bar-label">{ui.chatEditing}</span>
+                <span className="chat-reply-bar-text">{(editingMessage.displayText || "").slice(0, 120)}</span>
+              </div>
+              <button type="button" className="chat-reply-bar-close" onClick={cancelComposerMode} aria-label={ui.chatCancelEdit}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           {uploadError && <div className="chat-upload-error">{uploadError}</div>}
           {uploading && <div className="chat-upload-status">{ui.chatUploading}</div>}
           {recordingVoice && (
@@ -1308,7 +1545,7 @@ export function ChatMessenger({
               <textarea
                 ref={inputRef}
                 className="chat-input"
-                placeholder={ui.typeMessage}
+                placeholder={editingMessage ? ui.chatEditMessage : ui.typeMessage}
                 value={text}
                 onChange={(e) => {
                   setText(e.target.value);
@@ -1729,15 +1966,23 @@ function MessageBubble({
   isMine,
   ui,
   onDelete,
+  onReply,
+  onEdit,
+  onPin,
   onReact,
   onOpenMedia,
+  onQuoteClick,
 }: {
   msg: ChatMessageItem;
   isMine: boolean;
   ui: Record<string, string>;
   onDelete?: () => void;
+  onReply?: () => void;
+  onEdit?: () => void;
+  onPin?: () => void;
   onReact?: (emoji: string) => void;
   onOpenMedia?: () => void;
+  onQuoteClick?: () => void;
 }) {
   const [showOriginal, setShowOriginal] = useState(false);
   const [mediaBroken, setMediaBroken] = useState(false);
@@ -1751,14 +1996,16 @@ function MessageBubble({
   const bubbleClass = isAudio
     ? `chat-bubble chat-bubble-voice ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`
     : `chat-bubble ${isMine ? "chat-bubble-bg-mine" : "chat-bubble-bg-theirs"}`;
+  const hasActions = Boolean(onDelete || onReply || onEdit || onPin || onReact);
 
   return (
     <div
+      id={`chat-msg-${msg.id}`}
       className={`chat-bubble-wrap ${isMine ? "chat-bubble-mine" : "chat-bubble-theirs"} ${
         msg.deleted ? "chat-bubble-deleted" : ""
       } ${isAudio ? "chat-bubble-wrap-voice" : ""}`}
       onContextMenu={(e) => {
-        if (onDelete) {
+        if (hasActions) {
           e.preventDefault();
           setShowActions((v) => !v);
         }
@@ -1768,6 +2015,12 @@ function MessageBubble({
         <p className="chat-bubble-sender">{msg.sender.name}</p>
       )}
       <div className={bubbleClass}>
+        {msg.replyTo && !msg.deleted && (
+          <button type="button" className="chat-reply-quote" onClick={onQuoteClick}>
+            <span className="chat-reply-quote-name">{msg.replyTo.senderName}</span>
+            <span className="chat-reply-quote-text">{msg.replyTo.preview}</span>
+          </button>
+        )}
         {msg.hasTranslation && sourceLang && !showOriginal && !msg.deleted && !isAudio && (
           <p className="chat-translation-badge">
             {sourceLang.flag} {ui.chatTranslatedFrom}
@@ -1832,6 +2085,12 @@ function MessageBubble({
         <span className="chat-bubble-time">
           {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </span>
+        {msg.edited && !msg.deleted && (
+          <span className="chat-edited-label">{ui.chatEdited}</span>
+        )}
+        {msg.pinned && !msg.deleted && (
+          <Pin className="w-3 h-3 text-brand-500 shrink-0" aria-label={ui.chatPinned} />
+        )}
         {isMine && msg.readStatus && !msg.deleted && (
           <span
             className={`chat-msg-status ${msg.readStatus === "read" ? "chat-msg-status-read" : ""}`}
@@ -1844,11 +2103,11 @@ function MessageBubble({
             )}
           </span>
         )}
-        {onDelete && (
+        {hasActions && (
           <button
             type="button"
             className="chat-msg-delete-btn"
-            aria-label={ui.chatDeleteMessage}
+            aria-label={ui.chatManage}
             onClick={() => setShowActions((v) => !v)}
           >
             <MoreVertical className="w-3 h-3" />
@@ -1871,8 +2130,26 @@ function MessageBubble({
               ))}
             </div>
           )}
+          {onReply && (
+            <button type="button" className="chat-msg-action" onClick={() => { onReply(); setShowActions(false); }}>
+              <CornerUpLeft className="w-3.5 h-3.5" />
+              {ui.chatReply}
+            </button>
+          )}
+          {onEdit && (
+            <button type="button" className="chat-msg-action" onClick={() => { onEdit(); setShowActions(false); }}>
+              <Pencil className="w-3.5 h-3.5" />
+              {ui.chatEditMessage}
+            </button>
+          )}
+          {onPin && (
+            <button type="button" className="chat-msg-action" onClick={() => { onPin(); setShowActions(false); }}>
+              <Pin className="w-3.5 h-3.5" />
+              {msg.pinned ? ui.chatUnpinMessage : ui.chatPinMessage}
+            </button>
+          )}
           {onDelete && (
-            <button type="button" className="chat-msg-action-danger" onClick={onDelete}>
+            <button type="button" className="chat-msg-action-danger" onClick={() => { onDelete(); setShowActions(false); }}>
               <Trash2 className="w-3.5 h-3.5" />
               {ui.chatDeleteMessage}
             </button>

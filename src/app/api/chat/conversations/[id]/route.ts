@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import {
   assertMember,
   getMessagesForConversation,
+  getPinnedMessagesForConversation,
   leaveConversation,
   markConversationRead,
   updateGroupName,
@@ -28,8 +29,16 @@ export async function GET(
       userLang,
       cursor
     );
+    const pinnedMessages = cursor
+      ? []
+      : await getPinnedMessagesForConversation(params.id, session.userId, userLang);
     const peer = await getDirectPeerPresence(params.id, session.userId);
-    return NextResponse.json({ messages: result.messages, hasMore: result.hasMore, peer });
+    return NextResponse.json({
+      messages: result.messages,
+      hasMore: result.hasMore,
+      pinnedMessages,
+      peer,
+    });
   } catch {
     return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   }

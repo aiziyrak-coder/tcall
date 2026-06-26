@@ -2697,6 +2697,74 @@ body.has-mini-call .chat-app-thread .chat-composer {
   @apply flex items-center gap-1.5 text-xs text-red-600 bg-white border border-red-100 rounded-lg px-2.5 py-1.5 shadow-sm touch-manipulation;
 }
 
+.chat-msg-action {
+  @apply flex items-center gap-1.5 text-xs text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm touch-manipulation w-full;
+}
+
+.chat-edited-label {
+  @apply text-[10px] text-slate-400 italic;
+}
+
+.chat-pinned-bar {
+  @apply flex items-start gap-2 mx-3 mt-2 mb-1 px-3 py-2 rounded-xl bg-brand-50/80 border border-brand-100;
+}
+
+.chat-pinned-list {
+  @apply flex flex-col gap-1 min-w-0 flex-1;
+}
+
+.chat-pinned-item {
+  @apply text-left w-full touch-manipulation;
+}
+
+.chat-pinned-author {
+  @apply block text-xs font-semibold text-brand-700 truncate;
+}
+
+.chat-pinned-preview {
+  @apply block text-xs text-slate-600 truncate;
+}
+
+.chat-reply-bar {
+  @apply flex items-stretch gap-2 mx-3 mb-2 px-2 py-2 rounded-xl bg-slate-100 border border-slate-200;
+}
+
+.chat-reply-bar-accent {
+  @apply w-1 rounded-full bg-brand-500 shrink-0;
+}
+
+.chat-edit-bar-accent {
+  @apply bg-amber-500;
+}
+
+.chat-reply-bar-body {
+  @apply flex flex-col min-w-0 flex-1;
+}
+
+.chat-reply-bar-label {
+  @apply text-xs font-semibold text-brand-600 truncate;
+}
+
+.chat-reply-bar-text {
+  @apply text-xs text-slate-600 truncate;
+}
+
+.chat-reply-bar-close {
+  @apply shrink-0 p-1 text-slate-500 touch-manipulation;
+}
+
+.chat-reply-quote {
+  @apply block w-full text-left mb-2 pl-2 border-l-2 border-brand-400/70 rounded-sm touch-manipulation;
+}
+
+.chat-reply-quote-name {
+  @apply block text-[11px] font-semibold text-brand-600 truncate;
+}
+
+.chat-reply-quote-text {
+  @apply block text-[11px] text-slate-600 truncate opacity-90;
+}
+
 .chat-bubble-meta-mine .chat-msg-delete-btn {
   @apply text-slate-300;
 }
