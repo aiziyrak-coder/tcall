@@ -1,5 +1,6 @@
 package uz.tcall.web
 
+import android.webkit.CookieManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.webkit.WebResourceRequest
@@ -25,6 +26,7 @@ class TcallWebViewClient(
 
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
+        CookieManager.getInstance().flush()
         onPageLoaded()
     }
 

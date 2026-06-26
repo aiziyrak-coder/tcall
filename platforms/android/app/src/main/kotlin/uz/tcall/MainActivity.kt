@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
             else finish()
         }
 
-        val url = startUrl ?: resolveStartUrl(intent) ?: "${BuildConfig.WEB_BASE_URL}/dashboard"
+        val url = startUrl ?: resolveStartUrl(intent) ?: "${BuildConfig.WEB_BASE_URL}/login"
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {

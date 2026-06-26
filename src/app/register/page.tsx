@@ -8,6 +8,7 @@ import { LANGUAGES } from "@/lib/languages";
 import { detectDeviceLanguage } from "@/lib/locale-detect";
 import { useAuth } from "@/hooks/useAuth";
 import { cacheToken } from "@/lib/auth-cache";
+import { isNativeApp } from "@/lib/native-app";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { PasswordField } from "@/components/auth/PasswordField";
@@ -44,6 +45,13 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error(data.error);
       if (data.token) cacheToken(data.token);
       setUser(data.user);
+      try {
+        (window as unknown as { TcallAndroidBridge?: { syncCookies?: () => void } }).TcallAndroidBridge?.syncCookies?.();
+      } catch { /* ignore */ }
+      if (isNativeApp()) {
+        window.location.replace("/dashboard");
+        return;
+      }
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xatolik yuz berdi");

@@ -114,6 +114,14 @@ export async function middleware(request: NextRequest) {
 
   const token = request.cookies.get("session")?.value;
   const session = token ? await verifySessionCookie(token) : { ok: false as const };
+  const ua = request.headers.get("user-agent") ?? "";
+  const isTcallAndroid = ua.includes("TcallAndroid");
+
+  // Android WebView: sessiya ko‘pincha localStorage + Bearer; cookie kechikishi mumkin
+  if (!session.ok && isTcallAndroid && (pathname.startsWith("/dashboard") || pathname.startsWith("/call"))) {
+    return securityHeaders(NextResponse.next());
+  }
+
   if (!session.ok) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);

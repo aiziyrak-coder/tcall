@@ -1,14 +1,14 @@
 {
-  "version": "1.000000",
+  "version": "1.000005",
   "updated": "2026-06-26",
   "platforms": {
     "android": {
       "file": "tcall-android.apk",
       "label": "Android APK",
       "minOs": "Android 8.0+",
-      "sizeBytes": 4476668,
+      "sizeBytes": 4476756,
       "sizeLabel": "4.27 MB",
-      "sha256": "fc86575c1a22c00b35a3bd868ae951f88f81c19774cddd4c8d1a260fc5a2df76",
+      "sha256": "d9418deb28b9696edf6b14b4919e52aa850b473cea866ff545cfe6f713ced5b0",
       "package": "uz.tcall",
       "status": "available"
     },

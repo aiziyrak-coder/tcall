@@ -25,6 +25,6 @@ Nashr: `npm run publish:android-apk` (loyiha ildizida)
 
 ## Texnik
 
-- `MainActivity` → `https://web.tcall.uz/dashboard`
+- `MainActivity` → `https://web.tcall.uz/login` (sessiya bo‘lsa dashboard)
 - `TcallAndroidBridge` — native push ro‘yxatdan o‘tish
 - Eski native Compose kod arxivda (`app/src/main/kotlin/uz/tcall/ui/`)

@@ -1,19 +1,47 @@
-import { isNativeApp } from "@/lib/native-app";
 import type { User } from "@/components/providers/AuthProvider";
 
 export const USER_CACHE_KEY = "tcall:user";
 export const TOKEN_CACHE_KEY = "tcall:token";
 
+function isAndroidStorage(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const w = window as unknown as { TcallNative?: { isAndroid?: boolean }; Capacitor?: { isNativePlatform?: () => boolean } };
+    return Boolean(w.TcallNative?.isAndroid || w.Capacitor?.isNativePlatform?.());
+  } catch {
+    return false;
+  }
+}
+
 function storage(): Storage | null {
   if (typeof window === "undefined") return null;
   try {
-    return isNativeApp() ? localStorage : sessionStorage;
+    if (isAndroidStorage()) return localStorage;
+    return sessionStorage;
   } catch {
     return null;
   }
 }
 
+/** Eski Android build sessionStorage ishlatgan — bir marta localStorage ga ko'chirish */
+function migrateNativeCache() {
+  if (!isAndroidStorage()) return;
+  try {
+    for (const key of [USER_CACHE_KEY, TOKEN_CACHE_KEY]) {
+      if (localStorage.getItem(key)) continue;
+      const fromSession = sessionStorage.getItem(key);
+      if (fromSession) {
+        localStorage.setItem(key, fromSession);
+        sessionStorage.removeItem(key);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export function readCachedUser(): User | null {
+  migrateNativeCache();
   const s = storage();
   if (!s) return null;
   try {
@@ -25,6 +53,7 @@ export function readCachedUser(): User | null {
 }
 
 export function readCachedToken(): string | null {
+  migrateNativeCache();
   const s = storage();
   if (!s) return null;
   try {

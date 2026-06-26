@@ -7,6 +7,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.core.content.ContextCompat
+import android.webkit.CookieManager
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,11 @@ class TcallAndroidBridge(
                 Log.i(TAG, "FCM token serverga yuborildi")
             }.onFailure { Log.w(TAG, "registerPush: ${it.message}") }
         }
+    }
+
+    @JavascriptInterface
+    fun syncCookies() {
+        CookieManager.getInstance().flush()
     }
 
     @JavascriptInterface

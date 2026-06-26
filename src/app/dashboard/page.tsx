@@ -57,8 +57,14 @@ export default function DashboardPage() {
     if (!cached && !token) router.push("/login");
   }, [user, loading, router]);
 
-  if (loading && !user) return <AppSplash />;
-  if (!user) return null;
+  if (loading && !user) {
+    if (readCachedToken() || readCachedUser()) return <AppSplash message="Yuklanmoqda..." />;
+    return <AppSplash />;
+  }
+  if (!user) {
+    if (readCachedToken() || readCachedUser()) return <AppSplash message="Yuklanmoqda..." />;
+    return null;
+  }
 
   return (
     <DashboardInner

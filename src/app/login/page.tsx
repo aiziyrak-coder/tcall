@@ -33,8 +33,11 @@ function LoginForm() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) router.replace("/dashboard");
-  }, [user, loading, router]);
+    if (!loading && user) {
+      if (isNativeApp()) window.location.replace(redirect);
+      else router.replace(redirect);
+    }
+  }, [user, loading, router, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +55,13 @@ function LoginForm() {
       if (!res.ok) throw new Error(data.error);
       if (data.token) cacheToken(data.token);
       setUser(data.user);
+      try {
+        (window as unknown as { TcallAndroidBridge?: { syncCookies?: () => void } }).TcallAndroidBridge?.syncCookies?.();
+      } catch { /* ignore */ }
+      if (isNativeApp()) {
+        window.location.replace(redirect);
+        return;
+      }
       router.replace(redirect);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xatolik yuz berdi");
