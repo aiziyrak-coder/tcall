@@ -1,6 +1,5 @@
 plugins {
-    id 'com.android.application'
-    id 'org.jetbrains.kotlin.android'
+    id "com.android.application"
 }
 
 android {
@@ -9,15 +8,14 @@ android {
 
     defaultConfig {
         applicationId "uz.tcall"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1000006
-        versionName "1.000006"
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode 1000007
+        versionName "1.000007"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "API_BASE_URL", "\"https://api.tcall.uz\""
-        buildConfigField "String", "SOCKET_URL", "\"https://api.tcall.uz\""
-        buildConfigField "String", "WEB_BASE_URL", "\"https://web.tcall.uz\""
+        buildConfigField "String", "WEB_URL", "\"https://web.tcall.uz\""
+        buildConfigField "String", "API_URL", "\"https://api.tcall.uz\""
     }
 
     buildFeatures {
@@ -29,15 +27,11 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
         debug {
             minifyEnabled false
@@ -46,36 +40,32 @@ android {
 
     packaging {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 }
 
 dependencies {
-    implementation 'androidx.core:core-ktx:1.15.0'
-    implementation 'androidx.core:core-splashscreen:1.2.0'
-    implementation 'androidx.activity:activity-ktx:1.9.3'
-    implementation 'androidx.webkit:webkit:1.12.1'
-    implementation 'androidx.browser:browser:1.8.0'
-    implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation "androidx.core:core-ktx:1.15.0"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
+    implementation "androidx.activity:activity-ktx:1.9.3"
+    implementation "androidx.core:core-splashscreen:1.2.0"
+    implementation "androidx.webkit:webkit:1.12.1"
+    implementation "androidx.browser:browser:1.8.0"
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
 
-    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0'
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0"
 
-    implementation platform('com.google.firebase:firebase-bom:33.7.0')
-    implementation 'com.google.firebase:firebase-messaging'
+    implementation platform("com.google.firebase:firebase-bom:33.7.0")
+    implementation "com.google.firebase:firebase-messaging"
 
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    testImplementation "junit:junit:4.13.2"
 }
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.exists() && servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch (Exception ignored) {
-    logger.info("google-services.json not found — FCM keyingi bosqichda")
+def servicesJson = file("google-services.json")
+if (servicesJson.exists() && servicesJson.text) {
+    apply plugin: "com.google.gms.google-services"
 }

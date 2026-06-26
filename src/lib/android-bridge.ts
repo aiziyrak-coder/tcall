@@ -20,21 +20,18 @@ export function androidBridge(): AndroidBridge | null {
 }
 
 export function isAndroidBridge(): boolean {
-  return Boolean(
-    (typeof window !== "undefined" &&
-      (window as unknown as { TcallNative?: { isAndroid?: boolean } }).TcallNative?.isAndroid) ||
-      androidBridge(),
-  );
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as { TcallNative?: { isAndroid?: boolean } };
+  return Boolean(w.TcallNative?.isAndroid || androidBridge());
 }
 
-/** Native EncryptedSharedPreferences bilan sinxronlash */
 export function syncNativeSession(token: string | null, user: User | null) {
   const bridge = androidBridge();
   if (!bridge) return;
   try {
     if (token && user && bridge.saveSession) {
       bridge.saveSession(token, JSON.stringify(user));
-    } else if (bridge.clearSession) {
+    } else if (!token && bridge.clearSession) {
       bridge.clearSession();
     }
     bridge.syncCookies?.();

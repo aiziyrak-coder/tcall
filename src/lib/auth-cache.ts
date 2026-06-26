@@ -24,7 +24,6 @@ function storage(): Storage | null {
   }
 }
 
-/** Eski build sessionStorage ishlatgan — bir marta localStorage ga ko'chirish */
 function migrateNativeCache() {
   if (!isAndroidStorage()) return;
   try {
@@ -41,7 +40,7 @@ function migrateNativeCache() {
   }
 }
 
-/** Native bridge dan localStorage ga tiklash (sahifa yuklanishidan oldin ham ishlaydi) */
+/** Native bridge → localStorage (sahifa yuklanishidan oldin) */
 export function restoreFromNativeBridge() {
   if (!isAndroidStorage()) return;
   try {
@@ -82,14 +81,27 @@ export function readCachedToken(): string | null {
   }
 }
 
+/** Login/register muvaffaqiyatidan keyin — web + native bir vaqtda */
+export function persistAuth(token: string, user: User) {
+  const s = storage();
+  if (s) {
+    try {
+      s.setItem(TOKEN_CACHE_KEY, token);
+      s.setItem(USER_CACHE_KEY, JSON.stringify(user));
+    } catch {
+      /* ignore */
+    }
+  }
+  syncNativeSession(token, user);
+}
+
 export function cacheUser(user: User | null) {
   const s = storage();
   if (!s) return;
   try {
     if (user) s.setItem(USER_CACHE_KEY, JSON.stringify(user));
     else s.removeItem(USER_CACHE_KEY);
-    const token = readCachedToken();
-    syncNativeSession(token, user);
+    syncNativeSession(readCachedToken(), user);
   } catch {
     /* ignore */
   }
@@ -101,15 +113,21 @@ export function cacheToken(token: string | null) {
   try {
     if (token) s.setItem(TOKEN_CACHE_KEY, token);
     else s.removeItem(TOKEN_CACHE_KEY);
-    const user = readCachedUser();
-    syncNativeSession(token, user);
+    syncNativeSession(token, readCachedUser());
   } catch {
     /* ignore */
   }
 }
 
 export function clearAuthCache() {
-  cacheUser(null);
-  cacheToken(null);
+  const s = storage();
+  if (s) {
+    try {
+      s.removeItem(USER_CACHE_KEY);
+      s.removeItem(TOKEN_CACHE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
   clearNativeSession();
 }

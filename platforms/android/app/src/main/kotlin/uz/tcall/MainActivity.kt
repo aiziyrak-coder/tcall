@@ -1,13 +1,12 @@
 package uz.tcall
 
-import android.app.Activity
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.webkit.CookieManager
-import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Button
@@ -16,51 +15,54 @@ import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
-import uz.tcall.push.TcallFirebaseMessagingService
-import uz.tcall.session.TcallSessionStore
-import uz.tcall.web.TcallAndroidBridge
-import uz.tcall.web.TcallWebChromeClient
-import uz.tcall.web.TcallWebViewClient
+import uz.tcall.bridge.WebAppBridge
+import uz.tcall.push.TcallMessagingService
+import uz.tcall.session.SessionStore
+import uz.tcall.web.AppWebChromeClient
+import uz.tcall.web.AppWebViewClient
 
 /**
- * Tcall Android — Play Market uchun professional WebView ilova.
- * web.tcall.uz ni to'liq yuklaydi; sessiya native xotirada saqlanadi.
+ * Tcall — professional WebView ilova (Play Market).
+ * web.tcall.uz ni to'liq yuklaydi; native sessiya, push, WebRTC.
  */
 class MainActivity : ComponentActivity() {
+
     private lateinit var webView: WebView
-    private lateinit var progressBar: ProgressBar
-    private lateinit var offlinePanel: View
-    private lateinit var chromeClient: TcallWebChromeClient
-    private lateinit var sessionStore: TcallSessionStore
-    private lateinit var bridge: TcallAndroidBridge
+    private lateinit var swipe: SwipeRefreshLayout
+    private lateinit var progress: ProgressBar
+    private lateinit var errorPanel: View
+    private lateinit var session: SessionStore
+    private lateinit var bridge: WebAppBridge
+    private lateinit var chrome: AppWebChromeClient
 
-    private var lastUrl: String? = null
-    private var backPressedAt = 0L
+    private var pendingUrl: String? = null
+    private var exitAt = 0L
 
-    private val permissionLauncher = registerForActivityResult(
+    private val allowedHosts = setOf(
+        "tcall.uz", "www.tcall.uz", "web.tcall.uz", "api.tcall.uz", "localhost", "127.0.0.1",
+    )
+
+    private val mediaPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
-    ) { grants -> chromeClient.onPermissionsResult(grants) }
+    ) { chrome.onPermissionResults(it) }
 
-    private val notificationPermissionLauncher = registerForActivityResult(
+    private val notifyPerm = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        if (granted) registerPushFromWeb()
-    }
+    ) { if (it) pushFromPage() }
 
-    private val fileChooserLauncher = registerForActivityResult(
+    private val filePicker = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { result ->
-        val uris = FileChooserResult.parse(result.resultCode, result.data)
-        chromeClient.onFileChooserResult(uris)
-    }
+    ) { chrome.onFileResult(parseFiles(it.resultCode, it.data)) }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,11 +71,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        sessionStore = TcallSessionStore(this)
+        session = SessionStore(this)
         webView = findViewById(R.id.webview)
-        progressBar = findViewById(R.id.progress)
-        offlinePanel = findViewById(R.id.offline_panel)
-        findViewById<Button>(R.id.retry_button).setOnClickListener { retryLoad() }
+        swipe = findViewById(R.id.swipe)
+        progress = findViewById(R.id.progress)
+        errorPanel = findViewById(R.id.error_panel)
+        findViewById<Button>(R.id.retry).setOnClickListener { reloadMain() }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.root)) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -81,13 +84,17 @@ class MainActivity : ComponentActivity() {
             insets
         }
 
-        if (BuildConfig.DEBUG) {
-            WebView.setWebContentsDebuggingEnabled(true)
-        }
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
 
-        configureCookies()
-        configureWebView()
-        configureClients()
+        setupWebView()
+        setupBridge()
+        setupClients()
+
+        swipe.setColorSchemeResources(R.color.tcall_accent)
+        swipe.setOnRefreshListener {
+            webView.reload()
+            swipe.isRefreshing = false
+        }
 
         onBackPressedDispatcher.addCallback(this) {
             if (webView.canGoBack()) {
@@ -95,12 +102,12 @@ class MainActivity : ComponentActivity() {
                 return@addCallback
             }
             val now = System.currentTimeMillis()
-            if (now - backPressedAt < 2000) finish()
+            if (now - exitAt < 2000) finish()
             else {
-                backPressedAt = now
+                exitAt = now
                 android.widget.Toast.makeText(
                     this@MainActivity,
-                    "Chiqish uchun yana bosing",
+                    getString(R.string.press_back_again),
                     android.widget.Toast.LENGTH_SHORT,
                 ).show()
             }
@@ -108,20 +115,18 @@ class MainActivity : ComponentActivity() {
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
-            offlinePanel.isVisible = false
+            errorPanel.isVisible = false
         } else {
-            loadInitialUrl(intent)
+            openUrl(resolveDeepLink(intent) ?: homeUrl())
         }
     }
 
-    private fun configureCookies() {
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun setupWebView() {
         val cm = CookieManager.getInstance()
         cm.setAcceptCookie(true)
         cm.setAcceptThirdPartyCookies(webView, true)
-    }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private fun configureWebView() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -134,97 +139,95 @@ class MainActivity : ComponentActivity() {
             displayZoomControls = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             cacheMode = WebSettings.LOAD_DEFAULT
+            javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
-            userAgentString = buildUserAgent(userAgentString)
+            userAgentString = ua(webView.settings.userAgentString)
         }
     }
 
-    private fun buildUserAgent(base: String): String {
-        val marker = " TcallAndroid/"
-        return if (base.contains(marker)) base else "$base TcallAndroid/${BuildConfig.VERSION_NAME}"
+    private fun ua(base: String): String {
+        val tag = " TcallAndroid/"
+        return if (base.contains(tag)) base else "$base TcallAndroid/${BuildConfig.VERSION_NAME}"
     }
 
-    private fun configureClients() {
-        bridge = TcallAndroidBridge(
+    private fun setupBridge() {
+        bridge = WebAppBridge(
+            context = this,
             webView = webView,
             scope = lifecycleScope,
-            sessionStore = sessionStore,
-            onRequestNotifications = { requestNotificationPermission() },
+            session = session,
+            onRequestNotifications = { requestNotifications() },
         )
         webView.addJavascriptInterface(bridge, "TcallAndroidBridge")
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(
                 webView,
-                TcallAndroidBridge.DOCUMENT_START_SCRIPT,
+                WebAppBridge.documentStartScript(),
                 setOf("https://*.tcall.uz/*", "https://tcall.uz/*"),
             )
         }
+    }
 
-        val allowedHosts = setOf(
-            "tcall.uz", "www.tcall.uz", "web.tcall.uz", "api.tcall.uz", "localhost", "127.0.0.1",
-        )
-
-        chromeClient = TcallWebChromeClient(
+    private fun setupClients() {
+        chrome = AppWebChromeClient(
             activity = this,
-            permissionLauncher = permissionLauncher,
-            fileChooserLauncher = fileChooserLauncher,
+            permissionLauncher = mediaPerms,
+            fileChooserLauncher = filePicker,
             onProgress = { p ->
-                progressBar.isVisible = p in 1..99
-                progressBar.progress = p
-                if (p >= 100) progressBar.isVisible = false
+                progress.isVisible = p in 1..99
+                progress.progress = p
             },
         )
-
-        webView.webViewClient = TcallWebViewClient(
+        webView.webChromeClient = chrome
+        webView.webViewClient = AppWebViewClient(
             allowedHosts = allowedHosts,
-            onPageLoaded = {
-                offlinePanel.isVisible = false
-                registerPushFromWeb()
+            onReady = {
+                errorPanel.isVisible = false
+                pushFromPage()
             },
-            onPageError = { showOffline() },
+            onMainError = { showError() },
+            openExternal = { uri ->
+                runCatching {
+                    CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(this, uri)
+                }
+            },
         )
-        webView.webChromeClient = chromeClient
     }
 
-    private fun loadInitialUrl(intent: Intent?) {
-        val deepLink = resolveDeepLink(intent)
-        val url = deepLink ?: defaultStartUrl()
-        lastUrl = url
+    private fun homeUrl(): String {
+        val path = if (session.hasSession()) "/dashboard" else "/login"
+        return "${BuildConfig.WEB_URL}$path"
+    }
+
+    private fun openUrl(url: String) {
+        pendingUrl = url
+        errorPanel.isVisible = false
         webView.loadUrl(url)
     }
 
-    private fun defaultStartUrl(): String {
-        val path = if (sessionStore.hasSession()) "/dashboard" else "/login"
-        return "${BuildConfig.WEB_BASE_URL}$path"
+    private fun reloadMain() {
+        errorPanel.isVisible = false
+        openUrl(pendingUrl ?: homeUrl())
     }
 
-    private fun retryLoad() {
-        offlinePanel.isVisible = false
-        val url = lastUrl ?: defaultStartUrl()
-        webView.loadUrl(url)
+    private fun showError() {
+        errorPanel.isVisible = true
     }
 
-    private fun showOffline() {
-        offlinePanel.isVisible = true
-        webView.loadUrl("file:///android_asset/offline.html")
-    }
-
-    private fun requestNotificationPermission() {
+    private fun requestNotifications() {
         if (android.os.Build.VERSION.SDK_INT >= 33) {
-            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            notifyPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
-    private fun registerPushFromWeb() {
+    private fun pushFromPage() {
         webView.evaluateJavascript(
             """
             (function(){
               try {
                 var t = localStorage.getItem('tcall:token');
-                if (t && window.TcallAndroidBridge && window.TcallAndroidBridge.registerPush) {
-                  window.TcallAndroidBridge.registerPush(t);
-                }
+                if (t && window.TcallAndroidBridge) TcallAndroidBridge.registerPush(t);
               } catch(e) {}
             })();
             """.trimIndent(),
@@ -235,17 +238,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        resolveDeepLink(intent)?.let { url ->
-            lastUrl = url
-            offlinePanel.isVisible = false
-            webView.loadUrl(url)
-        }
+        resolveDeepLink(intent)?.let { openUrl(it) }
     }
 
     override fun onPause() {
         CookieManager.getInstance().flush()
-        super.onPause()
         webView.onPause()
+        super.onPause()
     }
 
     override fun onResume() {
@@ -265,42 +264,33 @@ class MainActivity : ComponentActivity() {
 
     private fun resolveDeepLink(intent: Intent?): String? {
         intent ?: return null
-        val room = intent.getStringExtra(TcallFirebaseMessagingService.EXTRA_ROOM_ID)
-        val conv = intent.getStringExtra(TcallFirebaseMessagingService.EXTRA_CONVERSATION_ID)
-        if (!room.isNullOrBlank()) {
-            return "${BuildConfig.WEB_BASE_URL}/call/${room.trim().uppercase()}"
+        intent.getStringExtra(TcallMessagingService.EXTRA_ROOM)?.let { room ->
+            return "${BuildConfig.WEB_URL}/call/${room.trim().uppercase()}"
         }
-        if (!conv.isNullOrBlank()) {
-            return "${BuildConfig.WEB_BASE_URL}/dashboard?tab=messages"
+        intent.getStringExtra(TcallMessagingService.EXTRA_CHAT)?.let {
+            return "${BuildConfig.WEB_URL}/dashboard?tab=messages"
         }
         val data = intent.data ?: return null
-        return when {
-            data.scheme == "tcall" && data.host == "call" -> {
-                val id = data.path?.trim('/')?.uppercase()
-                if (!id.isNullOrBlank()) "${BuildConfig.WEB_BASE_URL}/call/$id" else null
-            }
-            data.host?.endsWith("tcall.uz") == true -> {
-                val path = data.path.orEmpty()
-                val query = data.query?.let { "?$it" }.orEmpty()
-                when {
-                    path.startsWith("/call/") -> "${BuildConfig.WEB_BASE_URL}$path$query"
-                    path == "/dashboard" || path.startsWith("/login") || path.startsWith("/register") ->
-                        "${BuildConfig.WEB_BASE_URL}$path$query"
-                    else -> null
-                }
-            }
-            else -> null
+        if (data.scheme == "tcall" && data.host == "call") {
+            val id = data.path?.trim('/')?.uppercase()
+            if (!id.isNullOrBlank()) return "${BuildConfig.WEB_URL}/call/$id"
         }
+        if (data.host?.endsWith("tcall.uz") == true) {
+            val path = data.path.orEmpty()
+            val q = data.query?.let { "?$it" }.orEmpty()
+            if (path.startsWith("/call/") || path == "/dashboard" ||
+                path.startsWith("/login") || path.startsWith("/register")
+            ) {
+                return "${BuildConfig.WEB_URL}$path$q"
+            }
+        }
+        return null
     }
-}
 
-private object FileChooserResult {
-    fun parse(resultCode: Int, data: Intent?): Array<Uri>? {
-        if (resultCode != Activity.RESULT_OK) return null
-        data ?: return null
-        val clip = data.clipData
-        if (clip != null && clip.itemCount > 0) {
-            return Array(clip.itemCount) { clip.getItemAt(it).uri }
+    private fun parseFiles(code: Int, data: Intent?): Array<Uri>? {
+        if (code != RESULT_OK || data == null) return null
+        data.clipData?.let { clip ->
+            if (clip.itemCount > 0) return Array(clip.itemCount) { clip.getItemAt(it).uri }
         }
         data.data?.let { return arrayOf(it) }
         return null

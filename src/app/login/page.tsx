@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { useAuth } from "@/hooks/useAuth";
-import { cacheToken } from "@/lib/auth-cache";
+import { persistAuth } from "@/lib/auth-cache";
 import { isNativeApp } from "@/lib/native-app";
 import { loadRememberedLogin, saveRememberMe } from "@/lib/remember-login";
 import { AppSplash } from "@/components/AppSplash";
@@ -52,8 +52,8 @@ function LoginForm() {
         body: JSON.stringify({ ...form, remember: rememberMe || isNativeApp() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      if (data.token) cacheToken(data.token);
+      if (!res.ok) throw new Error(data.error || "Kirish muvaffaqiyatsiz");
+      if (data.token && data.user) persistAuth(data.token, data.user);
       setUser(data.user);
       if (isNativeApp()) {
         window.location.replace(redirect);

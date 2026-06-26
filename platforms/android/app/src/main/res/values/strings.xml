@@ -1,7 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Tcall</string>
-    <string name="title_activity_main">Tcall</string>
-    <string name="package_name">uz.tcall</string>
-    <string name="custom_url_scheme">uz.tcall</string>
+    <string name="error_title">Ulanish xatosi</string>
+    <string name="error_body">Internetni tekshiring va qayta urinib ko\'ring</string>
+    <string name="retry">Qayta urinish</string>
+    <string name="press_back_again">Chiqish uchun yana bosing</string>
 </resources>

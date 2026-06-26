@@ -1,11 +1,5 @@
-# WebView JavascriptInterface
--keepclassmembers class uz.tcall.web.TcallAndroidBridge { *; }
--keep class uz.tcall.web.** { *; }
+-keepclassmembers class uz.tcall.bridge.WebAppBridge { *; }
+-keep class uz.tcall.bridge.** { *; }
 -keep class uz.tcall.session.** { *; }
-
-# Firebase
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
-
-# EncryptedSharedPreferences
--keep class androidx.security.crypto.** { *; }

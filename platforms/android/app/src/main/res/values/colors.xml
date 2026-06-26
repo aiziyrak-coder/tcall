@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="tcall_bg">#F2F2F7</color>
+    <color name="tcall_accent">#007AFF</color>
+    <color name="tcall_text">#1C1C1E</color>
+    <color name="tcall_muted">#636366</color>
     <color name="splash_space_bg">#0A0612</color>
 </resources>
