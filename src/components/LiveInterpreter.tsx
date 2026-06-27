@@ -220,28 +220,20 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
 
   return (
     <div className="interpreter-panel interpreter-panel-voice">
-      <div className="interpreter-hero">
-        <div className="interpreter-hero-icon">
-          <Languages className="w-6 h-6" strokeWidth={2} />
+      <div className="interpreter-top-row">
+        <div className="interpreter-hero-compact">
+          <Languages className="w-4 h-4 shrink-0" strokeWidth={2.2} />
+          <span className="interpreter-title">{ui.interpreterTitle}</span>
+          {sessionActive && (
+            <span className="interpreter-live-badge">
+              <Radio className="w-2.5 h-2.5" />
+              {ui.interpreterSessionActive}
+            </span>
+          )}
         </div>
-        <div>
-          <h2 className="interpreter-title">{ui.interpreterTitle}</h2>
-          <p className="interpreter-desc">{ui.interpreterDesc}</p>
-        </div>
-        {sessionActive && (
-          <span className="interpreter-live-badge">
-            <Radio className="w-3 h-3" />
-            {ui.interpreterSessionActive}
-          </span>
-        )}
-      </div>
-
-      {sameLang && <div className="interpreter-warn">{ui.interpreterSameLang}</div>}
-
-      <div className="interpreter-session-row">
         {sessionActive ? (
           <button type="button" onClick={stopSession} className="interpreter-session-btn interpreter-session-stop">
-            <MicOff className="w-4 h-4" />
+            <MicOff className="w-3.5 h-3.5" />
             {ui.interpreterStop}
           </button>
         ) : (
@@ -250,11 +242,13 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
             onClick={() => void handleActivate()}
             className="interpreter-session-btn interpreter-session-start"
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="w-3.5 h-3.5" />
             {ui.interpreterStart}
           </button>
         )}
       </div>
+
+      {sameLang && <div className="interpreter-warn">{ui.interpreterSameLang}</div>}
 
       <div className="interpreter-ptt-grid">
         <PttButton
@@ -266,7 +260,7 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
           className="interpreter-ptt interpreter-ptt-me"
         >
           <div className="interpreter-ptt-icon">
-            <User className="w-7 h-7" strokeWidth={2} />
+            <User className="w-5 h-5" strokeWidth={2} />
           </div>
           <span className="interpreter-ptt-label">{ui.interpreterISpeak}</span>
           <span className="interpreter-ptt-hint">{ui.interpreterHoldToTalk}</span>
@@ -284,7 +278,7 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
           className="interpreter-ptt interpreter-ptt-them"
         >
           <div className="interpreter-ptt-icon">
-            <Users className="w-7 h-7" strokeWidth={2} />
+            <Users className="w-5 h-5" strokeWidth={2} />
           </div>
           <span className="interpreter-ptt-label">{ui.interpreterTheySpeak}</span>
           <span className="interpreter-ptt-hint">{ui.interpreterHoldToTalk}</span>
@@ -294,22 +288,20 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
         </PttButton>
       </div>
 
-      <p className="interpreter-footer-hint">{ui.interpreterReleaseHint}</p>
-
       <div className="interpreter-voice-arena">
         <VoiceWave active={waveActive} color={waveColor} />
         <div className="interpreter-voice-center">
-          {activity === "processing" && <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />}
+          {activity === "processing" && <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />}
           {activity === "speaking" && speakLangInfo && (
             <span className="interpreter-speaking-flag">{speakLangInfo.flag}</span>
           )}
           {activity === "listening" && (
             <span className="interpreter-listening-icon">
-              <Mic className="w-8 h-8" />
+              <Mic className="w-5 h-5" />
             </span>
           )}
-          {activity === "idle" && sessionActive && <Volume2 className="w-8 h-8 text-brand-600" />}
-          {!sessionActive && activity === "idle" && <Languages className="w-8 h-8 text-slate-300" />}
+          {activity === "idle" && sessionActive && <Volume2 className="w-5 h-5 text-brand-600" />}
+          {!sessionActive && activity === "idle" && <Languages className="w-5 h-5 text-slate-300" />}
         </div>
         <p className="interpreter-voice-status">{statusText}</p>
         {speakLangInfo && activity === "speaking" && (
@@ -326,30 +318,25 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
         </div>
       )}
 
-      <div className="interpreter-history-header">
-        {entries.length > 0 && (
-          <button type="button" onClick={clearHistory} className="interpreter-clear-btn">
-            {ui.interpreterClearHistory}
-          </button>
-        )}
-      </div>
-      <div ref={historyRef} className="interpreter-history">
-        {entries.length === 0 ? (
-          <div className="interpreter-empty">
-            <Languages className="w-8 h-8 text-slate-300 mb-2" />
-            <p>{ui.interpreterHint}</p>
+      {entries.length > 0 && (
+        <>
+          <div className="interpreter-history-header">
+            <button type="button" onClick={clearHistory} className="interpreter-clear-btn">
+              {ui.interpreterClearHistory}
+            </button>
           </div>
-        ) : (
-          entries.map((entry, i) => (
-            <div key={`${i}-${entry.original.slice(0, 24)}`} className="interpreter-bubble interpreter-bubble-me">
-              <p className="interpreter-bubble-original">{entry.original}</p>
-              {entry.translated !== entry.original && (
-                <p className="interpreter-bubble-translated">{entry.translated}</p>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+          <div ref={historyRef} className="interpreter-history">
+            {entries.map((entry, i) => (
+              <div key={`${i}-${entry.original.slice(0, 24)}`} className="interpreter-bubble interpreter-bubble-me">
+                <p className="interpreter-bubble-original">{entry.original}</p>
+                {entry.translated !== entry.original && (
+                  <p className="interpreter-bubble-translated">{entry.translated}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <details className="interpreter-lang-details">
         <summary className="interpreter-lang-summary">

@@ -390,10 +390,8 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("interpreter") && (
-          <div className={tab === "interpreter" ? "app-tab-panel" : "hidden"}>
-            <div className="app-tab-scroll">
-              <LiveInterpreter userLanguage={user.language} active={tab === "interpreter"} />
-            </div>
+          <div className={tab === "interpreter" ? "app-tab-panel app-tab-interpreter" : "hidden"}>
+            <LiveInterpreter userLanguage={user.language} active={tab === "interpreter"} />
           </div>
         )}
 

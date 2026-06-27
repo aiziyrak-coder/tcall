@@ -867,7 +867,25 @@ body.tg-webapp .ios-tab-bar {
 
 /* ===== Live interpreter ===== */
 .interpreter-panel {
-  @apply flex flex-col gap-3 pb-6 pt-1 w-full max-w-lg mx-auto min-h-0;
+  @apply flex flex-col gap-2 pb-2 pt-1 w-full max-w-lg mx-auto min-h-0;
+}
+
+.interpreter-panel-voice {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  justify-content: flex-start;
+}
+
+.interpreter-top-row {
+  @apply flex items-center justify-between gap-2 shrink-0 rounded-xl px-3 py-2;
+  background: linear-gradient(135deg, #ffffff 0%, #f2f2f7 100%);
+  border: 1px solid var(--separator);
+}
+
+.interpreter-hero-compact {
+  @apply flex items-center gap-2 min-w-0 flex-1;
 }
 
 .interpreter-hero {
@@ -884,7 +902,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-title {
-  @apply text-lg font-bold text-slate-900 leading-tight;
+  @apply text-sm font-bold text-slate-900 leading-tight truncate;
 }
 
 .interpreter-desc {
@@ -892,7 +910,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-live-badge {
-  @apply absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-brand-700;
+  @apply inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold text-brand-700 shrink-0;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid var(--separator);
   animation: interpreter-pulse-badge 2s ease-in-out infinite;
@@ -927,7 +945,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-warn {
-  @apply text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2;
+  @apply text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 shrink-0;
 }
 
 .interpreter-toolbar {
@@ -991,7 +1009,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-history {
-  @apply flex-1 min-h-[120px] max-h-[38vh] overflow-y-auto rounded-2xl border border-black/5 bg-slate-50/80 p-3 flex flex-col gap-2;
+  @apply flex-1 min-h-0 max-h-[22vh] overflow-y-auto rounded-xl border border-black/5 bg-slate-50/80 p-2 flex flex-col gap-1.5 shrink;
 }
 
 .interpreter-empty {
@@ -1032,11 +1050,11 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-ptt-grid {
-  @apply grid grid-cols-2 gap-3 shrink-0;
+  @apply grid grid-cols-2 gap-2 shrink-0;
 }
 
 .interpreter-ptt {
-  @apply relative flex flex-col items-center justify-center gap-1 rounded-2xl px-3 py-5;
+  @apply relative flex flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-2.5;
   @apply border-2 transition-all select-none touch-none;
   @apply active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
 }
@@ -1063,21 +1081,21 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-ptt-icon {
-  @apply w-12 h-12 rounded-full flex items-center justify-center mb-1;
+  @apply w-8 h-8 rounded-full flex items-center justify-center;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .interpreter-ptt-label {
-  @apply text-sm font-bold;
+  @apply text-xs font-bold leading-tight;
 }
 
 .interpreter-ptt-hint {
-  @apply text-[10px] opacity-70;
+  @apply text-[9px] opacity-70 leading-tight text-center;
 }
 
 .interpreter-ptt-lang {
-  @apply text-[10px] font-medium opacity-60 mt-0.5;
+  @apply text-[9px] font-medium opacity-60;
 }
 
 .interpreter-footer-hint {
@@ -1114,7 +1132,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-voice-arena {
-  @apply relative flex flex-col items-center justify-center rounded-2xl px-4 py-8 min-h-[180px];
+  @apply relative flex flex-col items-center justify-center rounded-xl px-3 py-2.5 min-h-0 shrink-0;
   background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%);
   border: 1px solid rgba(0, 0, 0, 0.06);
   overflow: hidden;
@@ -1144,11 +1162,11 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-voice-center {
-  @apply relative z-10 flex items-center justify-center w-16 h-16;
+  @apply relative z-10 flex items-center justify-center w-8 h-8;
 }
 
 .interpreter-speaking-flag {
-  @apply text-5xl leading-none;
+  @apply text-2xl leading-none;
   animation: interpreter-flag-pop 0.35s ease-out;
 }
 
@@ -1168,11 +1186,11 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-voice-status {
-  @apply relative z-10 text-sm font-medium text-slate-600 text-center mt-3 px-4;
+  @apply relative z-10 text-[11px] font-medium text-slate-600 text-center mt-1 px-2 leading-snug;
 }
 
 .interpreter-voice-lang-name {
-  @apply relative z-10 text-xs text-violet-600 font-semibold mt-1;
+  @apply relative z-10 text-[10px] text-violet-600 font-semibold mt-0.5;
 }
 
 .interpreter-session-row {
@@ -1180,7 +1198,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-session-btn {
-  @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all;
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0;
 }
 
 .interpreter-session-start {
@@ -1192,11 +1210,11 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-lang-details {
-  @apply rounded-xl border border-black/5 bg-white overflow-hidden;
+  @apply rounded-xl border border-black/5 bg-white overflow-hidden shrink-0 mt-auto;
 }
 
 .interpreter-lang-summary {
-  @apply cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-slate-700;
+  @apply cursor-pointer list-none px-3 py-2 text-xs font-medium text-slate-700;
 }
 
 .interpreter-lang-summary::-webkit-details-marker {
@@ -1940,6 +1958,11 @@ body.tg-webapp .ios-tab-bar {
   display: flex;
   flex-direction: column;
   padding-bottom: 0 !important;
+}
+
+.app-tab-interpreter {
+  padding: 0.25rem 0.75rem 0.5rem;
+  overflow: hidden;
 }
 
 /* ─── Dialer: alohida ichki sahifalar (terish / so'nggilar) ─── */
