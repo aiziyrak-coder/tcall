@@ -25,7 +25,6 @@ import { isNativeApp } from "@/lib/native-app";
 import { AppSplash } from "@/components/AppSplash";
 import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { InstallPrompt } from "@/components/InstallPrompt";
 import { HeaderActionMenu } from "@/components/HeaderActionMenu";
 
 interface CallRecord {
@@ -411,7 +410,7 @@ function DashboardInner({
         )}
       </PhoneShell>
 
-      <InstallPrompt userLanguage={user.language} />
+      <NetworkStatusBanner userLanguage={user.language} />
 
       {showSettings && (
         <SettingsPanel

@@ -4906,6 +4906,26 @@ body.tg-webapp .liquid-tab-bar {
   backdrop-filter: blur(12px);
 }
 
+.install-prompt-body-stack {
+  @apply flex-col items-stretch gap-3;
+}
+
+.install-prompt-ios-head {
+  @apply flex items-start gap-2 w-full;
+}
+
+.install-ios-steps {
+  @apply text-xs text-slate-600 space-y-2 pl-4 list-decimal w-full;
+}
+
+.install-ios-note {
+  @apply text-[11px] text-slate-500 w-full leading-relaxed;
+}
+
+.install-prompt-ios {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
 .chat-search-mode-btn {
   @apply text-[10px] font-semibold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0;
 }

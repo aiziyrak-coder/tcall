@@ -9,6 +9,7 @@ import { TelegramInit } from "@/components/TelegramInit";
 import { NativeAppInit } from "@/components/NativeAppInit";
 import { NativeAppRouter } from "@/components/NativeAppRouter";
 import { WebAppInit } from "@/components/WebAppInit";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { AppSplash } from "@/components/AppSplash";
 import { AppLockGate } from "@/components/AppLockGate";
 import { ThemeInit } from "@/components/ThemeInit";
@@ -69,6 +70,7 @@ export function ClientProviders({
       <ThemeInit />
       <NativeAppInit />
       <WebAppInit />
+      <InstallPrompt />
       <NativeAppRouter />
       <TelegramInit />
       <CallBridge>{children}</CallBridge>

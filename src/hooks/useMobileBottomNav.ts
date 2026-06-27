@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isNativeApp } from "@/lib/native-app";
+import { preferMobileAppLayout } from "@/lib/pwa-install";
 
-/** Mobil / native — pastki tab bar (sidebar emas) */
+/** Mobil / native / PWA — pastki tab bar (sidebar emas) */
 export function useMobileBottomNav(): boolean {
   const [bottomNav, setBottomNav] = useState(false);
 
   useEffect(() => {
-    if (isNativeApp()) {
+    if (preferMobileAppLayout()) {
       setBottomNav(true);
       return;
     }
