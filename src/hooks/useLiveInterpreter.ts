@@ -34,20 +34,25 @@ function speakWithBrowser(text: string, lang: string, onEnd?: () => void): boole
   }
 }
 
+function defaultPartnerLang(defaultLang: string): string {
+  const code = defaultLang.split("-")[0].toLowerCase();
+  return code === "uz" ? "en" : code === "en" ? "uz" : "en";
+}
+
 function loadPartnerLang(defaultLang: string): string {
-  if (typeof window === "undefined") return defaultLang === "uz" ? "en" : "uz";
+  if (typeof window === "undefined") return defaultPartnerLang(defaultLang);
   try {
     const saved = localStorage.getItem(PARTNER_LANG_KEY);
     if (saved) return saved;
   } catch {
     /* ignore */
   }
-  return defaultLang === "uz" ? "en" : defaultLang === "en" ? "uz" : "en";
+  return defaultPartnerLang(defaultLang);
 }
 
 export function useLiveInterpreter(userLanguage: string) {
   const [myLang, setMyLang] = useState(userLanguage);
-  const [theirLang, setTheirLang] = useState(() => loadPartnerLang(userLanguage));
+  const [theirLang, setTheirLang] = useState(() => defaultPartnerLang(userLanguage));
   const [sessionActive, setSessionActive] = useState(false);
   const [recording, setRecording] = useState<InterpreterSpeaker | null>(null);
   const [activity, setActivity] = useState<InterpreterActivity>("idle");
@@ -96,6 +101,7 @@ export function useLiveInterpreter(userLanguage: string) {
 
   useEffect(() => {
     setMyLang(userLanguage);
+    setTheirLang(loadPartnerLang(userLanguage));
   }, [userLanguage]);
 
   useEffect(() => {

@@ -22,6 +22,11 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [nativeApp, setNativeApp] = useState(false);
+
+  useEffect(() => {
+    setNativeApp(isNativeApp());
+  }, []);
 
   useEffect(() => {
     const saved = loadRememberedLogin();
@@ -124,7 +129,7 @@ function LoginForm() {
         {submitting ? "Kirish..." : "Kirish"}
       </button>
 
-      {!isNativeApp() && (
+      {!nativeApp && (
         <p className="text-center text-sm text-slate-500">
           Hisobingiz yo&apos;qmi?{" "}
           <Link href="/register" className="text-brand-600 font-medium touch-manipulation">

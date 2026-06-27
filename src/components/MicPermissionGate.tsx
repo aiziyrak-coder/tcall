@@ -1,6 +1,7 @@
 "use client";
 
-import { Mic, AlertCircle, Settings, Phone } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Mic, Settings, Phone } from "lucide-react";
 import { TcallLogo } from "@/components/TcallLogo";
 import { AppSplash } from "@/components/AppSplash";
 import { isNativeApp, getNativePlatform } from "@/lib/native-app";
@@ -20,10 +21,15 @@ export function MicPermissionGate({ ui, status, onAllow }: MicPermissionGateProp
   const tap = status === "tap";
   const gateTitle = denied ? ui.micDeniedTitle : tap ? ui.micTapTitle : ui.micPermissionTitle;
   const gateDesc = denied ? ui.micDeniedDesc : tap ? ui.micTapDesc : ui.micPermissionDesc;
-  const settingsHint =
-    isNativeApp() && getNativePlatform() === "android"
-      ? ui.micSettingsHintAndroid || ui.micSettingsHint
-      : ui.micSettingsHint;
+  const [settingsHint, setSettingsHint] = useState(ui.micSettingsHint);
+
+  useEffect(() => {
+    setSettingsHint(
+      isNativeApp() && getNativePlatform() === "android"
+        ? ui.micSettingsHintAndroid || ui.micSettingsHint
+        : ui.micSettingsHint
+    );
+  }, [ui.micSettingsHint, ui.micSettingsHintAndroid]);
 
   return (
     <div className="phone-screen flex items-center justify-center p-5">

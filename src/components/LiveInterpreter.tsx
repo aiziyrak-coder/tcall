@@ -105,6 +105,12 @@ function PttButton({
   className: string;
   children: React.ReactNode;
 }) {
+  const [androidNative, setAndroidNative] = useState(false);
+
+  useEffect(() => {
+    setAndroidNative(isNativeApp() && getNativePlatform() === "android");
+  }, []);
+
   const handleStart = (e: React.SyntheticEvent) => {
     e.preventDefault();
     markUserGesture();

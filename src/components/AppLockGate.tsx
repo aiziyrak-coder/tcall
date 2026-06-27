@@ -11,16 +11,23 @@ type GateState = "loading" | "locked" | "unlocked";
 
 export function AppLockGate({ userName, children }: { userName?: string; children: React.ReactNode }) {
   const { logout } = useAuth();
-  const [state, setState] = useState<GateState>(() => {
-    if (typeof window === "undefined") return "loading";
-    if (isUnlockedThisSession()) return "unlocked";
-    const cached = getCachedPinEnabled();
-    if (cached === true) return "locked";
-    if (cached === false) return "unlocked";
-    return "loading";
-  });
+  const [state, setState] = useState<GateState>("loading");
 
   useEffect(() => {
+    if (isUnlockedThisSession()) {
+      setState("unlocked");
+      return;
+    }
+    const cached = getCachedPinEnabled();
+    if (cached === true) {
+      setState("locked");
+      return;
+    }
+    if (cached === false) {
+      setState("unlocked");
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {

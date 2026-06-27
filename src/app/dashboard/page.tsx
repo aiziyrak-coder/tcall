@@ -53,18 +53,11 @@ export default function DashboardPage() {
     if (loading) return;
     if (user) return;
     bootstrapAndroidAuth();
-    const cached = readCachedUser();
-    const token = readCachedToken();
-    if (!cached && !token) router.push("/login");
+    if (!readCachedUser() && !readCachedToken()) router.push("/login");
   }, [user, loading, router]);
 
-  if (loading && !user) {
-    if (readCachedToken() || readCachedUser()) return <AppSplash message="Yuklanmoqda..." />;
-    return <AppSplash />;
-  }
-  if (!user) {
-    if (readCachedToken() || readCachedUser()) return <AppSplash message="Yuklanmoqda..." />;
-    return null;
+  if (loading || !user) {
+    return <AppSplash message="Yuklanmoqda..." />;
   }
 
   return (
@@ -260,7 +253,10 @@ function DashboardInner({
   const useContextHeader = showLogo || tab === "messages";
 
   const userLang = getLanguage(user.language);
-  const nativeApp = isNativeApp();
+  const [nativeApp, setNativeApp] = useState(false);
+  useEffect(() => {
+    setNativeApp(isNativeApp());
+  }, []);
   const supportLabel = user.language?.startsWith("ru")
     ? "Поддержка"
     : user.language?.startsWith("en")
