@@ -259,7 +259,11 @@ export function PhoneHeader({
                   {context.userFlag}
                 </span>
               )}
-              <span className="phone-header-user-name">{context.userName}</span>
+              <span
+                className={`phone-header-user-name${context.userCaption ? " phone-header-user-id" : ""}`}
+              >
+                {context.userName}
+              </span>
             </span>
           </span>
         </div>

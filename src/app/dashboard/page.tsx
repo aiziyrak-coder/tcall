@@ -26,6 +26,7 @@ import { AppSplash } from "@/components/AppSplash";
 import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { HeaderActionMenu } from "@/components/HeaderActionMenu";
+import { formatTcallId } from "@/lib/tcallId";
 
 interface CallRecord {
   id: string;
@@ -301,36 +302,31 @@ function DashboardInner({
                     tab,
                     tabLabel: tabTitles[tab],
                     userFlag: tab === "keypad" ? undefined : userLang.flag,
+                    ...(tab === "keypad" && user.tcallId
+                      ? {
+                          userCaption: ui.yourNumber,
+                          userName: formatTcallId(user.tcallId),
+                        }
+                      : {}),
                   }
                 : undefined
             }
             right={
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowSupport(true); setSupportUnread(0); }}
-                  className="ios-icon-btn relative"
-                  title={supportLabel}
-                  aria-label={supportLabel}
-                >
-                  <Headset className="w-5 h-5" />
-                  {supportUnread > 0 && (
-                    <span className="header-icon-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  ref={headerMenuBtnRef}
-                  onClick={() => setShowHeaderMenu(true)}
-                  className="ios-icon-btn"
-                  title={ui.moreTab}
-                  aria-label={ui.moreTab}
-                  aria-haspopup="menu"
-                  aria-expanded={showHeaderMenu}
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-              </div>
+              <button
+                type="button"
+                ref={headerMenuBtnRef}
+                onClick={() => setShowHeaderMenu(true)}
+                className="ios-icon-btn relative"
+                title={ui.moreTab}
+                aria-label={ui.moreTab}
+                aria-haspopup="menu"
+                aria-expanded={showHeaderMenu}
+              >
+                <MoreVertical className="w-5 h-5" />
+                {supportUnread > 0 && (
+                  <span className="header-icon-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
+                )}
+              </button>
             }
           />
         }
@@ -433,6 +429,22 @@ function DashboardInner({
         anchorRef={headerMenuBtnRef}
         ariaLabel={ui.moreTab}
       >
+        <button
+          type="button"
+          className="header-actions-item"
+          role="menuitem"
+          onClick={() => {
+            setShowHeaderMenu(false);
+            setShowSupport(true);
+            setSupportUnread(0);
+          }}
+        >
+          <Headset className="w-4 h-4" />
+          <span>{supportLabel}</span>
+          {supportUnread > 0 && (
+            <span className="header-actions-meta">{supportUnread > 9 ? "9+" : supportUnread}</span>
+          )}
+        </button>
         <button
           type="button"
           className="header-actions-item"

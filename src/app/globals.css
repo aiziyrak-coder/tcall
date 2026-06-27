@@ -1778,7 +1778,12 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .phone-header-user-caption {
-  @apply text-[8px] uppercase tracking-wide text-slate-500 leading-none truncate max-w-full;
+  @apply text-[7px] tracking-wide text-slate-500 leading-none truncate max-w-full;
+}
+
+.phone-header-user-id {
+  @apply text-[10px] font-mono font-semibold text-brand-600 tracking-[0.04em];
+  max-width: 8.5rem;
 }
 
 .phone-header-user-main {
@@ -1945,19 +1950,6 @@ body.tg-webapp .ios-tab-bar {
   min-height: 0;
   width: 100%;
   overflow: hidden;
-}
-
-.dialer-my-number {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0.4rem 1rem 0.25rem;
-  text-align: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary, #64748b);
-  line-height: 1.2;
 }
 
 .dialer-panels {

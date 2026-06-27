@@ -34,6 +34,7 @@ import { AppCopyright } from "@/components/AppCopyright";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useAuth, type User } from "@/hooks/useAuth";
 import { emitSubscriptionRequired } from "@/lib/subscription-required";
+import { formatTcallId } from "@/lib/tcallId";
 
 interface SettingsPanelProps {
   user: User;
@@ -705,8 +706,9 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         <div className="text-center">
           <p className="font-semibold text-slate-900">{form.name}</p>
           <p className="text-xs text-slate-500 font-mono">{user.email}</p>
-          <p className="text-[11px] text-brand-600 mt-1">
-            {ui.yourNumber}: <span className="font-mono">{user.tcallId}</span>
+          <p className="text-[10px] text-slate-500 mt-1.5">{ui.yourNumber}</p>
+          <p className="text-sm font-mono font-semibold text-brand-600 tracking-wide">
+            {user.tcallId ? formatTcallId(user.tcallId) : "-"}
           </p>
         </div>
       </section>
@@ -843,6 +845,12 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
               <Trash2 className="w-3.5 h-3.5" /> {ui.removePhoto}
             </button>
           )}
+        </div>
+        <div className="text-center w-full">
+          <p className="text-[10px] text-slate-500">{ui.yourNumber}</p>
+          <p className="text-sm font-mono font-semibold text-brand-600 tracking-wide">
+            {user.tcallId ? formatTcallId(user.tcallId) : "-"}
+          </p>
         </div>
       </section>
 
@@ -1231,7 +1239,9 @@ export function SettingsPanel({ user, userLanguage, onClose, onUpdate }: Setting
         </div>
         <div className="settings-row">
           <span className="text-slate-500 text-sm">{ui.yourNumber}</span>
-          <span className="font-mono text-slate-900 text-sm">{user.tcallId || "-"}</span>
+          <span className="font-mono text-slate-900 text-sm">
+            {user.tcallId ? formatTcallId(user.tcallId) : "-"}
+          </span>
         </div>
       </section>
 

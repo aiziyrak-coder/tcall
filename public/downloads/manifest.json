@@ -6,9 +6,9 @@
       "file": "tcall-android.apk",
       "label": "Android APK",
       "minOs": "Android 8.0+",
-      "sizeBytes": 7900034,
+      "sizeBytes": 7900734,
       "sizeLabel": "7.53 MB",
-      "sha256": "e19b89a359b5db7916c100001abb9f35158d916d7899e0d2ab4c9b48bd8ba742",
+      "sha256": "5a9e24adceb534e52bdc9e59a138bb41f9dfd92c72293b10f64e2c1cf4b82d5b",
       "package": "uz.tcall",
       "status": "available"
     },
