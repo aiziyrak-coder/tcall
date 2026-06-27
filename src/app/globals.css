@@ -27,28 +27,28 @@
 }
 
 :root {
-  --bg-primary: #f0faf5;
+  --bg-primary: #f2f2f7;
   --bg-secondary: #ffffff;
-  --bg-elevated: #f4fbf7;
-  --text-primary: #1e2a3a;
-  --text-secondary: #3d4f63;
-  --text-tertiary: #5c6b7a;
-  --separator: rgba(59, 180, 232, 0.22);
+  --bg-elevated: #ffffff;
+  --text-primary: #1c1c1e;
+  --text-secondary: #3a3a3c;
+  --text-tertiary: #8e8e93;
+  --separator: rgba(0, 0, 0, 0.08);
   --key-bg: #ffffff;
-  --key-shadow: 0 6px 18px rgba(30, 42, 58, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  --ios-blue: #4a7fe8;
-  --accent: #3bb4e8;
-  --accent-deep: #4a7fe8;
-  --accent-ink: #4a7fe8;
-  --accent-blue: #3bb4e8;
-  --accent-purple: #6b63e8;
-  --warm: #b8e8d4;
-  --slate: #5c6b7a;
-  --call-bg: #f0faf5;
-  --liquid-glass: rgba(245, 251, 248, 0.72);
-  --liquid-glass-strong: rgba(255, 255, 255, 0.82);
-  --liquid-border: rgba(255, 255, 255, 0.85);
-  --liquid-shadow: 0 8px 28px rgba(30, 42, 58, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  --key-shadow: 0 6px 18px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  --ios-blue: #007aff;
+  --accent: #007aff;
+  --accent-deep: #007aff;
+  --accent-ink: #007aff;
+  --accent-blue: #007aff;
+  --accent-purple: #5856d6;
+  --warm: #e5e5ea;
+  --slate: #8e8e93;
+  --call-bg: #f2f2f7;
+  --liquid-glass: rgba(255, 255, 255, 0.72);
+  --liquid-glass-strong: rgba(255, 255, 255, 0.92);
+  --liquid-border: rgba(0, 0, 0, 0.06);
+  --liquid-shadow: 0 8px 28px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --tg-safe-top: 0px;
   --tg-safe-bottom: 0px;
   --tg-safe-left: 0px;
@@ -65,10 +65,6 @@
   --sidebar-w: 4.5rem;
   --tab-bar-h: 64px;
   --tab-bar-safe-h: calc(80px + env(safe-area-inset-bottom, 0px));
-  --liquid-glass: rgba(255, 255, 255, 0.62);
-  --liquid-glass-strong: rgba(255, 255, 255, 0.82);
-  --liquid-border: rgba(255, 255, 255, 0.78);
-  --liquid-shadow: 0 8px 28px rgba(30, 42, 51, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 @media (min-width: 768px) {
@@ -584,32 +580,32 @@
   padding-right: var(--app-h-pad);
 }
 
-/* Mobil brauzer + ilova — bir xil fon va header */
+/* Mobil — desktop bilan bir xil oq/kulrang fon */
 @media (max-width: 1023px) {
   .app-shell {
     background: var(--bg-primary);
   }
   .app-main {
-    background: transparent;
+    background: var(--bg-secondary);
     box-shadow: none;
   }
   .app-main-header {
-    background: transparent;
-    border-bottom: none;
-    padding-bottom: 0.4rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--separator);
+    padding-bottom: 0.75rem;
   }
   .app-main-content {
-    background: transparent;
+    background: var(--bg-secondary);
   }
   .ios-keypad {
-    background: transparent;
+    background: var(--bg-secondary);
   }
 }
 
 .app-main-content.ios-phone-content-chat {
   padding-left: 0;
   padding-right: 0;
-  background: #f8fafc;
+  background: var(--bg-secondary);
 }
 
 /* Legacy aliases */
@@ -688,13 +684,11 @@ body.tg-webapp .ios-tab-bar {
   background: transparent;
 }
 
-/* Mobil rejimda my-number ni glass karta sifatida ko'rsatish */
+/* Mobil rejimda my-number — desktop bilan bir xil oq karta */
 @media (max-width: 1023px) {
   .ios-my-number {
-    background: rgba(255, 255, 255, 0.52);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: var(--bg-secondary);
+    border: 1px solid var(--separator);
     border-radius: 1.125rem;
     margin: 0.5rem 0.25rem 0.25rem;
     padding: 0.625rem 1rem;
@@ -878,15 +872,15 @@ body.tg-webapp .ios-tab-bar {
 
 .interpreter-hero {
   @apply relative flex items-start gap-3 rounded-2xl px-4 py-4;
-  background: linear-gradient(135deg, #ecfdf5 0%, #eff6ff 50%, #ffffff 100%);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.08);
+  background: linear-gradient(135deg, #ffffff 0%, #f2f2f7 50%, #ffffff 100%);
+  border: 1px solid var(--separator);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
 .interpreter-hero-icon {
-  @apply shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-emerald-600;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  @apply shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-brand-600;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--separator);
 }
 
 .interpreter-title {
@@ -898,9 +892,9 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-live-badge {
-  @apply absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-emerald-700;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  @apply absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold text-brand-700;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--separator);
   animation: interpreter-pulse-badge 2s ease-in-out infinite;
 }
 
@@ -951,7 +945,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-tool-start {
-  @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+  @apply bg-brand-50 text-brand-700 border-brand-200;
 }
 
 .interpreter-tool-stop {
@@ -1018,7 +1012,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-bubble-them {
-  @apply bg-emerald-50 border border-emerald-100 mr-2 ml-6;
+  @apply bg-slate-50 border border-slate-200 mr-2 ml-6;
 }
 
 .interpreter-bubble-head {
@@ -1052,7 +1046,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-ptt-them {
-  @apply bg-gradient-to-b from-emerald-50 to-white border-emerald-200 text-emerald-800;
+  @apply bg-gradient-to-b from-slate-50 to-white border-slate-200 text-slate-800;
 }
 
 .interpreter-ptt-active {
@@ -1065,7 +1059,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-ptt-them.interpreter-ptt-active {
-  @apply border-emerald-400 bg-emerald-100;
+  @apply border-slate-400 bg-slate-100;
 }
 
 .interpreter-ptt-icon {
@@ -1190,7 +1184,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .interpreter-session-start {
-  @apply bg-emerald-500 text-white shadow-md hover:bg-emerald-600 active:scale-95;
+  @apply bg-brand-600 text-white shadow-md hover:bg-brand-700 active:scale-95;
 }
 
 .interpreter-session-stop {
@@ -1399,7 +1393,7 @@ body.tg-webapp .ios-tab-bar {
 }
 
 .ios-success-banner {
-  @apply bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-3 py-2 text-xs mb-3;
+  @apply bg-brand-50 border border-brand-200 text-brand-700 rounded-xl px-3 py-2 text-xs mb-3;
 }
 
 .ios-tab-bar-6 {
@@ -3787,7 +3781,7 @@ body.native-app select:focus:not(:focus-visible) {
 }
 
 body.native-app .app-shell {
-  background: linear-gradient(165deg, #eef1f9 0%, #e8ecf6 45%, #e3e8f2 100%);
+  background: var(--bg-primary);
 }
 
 body.native-app .app-sidebar {
@@ -3966,7 +3960,7 @@ body.native-app .auth-app-card {
 }
 
 body.native-app .auth-app-shell {
-  background: #e8ecf6;
+  background: var(--bg-primary);
 }
 
 body.native-app .ios-tab-bar {
@@ -4007,7 +4001,7 @@ body.web-app {
   max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  background: #f2f2f7;
+  background: var(--bg-primary);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -4215,14 +4209,14 @@ body.native-app .chat-conv-item:active {
 .app-shell-bottom-nav .app-main {
   flex: 1;
   min-height: 0;
-  background: transparent;
+  background: var(--bg-secondary);
   box-shadow: none;
 }
 
 .app-shell-bottom-nav .app-main-header {
-  background: transparent;
-  border-bottom: none;
-  padding-bottom: 0.5rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--separator);
+  padding-bottom: 0.75rem;
 }
 
 .app-shell-bottom-nav .app-main-content {
@@ -4274,7 +4268,7 @@ body.native-app .chat-conv-item:active {
 }
 
 .app-shell-bottom-nav .liquid-bg-orbs {
-  display: block;
+  display: none;
 }
 
 .app-shell:not(.app-shell-bottom-nav) .liquid-bg-orbs {
@@ -4297,8 +4291,8 @@ body.native-app .chat-conv-item:active {
 }
 
 .liquid-header .phone-header-tab-pill {
-  background: linear-gradient(135deg, rgba(64, 224, 208, 0.14), rgba(255, 228, 181, 0.12));
-  border-color: rgba(64, 224, 208, 0.22);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--separator);
   backdrop-filter: blur(8px);
   color: var(--text-primary);
 }
@@ -4327,7 +4321,7 @@ body.native-app .chat-conv-item:active {
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 0.5px solid rgba(64, 224, 208, 0.28);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
   border-radius: 1.75rem;
   box-shadow:
     0 8px 28px rgba(30, 42, 51, 0.08),
@@ -4604,7 +4598,7 @@ body.native-app .chat-conv-item:active {
 
 body.native-app.app-shell-bottom-nav,
 body.native-app .app-shell-bottom-nav {
-  background: #e8ecf6;
+  background: var(--bg-primary);
 }
 
 body.native-app .app-shell-bottom-nav .ios-my-number {
@@ -4635,9 +4629,9 @@ body.native-app .app-shell-bottom-nav .ios-keypad {
 }
 
 body.native-app .liquid-tab-bar {
-  background: rgba(245, 247, 252, 0.82);
-  backdrop-filter: blur(36px) saturate(190%);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 body.native-app .liquid-tab-item-center .liquid-tab-center-btn {

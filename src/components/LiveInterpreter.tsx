@@ -308,7 +308,7 @@ export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreter
               <Mic className="w-8 h-8" />
             </span>
           )}
-          {activity === "idle" && sessionActive && <Volume2 className="w-8 h-8 text-emerald-500" />}
+          {activity === "idle" && sessionActive && <Volume2 className="w-8 h-8 text-brand-600" />}
           {!sessionActive && activity === "idle" && <Languages className="w-8 h-8 text-slate-300" />}
         </div>
         <p className="interpreter-voice-status">{statusText}</p>
