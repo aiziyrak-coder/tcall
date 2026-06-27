@@ -12,6 +12,8 @@ import { WebAppInit } from "@/components/WebAppInit";
 import { AppSplash } from "@/components/AppSplash";
 import { AppLockGate } from "@/components/AppLockGate";
 import { ThemeInit } from "@/components/ThemeInit";
+import { bootstrapAndroidAuth } from "@/lib/android-auth-bootstrap";
+import { readCachedToken, readCachedUser } from "@/lib/auth-cache";
 
 function CallBridge({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,14 +31,21 @@ function CallBridge({ children }: { children: React.ReactNode }) {
 
   if (!needsProvider) return <>{children}</>;
 
-  if (loading && !user) return <AppSplash />;
+  bootstrapAndroidAuth();
+  const cachedUser = readCachedUser();
+  const cachedToken = readCachedToken();
+  const authed = Boolean(user || (cachedUser && cachedToken));
 
-  if (!user) return <>{children}</>;
+  if (loading && !authed) return <AppSplash />;
+
+  if (!authed) return <>{children}</>;
+
+  const activeUser = user || cachedUser!;
 
   return (
-    <AppLockGate userName={user.name}>
-      <LocaleProvider lang={user.language}>
-        <CallProvider user={user}>
+    <AppLockGate userName={activeUser.name}>
+      <LocaleProvider lang={activeUser.language}>
+        <CallProvider user={activeUser}>
           <div className="app-page-enter">{children}</div>
         </CallProvider>
       </LocaleProvider>

@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { safeRedirectPath } from "@/lib/safe-redirect";
-import { useAuth } from "@/hooks/useAuth";
-import { persistAuth } from "@/lib/auth-cache";
+import { useAuth, commitAuthSession } from "@/hooks/useAuth";
 import { isNativeApp } from "@/lib/native-app";
 import { loadRememberedLogin, saveRememberMe } from "@/lib/remember-login";
 import { AppSplash } from "@/components/AppSplash";
@@ -34,8 +33,7 @@ function LoginForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (isNativeApp()) window.location.replace(redirect);
-      else router.replace(redirect);
+      router.replace(redirect);
     }
   }, [user, loading, router, redirect]);
 
@@ -53,11 +51,10 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Kirish muvaffaqiyatsiz");
-      if (data.token && data.user) persistAuth(data.token, data.user);
-      setUser(data.user);
-      if (isNativeApp()) {
-        window.location.replace(redirect);
-        return;
+      if (data.token && data.user) {
+        commitAuthSession(data.token, data.user, setUser);
+      } else {
+        setUser(data.user);
       }
       router.replace(redirect);
     } catch (err) {

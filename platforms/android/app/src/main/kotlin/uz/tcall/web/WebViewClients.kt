@@ -102,6 +102,7 @@ class AppWebViewClient(
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
         android.webkit.CookieManager.getInstance().flush()
+        view?.evaluateJavascript(WebAppBridge.documentStartScript(), null)
         if (url?.startsWith("file:///android_asset/") != true) onReady()
     }
 

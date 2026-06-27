@@ -9,8 +9,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch } from "@/lib/api";
-import { cacheUser, readCachedUser, cacheToken, clearAuthCache, readCachedToken } from "@/lib/auth-cache";
+import { apiFetch, parseApiJson } from "@/lib/api";
+import {
+  cacheUser,
+  readCachedUser,
+  cacheToken,
+  clearAuthCache,
+  readCachedToken,
+  persistAuth,
+} from "@/lib/auth-cache";
+import { bootstrapAndroidAuth } from "@/lib/android-auth-bootstrap";
 import { isNativeApp } from "@/lib/native-app";
 import { androidBridge } from "@/lib/android-bridge";
 
@@ -34,11 +42,27 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function readAuthCache() {
+  bootstrapAndroidAuth();
+  return {
+    user: readCachedUser(),
+    token: readCachedToken(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshGenRef = useRef(0);
+
+  const applyCachedUser = useCallback((cached: User | null, token: string | null): User | null => {
+    if (cached && token) {
+      setUserState(cached);
+      return cached;
+    }
+    return null;
+  }, []);
 
   const setUser = useCallback((next: User | null) => {
     refreshGenRef.current += 1;
@@ -49,15 +73,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshSession = useCallback(async () => {
     const gen = ++refreshGenRef.current;
-    const cached = readCachedUser();
-    const cachedToken = readCachedToken();
+    bootstrapAndroidAuth();
+
+    const applyCache = (): User | null => {
+      const { user: cached, token } = readAuthCache();
+      if (gen !== refreshGenRef.current) return cached;
+      return applyCachedUser(cached, token);
+    };
+
+    let cachedResult = applyCache();
 
     try {
       const r = await apiFetch("/api/auth/session");
-      if (gen !== refreshGenRef.current) return cached;
+      if (gen !== refreshGenRef.current) return cachedResult;
 
       if (!r.ok) {
-        if (cached && cachedToken) return cached;
+        cachedResult = applyCache();
+        if (cachedResult) return cachedResult;
         if (r.status === 401 || r.status === 403) {
           clearAuthCache();
           setUserState(null);
@@ -66,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Session yuklanmadi");
       }
 
-      const d = await r.json();
-      if (gen !== refreshGenRef.current) return cached;
+      const d = await parseApiJson<{ user?: User; token?: string }>(r);
+      if (gen !== refreshGenRef.current) return cachedResult;
 
       if (d.user) {
         setUserState(d.user);
@@ -77,23 +109,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return d.user;
       }
 
-      if (cached && cachedToken) return cached;
+      cachedResult = applyCache();
+      if (cachedResult) return cachedResult;
 
-      setUserState(null);
-      cacheUser(null);
-      return null;
+      if (!readCachedToken()) {
+        setUserState(null);
+        cacheUser(null);
+      }
+      return cachedResult;
     } catch (e) {
-      if (gen !== refreshGenRef.current) return cached;
-      if (cached && cachedToken) return cached;
+      if (gen !== refreshGenRef.current) return cachedResult;
+      cachedResult = applyCache();
+      if (cachedResult) return cachedResult;
       setError(e instanceof Error ? e.message : "Xatolik");
-      return cached;
+      return null;
     }
-  }, []);
+  }, [applyCachedUser]);
 
   useEffect(() => {
-    const hydrate = () => {
-      const cached = readCachedUser();
-      const token = readCachedToken();
+    const delays = [0, 50, 150, 400];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const tryHydrate = () => {
+      const { user: cached, token } = readAuthCache();
       if (cached && token) {
         setUserState(cached);
         return true;
@@ -101,17 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     };
 
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    if (!hydrate()) {
-      retryTimer = setTimeout(() => {
-        if (hydrate()) void refreshSession();
-      }, 80);
+    tryHydrate();
+    for (const ms of delays) {
+      if (ms === 0) continue;
+      timers.push(
+        setTimeout(() => {
+          if (tryHydrate()) void refreshSession();
+        }, ms)
+      );
     }
 
     void refreshSession().finally(() => setLoading(false));
 
     return () => {
-      if (retryTimer) clearTimeout(retryTimer);
+      timers.forEach(clearTimeout);
     };
   }, [refreshSession]);
 
@@ -144,4 +185,10 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
+}
+
+/** Login/register dan keyin — cache + state + native bir vaqtda */
+export function commitAuthSession(token: string, user: User, setUser: (u: User) => void) {
+  persistAuth(token, user);
+  setUser(user);
 }

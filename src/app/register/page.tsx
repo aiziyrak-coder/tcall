@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { LANGUAGES } from "@/lib/languages";
 import { detectDeviceLanguage } from "@/lib/locale-detect";
-import { useAuth } from "@/hooks/useAuth";
-import { persistAuth } from "@/lib/auth-cache";
-import { isNativeApp } from "@/lib/native-app";
+import { useAuth, commitAuthSession } from "@/hooks/useAuth";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { AuthField } from "@/components/auth/AuthField";
 import { PasswordField } from "@/components/auth/PasswordField";
@@ -43,11 +41,10 @@ export default function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Ro'yxatdan o'tish muvaffaqiyatsiz");
-      if (data.token && data.user) persistAuth(data.token, data.user);
-      setUser(data.user);
-      if (isNativeApp()) {
-        window.location.replace("/dashboard");
-        return;
+      if (data.token && data.user) {
+        commitAuthSession(data.token, data.user, setUser);
+      } else {
+        setUser(data.user);
       }
       router.replace("/dashboard");
     } catch (err) {

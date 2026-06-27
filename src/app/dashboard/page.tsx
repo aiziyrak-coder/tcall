@@ -5,6 +5,7 @@ import { Bell, BellOff, LogOut, MoreVertical, Settings, Headset, Sparkles } from
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { bootstrapAndroidAuth } from "@/lib/android-auth-bootstrap";
 import { readCachedToken, readCachedUser } from "@/lib/auth-cache";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage } from "@/lib/languages";
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (loading) return;
     if (user) return;
+    bootstrapAndroidAuth();
     const cached = readCachedUser();
     const token = readCachedToken();
     if (!cached && !token) router.push("/login");
