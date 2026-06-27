@@ -10,7 +10,6 @@ import { readCachedToken, readCachedUser } from "@/lib/auth-cache";
 import { useCallContext } from "@/components/providers/CallProvider";
 import { getLanguage } from "@/lib/languages";
 import { useUI } from "@/components/providers/LocaleProvider";
-import { formatTcallId } from "@/lib/tcallId";
 import { Dialer } from "@/components/Dialer";
 import { ReconnectPill, HintPill, ErrorToast } from "@/components/AppToast";
 import { FriendsPanel } from "@/components/FriendsPanel";
@@ -262,7 +261,6 @@ function DashboardInner({
 
   const userLang = getLanguage(user.language);
   const nativeApp = isNativeApp();
-  const userNumber = user.tcallId ? formatTcallId(user.tcallId) : "...";
   const supportLabel = user.language?.startsWith("ru")
     ? "Поддержка"
     : user.language?.startsWith("en")
@@ -303,8 +301,6 @@ function DashboardInner({
                 ? {
                     tab,
                     tabLabel: tabTitles[tab],
-                    userName: tab === "keypad" ? userNumber : undefined,
-                    userCaption: tab === "keypad" ? ui.yourNumber : undefined,
                     userFlag: tab === "keypad" ? undefined : userLang.flag,
                   }
                 : undefined

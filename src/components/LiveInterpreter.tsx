@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftRight,
   Languages,
@@ -147,6 +147,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
     recording,
     activity,
     activeTargetLang,
+    entries,
     error,
     setError,
     micDenied,
@@ -155,12 +156,21 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
     pressStart,
     pressEnd,
     swapLanguages,
+    clearHistory,
   } = useLiveInterpreter(userLanguage);
+
+  const historyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     markUserGesture();
     void unlockAudio();
-  }, []);
+    void startSession();
+  }, [startSession]);
+
+  useEffect(() => {
+    const el = historyRef.current;
+    if (el && entries.length) el.scrollTop = el.scrollHeight;
+  }, [entries]);
 
   const handleActivate = async () => {
     markUserGesture();
@@ -172,7 +182,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
   const theirLangInfo = getLanguage(theirLang);
   const speakLangInfo = activeTargetLang ? getLanguage(activeTargetLang) : null;
   const sameLang = myLang === theirLang;
-  const busy = activity === "processing";
+  const pttDisabled = sameLang || recording !== null;
 
   const errorText =
     error === "no_speech"
@@ -240,7 +250,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
         <PttButton
           speaker="me"
           active={recording === "me"}
-          disabled={sameLang || busy}
+          disabled={pttDisabled}
           onPressStart={pressStart}
           onPressEnd={pressEnd}
           className="interpreter-ptt interpreter-ptt-me"
@@ -258,7 +268,7 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
         <PttButton
           speaker="them"
           active={recording === "them"}
-          disabled={sameLang || busy}
+          disabled={pttDisabled}
           onPressStart={pressStart}
           onPressEnd={pressEnd}
           className="interpreter-ptt interpreter-ptt-them"
@@ -305,6 +315,31 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
           {errorText}
         </div>
       )}
+
+      <div className="interpreter-history-header">
+        {entries.length > 0 && (
+          <button type="button" onClick={clearHistory} className="interpreter-clear-btn">
+            {ui.interpreterClearHistory}
+          </button>
+        )}
+      </div>
+      <div ref={historyRef} className="interpreter-history">
+        {entries.length === 0 ? (
+          <div className="interpreter-empty">
+            <Languages className="w-8 h-8 text-slate-300 mb-2" />
+            <p>{ui.interpreterHint}</p>
+          </div>
+        ) : (
+          entries.map((entry, i) => (
+            <div key={`${i}-${entry.original.slice(0, 24)}`} className="interpreter-bubble interpreter-bubble-me">
+              <p className="interpreter-bubble-original">{entry.original}</p>
+              {entry.translated !== entry.original && (
+                <p className="interpreter-bubble-translated">{entry.translated}</p>
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
       <details className="interpreter-lang-details">
         <summary className="interpreter-lang-summary">

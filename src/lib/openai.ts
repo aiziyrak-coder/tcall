@@ -43,13 +43,13 @@ export async function transcribeAudio(
   filename: string,
   hintLang?: string,
   whisperLangOverride?: string,
-  options?: { interpreterMode?: boolean }
+  options?: { interpreterMode?: boolean; fast?: boolean }
 ): Promise<{ text: string; language?: string }> {
   const formData = new FormData();
   const blob = new Blob([new Uint8Array(audioBuffer)]);
   formData.append("file", blob, filename);
   formData.append("model", "whisper-1");
-  formData.append("response_format", "verbose_json");
+  formData.append("response_format", options?.fast ? "json" : "verbose_json");
   formData.append("temperature", "0");
 
   const whisperLang =
@@ -59,13 +59,19 @@ export async function transcribeAudio(
     formData.append("prompt", getWhisperPrompt(hintLang));
   }
 
-  const res = await withRetry(() =>
-    fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${requireApiKey()}` },
-      body: formData,
-      signal: AbortSignal.timeout(30_000),
-    })
+  const timeoutMs = options?.fast ? 14_000 : 30_000;
+  const maxAttempts = options?.fast ? 2 : 3;
+
+  const res = await withRetry(
+    () =>
+      fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${requireApiKey()}` },
+        body: formData,
+        signal: AbortSignal.timeout(timeoutMs),
+      }),
+    maxAttempts,
+    options?.fast ? 350 : 800
   );
 
   if (!res.ok) {
@@ -242,34 +248,31 @@ export async function translateForInterpreter(
   const sourceName = getLanguageName(sourceLang);
   const targetName = getLanguageName(targetLang);
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${requireApiKey()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: getModel(),
-      temperature: 0,
-      max_tokens: 500,
-      messages: [
-        {
-          role: "system",
-          content: `You are a literal word-for-word interpreter. Translate ONLY the exact words given from ${sourceName} to ${targetName}.
-
-STRICT RULES:
-- Translate ONLY what is in the input — nothing more, nothing less.
-- Do NOT add greetings, filler words, explanations, or complete partial sentences.
-- Do NOT guess, infer, or expand abbreviated speech.
-- Do NOT use conversation context — only the single input line.
-- Preserve names, numbers, and proper nouns exactly.
-- If the input is one word, output one word (translated).
-- Return ONLY the translation text.`,
+  const res = await withRetry(
+    () =>
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${requireApiKey()}`,
+          "Content-Type": "application/json",
         },
-        { role: "user", content: text },
-      ],
-    }),
-  });
+        body: JSON.stringify({
+          model: getModel(),
+          temperature: 0,
+          max_tokens: 220,
+          messages: [
+            {
+              role: "system",
+              content: `Translate from ${sourceName} to ${targetName}. Return ONLY the translation. No extra words.`,
+            },
+            { role: "user", content: text },
+          ],
+        }),
+        signal: AbortSignal.timeout(12_000),
+      }),
+    2,
+    350
+  );
 
   if (!res.ok) {
     console.error("GPT interpreter translate error:", await res.text());
@@ -280,13 +283,18 @@ STRICT RULES:
   return data.choices?.[0]?.message?.content?.trim() || text;
 }
 
-/** OpenAI TTS — tilga mos ovoz bilan tarjima matnini o'qish (HD fail bo'lsa tts-1 ga tushadi) */
-export async function textToSpeech(text: string, langHint?: string): Promise<Buffer | null> {
+/** OpenAI TTS — tilga mos ovoz bilan tarjima matnini o'qish */
+export async function textToSpeech(
+  text: string,
+  langHint?: string,
+  opts?: { fast?: boolean }
+): Promise<Buffer | null> {
   if (!text.trim()) return null;
 
   const voice = getTTSVoice(langHint);
-  const speed = getTTSSpeed(langHint);
-  const primary = getTTSModel();
+  const baseSpeed = getTTSSpeed(langHint);
+  const speed = opts?.fast ? Math.min(baseSpeed + 0.1, 1.25) : baseSpeed;
+  const primary = opts?.fast ? "tts-1" : getTTSModel();
 
   async function synth(model: "tts-1" | "tts-1-hd"): Promise<Buffer | null> {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
@@ -302,6 +310,7 @@ export async function textToSpeech(text: string, langHint?: string): Promise<Buf
         speed,
         response_format: "mp3",
       }),
+      signal: AbortSignal.timeout(opts?.fast ? 12_000 : 25_000),
     });
 
     if (!res.ok) {

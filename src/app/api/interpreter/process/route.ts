@@ -10,8 +10,8 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const MIN_RECORD_MS = 1200;
-const MIN_AUDIO_BYTES = 1400;
+const MIN_RECORD_MS = 700;
+const MIN_AUDIO_BYTES = 900;
 
 export async function POST(req: NextRequest) {
   try {
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     if (sourceLang === targetLang) {
       let audioBase64: string | undefined;
       if (withSpeech) {
-        const audioBuf = await textToSpeech(original, targetLang);
+        const audioBuf = await textToSpeech(original, targetLang, { fast: true });
         if (audioBuf) audioBase64 = audioBuf.toString("base64");
       }
       return NextResponse.json({ original, translated: original, sourceLang, targetLang, audioBase64 });
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     let audioBase64: string | undefined;
     if (withSpeech && translated.trim()) {
-      const audioBuf = await textToSpeech(translated, targetLang);
+      const audioBuf = await textToSpeech(translated, targetLang, { fast: true });
       if (audioBuf) audioBase64 = audioBuf.toString("base64");
     }
 

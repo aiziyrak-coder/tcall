@@ -183,6 +183,11 @@ export function Dialer({ userLanguage, userTcallId, calls, onOpenChat, isActive 
 
   return (
     <div className="dialer-screen">
+      {userTcallId && (
+        <p className="dialer-my-number" aria-label={ui.yourNumber}>
+          {formatTcallId(userTcallId)}
+        </p>
+      )}
       <div className="dialer-panels">
         <section
           className={`dialer-panel dialer-panel-keypad${subPage === "keypad" ? " dialer-panel-active" : ""}`}

@@ -92,11 +92,10 @@ export function isValidInterpreterTranscript(text: string, audioBytes = 0): bool
   const words = t.split(/\s+/).filter(Boolean);
 
   if (words.length < 1) return false;
-  if (t.length < 3) return false;
+  if (t.length < 2) return false;
 
-  // Juda qisqa yozuvda uzoq matn — Whisper halosinatsiyasi
-  if (audioBytes > 0 && audioBytes < 4000 && t.length > 40) return false;
-  if (audioBytes > 0 && audioBytes < 2500 && words.length > 4) return false;
+  if (audioBytes > 0 && audioBytes < 2500 && t.length > 55) return false;
+  if (audioBytes > 0 && audioBytes < 1500 && words.length > 8) return false;
 
   const lower = t.toLowerCase();
   if (WHISPER_HALLUCINATIONS.some((h) => lower.includes(h))) return false;
