@@ -558,6 +558,8 @@
   min-height: 0;
   overflow: hidden;
   background: var(--bg-secondary);
+  position: relative;
+  z-index: 1;
 }
 
 .app-main-header {
@@ -1940,6 +1942,10 @@ body.tg-webapp .ios-tab-bar {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.app-tab-hidden {
+  display: none !important;
 }
 
 .app-tab-scroll {
@@ -4246,7 +4252,7 @@ body.native-app .chat-conv-item:active {
 .liquid-bg-orbs {
   position: fixed;
   inset: 0;
-  pointer-events: none;
+  pointer-events: none !important;
   z-index: 0;
   overflow: hidden;
 }

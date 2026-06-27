@@ -152,7 +152,8 @@
 }
 
 /* ─── Tab panels enter animation ─── */
-.app-tab-panel {
+/* Tab panels enter animation — display comes from globals .app-tab-panel */
+.app-tab-panel:not(.app-tab-hidden) {
   animation: tabContentIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 

@@ -346,7 +346,7 @@ function DashboardInner({
         <ErrorToast message={loadError || null} onRetry={() => refresh()} retryLabel={ui.retry} />
 
         {mountedTabs.has("keypad") && (
-          <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "hidden"}>
+          <div className={tab === "keypad" ? "app-tab-panel app-tab-keypad" : "app-tab-hidden"}>
             <Dialer
               isActive={tab === "keypad"}
               userLanguage={user.language}
@@ -361,7 +361,7 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("messages") && (
-          <div className={tab === "messages" ? "app-tab-panel chat-tab-panel" : "hidden"}>
+          <div className={tab === "messages" ? "app-tab-panel chat-tab-panel" : "app-tab-hidden"}>
             <ChatMessenger
               userLanguage={user.language}
               userId={user.userId}
@@ -378,7 +378,7 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("friends") && (
-          <div className={tab === "friends" ? "app-tab-panel" : "hidden"}>
+          <div className={tab === "friends" ? "app-tab-panel" : "app-tab-hidden"}>
             <div className="app-tab-scroll">
               <FriendsPanel
                 userLanguage={user.language}
@@ -392,7 +392,7 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("room") && (
-          <div className={tab === "room" ? "app-tab-panel" : "hidden"}>
+          <div className={tab === "room" ? "app-tab-panel" : "app-tab-hidden"}>
             <div className="app-tab-scroll">
               <RoomPanel userLanguage={user.language} />
             </div>
@@ -400,13 +400,13 @@ function DashboardInner({
         )}
 
         {mountedTabs.has("interpreter") && (
-          <div className={tab === "interpreter" ? "app-tab-panel app-tab-interpreter" : "hidden"}>
+          <div className={tab === "interpreter" ? "app-tab-panel app-tab-interpreter" : "app-tab-hidden"}>
             <LiveInterpreter userLanguage={user.language} active={tab === "interpreter"} />
           </div>
         )}
 
         {mountedTabs.has("numbers") && (
-          <div className={tab === "numbers" ? "app-tab-panel" : "hidden"}>
+          <div className={tab === "numbers" ? "app-tab-panel" : "app-tab-hidden"}>
             <div className="app-tab-scroll">
               <VanityShop userLanguage={user.language} currentId={user.tcallId} />
             </div>
