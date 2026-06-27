@@ -91,10 +91,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const cached = readCachedUser();
-    const token = readCachedToken();
-    if (cached && token) setUserState(cached);
+    const hydrate = () => {
+      const cached = readCachedUser();
+      const token = readCachedToken();
+      if (cached && token) {
+        setUserState(cached);
+        return true;
+      }
+      return false;
+    };
+
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    if (!hydrate()) {
+      retryTimer = setTimeout(() => {
+        if (hydrate()) void refreshSession();
+      }, 80);
+    }
+
     void refreshSession().finally(() => setLoading(false));
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [refreshSession]);
 
   useEffect(() => {

@@ -10,8 +10,8 @@ android {
         applicationId "uz.tcall"
         minSdk rootProject.ext.minSdkVersion
         targetSdk rootProject.ext.targetSdkVersion
-        versionCode 1000007
-        versionName "1.000007"
+        versionCode 1000008
+        versionName "1.000008"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "WEB_URL", "\"https://web.tcall.uz\""

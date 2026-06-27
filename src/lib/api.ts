@@ -6,6 +6,7 @@ import {
 } from "@/lib/domains";
 import { fetchWithRetry } from "@/lib/network-resilience";
 import { readCachedToken } from "@/lib/auth-cache";
+import { androidBridge } from "@/lib/android-bridge";
 
 /** Frontend URL (public site) */
 export function getAppUrl(): string {
@@ -31,6 +32,7 @@ export function apiUrl(path: string): string {
 
 function isNativeClient(): boolean {
   if (typeof window === "undefined") return false;
+  if (androidBridge()) return true;
   const tn = (window as unknown as { TcallNative?: { isAndroid?: boolean } }).TcallNative;
   if (tn?.isAndroid) return true;
   return window.Capacitor?.isNativePlatform?.() === true;

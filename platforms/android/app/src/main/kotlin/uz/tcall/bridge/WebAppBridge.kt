@@ -50,6 +50,19 @@ class WebAppBridge(
             if (token.isNullOrBlank() || userJson.isNullOrBlank()) return
             session.save(token, userJson)
             CookieManager.getInstance().flush()
+            webView.post {
+                webView.evaluateJavascript(
+                    """
+                    (function(){
+                      try {
+                        localStorage.setItem('tcall:token', ${JSONObject.quote(token.trim())});
+                        localStorage.setItem('tcall:user', ${JSONObject.quote(userJson.trim())});
+                      } catch(e) {}
+                    })();
+                    """.trimIndent(),
+                    null,
+                )
+            }
         }.onFailure { Log.w(TAG, "saveSession: ${it.message}") }
     }
 

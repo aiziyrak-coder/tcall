@@ -5,6 +5,8 @@ import { ensureNativeNotificationPermission } from "@/lib/native-permissions";
 
 const INCOMING_CHANNEL = "incoming_calls";
 
+import { androidBridge } from "@/lib/android-bridge";
+
 /** Capacitor native WebView inject qilgan bridge */
 interface CapBridge {
   isNativePlatform?: () => boolean;
@@ -26,6 +28,7 @@ function bridge(): CapBridge | null {
 export function isNativeApp(): boolean {
   try {
     if (typeof window !== "undefined") {
+      if (androidBridge()) return true;
       const tn = (window as unknown as { TcallNative?: { isAndroid?: boolean } }).TcallNative;
       if (tn?.isAndroid) return true;
     }
@@ -37,6 +40,7 @@ export function isNativeApp(): boolean {
 
 export function getNativePlatform(): "android" | "ios" | "web" {
   try {
+    if (androidBridge()) return "android";
     const tn = (window as unknown as { TcallNative?: { platform?: string } }).TcallNative;
     if (tn?.platform === "android") return "android";
     const p = bridge()?.getPlatform?.();

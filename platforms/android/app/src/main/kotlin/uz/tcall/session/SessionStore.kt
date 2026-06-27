@@ -17,11 +17,11 @@ class SessionStore(context: Context) {
         prefs.edit()
             .putString(KEY_TOKEN, token.trim())
             .putString(KEY_USER, userJson.trim())
-            .apply()
+            .commit()
     }
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
     }
 
     companion object {
