@@ -123,8 +123,6 @@ function PttButton({
     onPressEnd();
   };
 
-  const androidNative = isNativeApp() && getNativePlatform() === "android";
-
   return (
     <button
       type="button"
