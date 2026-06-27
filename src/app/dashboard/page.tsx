@@ -27,6 +27,7 @@ import { NetworkStatusBanner } from "@/components/NetworkStatusBanner";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { HeaderActionMenu } from "@/components/HeaderActionMenu";
 import { formatTcallId } from "@/lib/tcallId";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface CallRecord {
   id: string;
@@ -249,8 +250,8 @@ function DashboardInner({
     messages: ui.messages,
     interpreter: ui.interpreterTab,
   };
-  const showLogo = tab === "keypad" || tab === "room";
-  const useContextHeader = showLogo || tab === "messages";
+  const showLogo = tab === "keypad" || tab === "room" || tab === "messages";
+  const useContextHeader = tab === "keypad" || tab === "room";
 
   const userLang = getLanguage(user.language);
   const [nativeApp, setNativeApp] = useState(false);
@@ -308,21 +309,34 @@ function DashboardInner({
                 : undefined
             }
             right={
-              <button
-                type="button"
-                ref={headerMenuBtnRef}
-                onClick={() => setShowHeaderMenu(true)}
-                className="ios-icon-btn relative"
-                title={ui.moreTab}
-                aria-label={ui.moreTab}
-                aria-haspopup="menu"
-                aria-expanded={showHeaderMenu}
-              >
-                <MoreVertical className="w-5 h-5" />
-                {supportUnread > 0 && (
-                  <span className="header-icon-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
+              <div className="phone-header-actions-row">
+                {tab === "messages" && (
+                  <>
+                    <span className="phone-header-online-pill">
+                      <span className="phone-header-online-dot" aria-hidden />
+                      {ui.online}
+                    </span>
+                    <div className="phone-header-user-avatar">
+                      <UserAvatar userId={user.userId} name={user.name} size="sm" />
+                    </div>
+                  </>
                 )}
-              </button>
+                <button
+                  type="button"
+                  ref={headerMenuBtnRef}
+                  onClick={() => setShowHeaderMenu(true)}
+                  className="ios-icon-btn relative"
+                  title={ui.moreTab}
+                  aria-label={ui.moreTab}
+                  aria-haspopup="menu"
+                  aria-expanded={showHeaderMenu}
+                >
+                  <MoreVertical className="w-5 h-5" />
+                  {supportUnread > 0 && (
+                    <span className="header-icon-badge">{supportUnread > 9 ? "9+" : supportUnread}</span>
+                  )}
+                </button>
+              </div>
             }
           />
         }

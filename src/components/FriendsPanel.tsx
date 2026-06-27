@@ -303,7 +303,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
       )}
 
       {/* Qidirish */}
-      <section className="friends-section">
+      <section className="friends-section friends-glass-card">
         <h3 className="friends-section-title">
           <Search className="w-4 h-4" /> {ui.searchUser}
         </h3>
@@ -318,7 +318,7 @@ export function FriendsPanel({ userLanguage, onOpenChat }: FriendsPanelProps) {
           />
           <button
             type="button"
-            className="btn-primary btn-compact shrink-0 px-4"
+            className="btn-primary btn-compact shrink-0 px-4 friends-search-submit"
             disabled={searchId.replace(/\D/g, "").length !== 9 || searching}
             onClick={() => void runSearch()}
           >

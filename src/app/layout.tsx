@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./premium-glass.css";
 import { ClientProviders } from "@/components/providers/ClientProviders";
 import { isLandingHost } from "@/lib/domains";
 import { getServerHostname } from "@/lib/server-host";

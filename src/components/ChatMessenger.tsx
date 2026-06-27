@@ -1960,11 +1960,15 @@ export function ChatMessenger({
   return (
     <div className="chat-app chat-app-list">
       <div className="chat-list-view">
+      <div className="app-page-title">
+        <span className="app-page-title-dot" aria-hidden />
+        <h2>{ui.messages}</h2>
+      </div>
       <div className="chat-list-actions">
-        <button type="button" className="chat-action-btn" onClick={() => { setActionError(""); setShowNewChat(true); }}>
+        <button type="button" className="chat-action-btn chat-action-btn-primary" onClick={() => { setActionError(""); setShowNewChat(true); }}>
           <Plus className="w-4 h-4" /> {ui.newChat}
         </button>
-        <button type="button" className="chat-action-btn" onClick={() => { setActionError(""); setShowNewGroup(true); }}>
+        <button type="button" className="chat-action-btn chat-action-btn-secondary" onClick={() => { setActionError(""); setShowNewGroup(true); }}>
           <Users className="w-4 h-4" /> {ui.newGroup}
         </button>
       </div>

@@ -4282,13 +4282,7 @@ body.native-app .chat-conv-item:active {
   animation-direction: alternate-reverse;
 }
 
-.app-shell-bottom-nav .liquid-bg-orbs {
-  display: none;
-}
-
-.app-shell:not(.app-shell-bottom-nav) .liquid-bg-orbs {
-  display: none;
-}
+/* Orbs enabled via premium-glass.css */
 
 .liquid-header {
   position: relative;
