@@ -698,9 +698,18 @@ export async function getPinnedMessagesForConversation(
   });
 
   const ids = pins.map((p) => p.message.id);
-  const reactions = await getReactionSummariesForMessages(ids, userId);
+  const [reactions, hiddenRows] = await Promise.all([
+    getReactionSummariesForMessages(ids, userId),
+    prisma.chatMessageHidden.findMany({
+      where: { userId, messageId: { in: ids } },
+      select: { messageId: true },
+    }),
+  ]);
+  const hiddenIds = new Set(hiddenRows.map((h) => h.messageId));
 
-  return pins.map((p) => {
+  return pins
+    .filter((p) => !hiddenIds.has(p.message.id))
+    .map((p) => {
     const m = p.message;
     const translations = m.translations.map((t) => ({ targetLang: t.targetLang, text: t.text }));
     return {
@@ -807,13 +816,19 @@ export async function getMessagesForConversationWithBackfill(
   const hasMore = messages.length === 50;
   const ordered = messages.reverse();
   const messageIds = ordered.map((m) => m.id);
-  const [reactionMap, pinnedIds] = await Promise.all([
+  const [reactionMap, pinnedIds, hiddenRows] = await Promise.all([
     getReactionSummariesForMessages(messageIds, userId),
     getPinnedMessageIds(conversationId),
+    prisma.chatMessageHidden.findMany({
+      where: { userId, messageId: { in: messageIds } },
+      select: { messageId: true },
+    }),
   ]);
+  const hiddenIds = new Set(hiddenRows.map((h) => h.messageId));
   const formatted = [];
 
   for (const m of ordered) {
+    if (hiddenIds.has(m.id)) continue;
     let translations = m.translations.map((t) => ({
       targetLang: t.targetLang,
       text: t.text,
@@ -875,31 +890,47 @@ export async function markConversationRead(conversationId: string, userId: strin
 export async function deleteChatMessage(
   conversationId: string,
   messageId: string,
-  userId: string
+  userId: string,
+  scope: "me" | "everyone" = "everyone"
 ) {
   await assertMember(conversationId, userId);
   const msg = await prisma.chatMessage.findUnique({ where: { id: messageId } });
   if (!msg || msg.conversationId !== conversationId) throw new Error("NOT_FOUND");
-  if (msg.deletedAt) return { ok: true };
 
-  if (msg.senderId !== userId) {
-    const [member, conv] = await Promise.all([
-      prisma.conversationMember.findUnique({
-        where: { conversationId_userId: { conversationId, userId } },
-        select: { role: true },
-      }),
-      prisma.conversation.findUnique({
-        where: { id: conversationId },
-        select: { type: true, createdById: true },
-      }),
-    ]);
-    const canModerate =
-      conv?.type === "group" &&
-      (member?.role === "owner" ||
-        member?.role === "admin" ||
-        conv.createdById === userId);
-    if (!canModerate) throw new Error("FORBIDDEN");
+  const [member, conv] = await Promise.all([
+    prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+      select: { role: true },
+    }),
+    prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { type: true, createdById: true },
+    }),
+  ]);
+
+  const isGroup = conv?.type === "group";
+  const isAdmin =
+    isGroup &&
+    (member?.role === "owner" ||
+      member?.role === "admin" ||
+      conv?.createdById === userId);
+  const isSender = msg.senderId === userId;
+
+  if (scope === "me") {
+    await prisma.chatMessageHidden.upsert({
+      where: { messageId_userId: { messageId, userId } },
+      create: { messageId, userId },
+      update: {},
+    });
+    emitToUser(userId, "chat-message-hidden", { conversationId, messageId, userId });
+    return { ok: true, scope: "me" as const };
   }
+
+  if (isGroup) {
+    if (!isAdmin && !isSender) throw new Error("FORBIDDEN");
+  }
+
+  if (msg.deletedAt) return { ok: true, scope: "everyone" as const };
 
   await prisma.chatMessage.update({
     where: { id: messageId },
@@ -912,12 +943,12 @@ export async function deleteChatMessage(
     include: { user: { select: { language: true } } },
   });
 
-  const payload = { conversationId, messageId };
+  const payload = { conversationId, messageId, scope: "everyone" as const };
   for (const m of members) {
     emitToUser(m.userId, "chat-message-deleted", payload);
   }
 
-  return { ok: true };
+  return { ok: true, scope: "everyone" as const };
 }
 
 export async function editChatMessage(

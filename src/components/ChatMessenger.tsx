@@ -639,6 +639,23 @@ export function ChatMessenger({
   }, [activeId, loadConversations, ui.chatMessageDeleted]);
 
   useEffect(() => {
+    const onHidden = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        conversationId: string;
+        messageId: string;
+        userId: string;
+      };
+      if (!detail?.conversationId || detail.conversationId !== activeId) return;
+      if (detail.userId !== userId) return;
+      setMessages((prev) => prev.filter((m) => m.id !== detail.messageId));
+      setPinnedMessages((prev) => prev.filter((m) => m.id !== detail.messageId));
+      void loadConversations();
+    };
+    window.addEventListener("tcall:chat-message-hidden", onHidden);
+    return () => window.removeEventListener("tcall:chat-message-hidden", onHidden);
+  }, [activeId, userId, loadConversations]);
+
+  useEffect(() => {
     const onEdited = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         conversationId: string;
@@ -792,13 +809,17 @@ export function ChatMessenger({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    messageId: string;
+    canDeleteForEveryone: boolean;
+    isDirect: boolean;
+  } | null>(null);
   const [replyTarget, setReplyTarget] = useState<ChatMessageItem | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessageItem | null>(null);
   const [pinnedMessages, setPinnedMessages] = useState<ChatMessageItem[]>([]);
 
-  const deleteMessage = (messageId: string) => {
-    setPendingDeleteId(messageId);
+  const deleteMessage = (msg: ChatMessageItem, canDeleteForEveryone: boolean, isDirect: boolean) => {
+    setPendingDelete({ messageId: msg.id, canDeleteForEveryone, isDirect });
   };
 
   const handleReaction = async (messageId: string, emoji: string) => {
@@ -823,15 +844,22 @@ export function ChatMessenger({
     }
   };
 
-  const confirmDeleteMessage = async () => {
-    if (!activeId || !pendingDeleteId) return;
-    const id = pendingDeleteId;
-    setPendingDeleteId(null);
-    const r = await apiFetch(`/api/chat/conversations/${activeId}/messages/${id}`, {
-      method: "DELETE",
-    });
+  const confirmDeleteMessage = async (scope: "me" | "everyone") => {
+    if (!activeId || !pendingDelete) return;
+    const { messageId } = pendingDelete;
+    setPendingDelete(null);
+    const r = await apiFetch(
+      `/api/chat/conversations/${activeId}/messages/${messageId}?scope=${scope}`,
+      { method: "DELETE" }
+    );
     if (!r.ok) {
       setActionError(ui.chatActionFailed);
+      return;
+    }
+    if (scope === "me") {
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      setPinnedMessages((prev) => prev.filter((m) => m.id !== messageId));
+      void loadConversations();
     }
   };
 
@@ -1336,6 +1364,8 @@ export function ChatMessenger({
         : null;
 
     const canModerateMessages = isGroup && (canManageGroup || isGroupCreator);
+    const canDeleteForEveryone = (msg: ChatMessageItem) =>
+      !isGroup || canModerateMessages || msg.sender.id === userId;
 
     return (
       <div className="chat-app chat-app-thread">
@@ -1554,8 +1584,8 @@ export function ChatMessenger({
                     ui={ui}
                     highlighted={highlightMessageId === m.id}
                     onDelete={
-                      !m.deleted && (m.sender.id === userId || canModerateMessages)
-                        ? () => void deleteMessage(m.id)
+                      !m.deleted
+                        ? () => deleteMessage(m, canDeleteForEveryone(m), !isGroup)
                         : undefined
                     }
                     onReply={!m.deleted ? () => startReply(m) : undefined}
@@ -2120,17 +2150,34 @@ export function ChatMessenger({
         />
       )}
 
-      {pendingDeleteId && (
-        <div className="ios-modal-overlay" onClick={() => setPendingDeleteId(null)}>
+      {pendingDelete && (
+        <div className="ios-modal-overlay" onClick={() => setPendingDelete(null)}>
           <div className="ios-modal-panel max-w-xs" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold text-center mb-1">{ui.chatDeleteMessage}</p>
             <p className="text-sm text-slate-500 text-center mb-4">{ui.chatConfirmDeleteMessage}</p>
-            <div className="flex gap-3">
-              <button type="button" className="btn-secondary btn-compact flex-1" onClick={() => setPendingDeleteId(null)}>
-                {ui.logoutCancel}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                className="btn-compact w-full bg-red-500 text-white rounded-xl font-semibold"
+                onClick={() => void confirmDeleteMessage("me")}
+              >
+                {ui.chatDeleteForMe}
               </button>
-              <button type="button" className="btn-compact flex-1 bg-red-500 text-white rounded-xl font-semibold" onClick={() => void confirmDeleteMessage()}>
-                {ui.chatDeleteMessage}
+              {pendingDelete.canDeleteForEveryone && (
+                <button
+                  type="button"
+                  className="btn-compact w-full bg-red-600 text-white rounded-xl font-semibold"
+                  onClick={() => void confirmDeleteMessage("everyone")}
+                >
+                  {pendingDelete.isDirect ? ui.chatDeleteForBoth : ui.chatDeleteForEveryone}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-secondary btn-compact w-full"
+                onClick={() => setPendingDelete(null)}
+              >
+                {ui.logoutCancel}
               </button>
             </div>
           </div>

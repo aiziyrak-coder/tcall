@@ -11,9 +11,12 @@ export async function DELETE(
   const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Avtorizatsiya kerak" }, { status: 401 });
 
+  const scopeParam = req.nextUrl.searchParams.get("scope");
+  const scope = scopeParam === "me" ? "me" : "everyone";
+
   try {
-    await deleteChatMessage(params.id, params.messageId, session.userId);
-    return NextResponse.json({ ok: true });
+    const result = await deleteChatMessage(params.id, params.messageId, session.userId, scope);
+    return NextResponse.json(result);
   } catch (e) {
     if (e instanceof Error && e.message === "NOT_FOUND") {
       return NextResponse.json({ error: "Xabar topilmadi" }, { status: 404 });
