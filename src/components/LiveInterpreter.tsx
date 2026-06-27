@@ -17,9 +17,11 @@ import { useUI } from "@/components/providers/LocaleProvider";
 import { LANGUAGES, getLanguage } from "@/lib/languages";
 import { useLiveInterpreter, type InterpreterSpeaker } from "@/hooks/useLiveInterpreter";
 import { unlockAudio, markUserGesture } from "@/lib/ringtone";
+import { isNativeApp, getNativePlatform } from "@/lib/native-app";
 
 interface LiveInterpreterProps {
   userLanguage: string;
+  active?: boolean;
 }
 
 function VoiceWave({ active, color }: { active: boolean; color: string }) {
@@ -115,6 +117,8 @@ function PttButton({
     onPressEnd();
   };
 
+  const androidNative = isNativeApp() && getNativePlatform() === "android";
+
   return (
     <button
       type="button"
@@ -122,9 +126,13 @@ function PttButton({
       onPointerDown={handleStart}
       onPointerUp={handleEnd}
       onPointerCancel={handleEnd}
-      onTouchStart={handleStart}
-      onTouchEnd={handleEnd}
-      onTouchCancel={handleEnd}
+      {...(!androidNative
+        ? {
+            onTouchStart: handleStart,
+            onTouchEnd: handleEnd,
+            onTouchCancel: handleEnd,
+          }
+        : {})}
       onContextMenu={(e) => e.preventDefault()}
       className={`${className} ${active ? "interpreter-ptt-active" : ""}`}
     >
@@ -133,7 +141,7 @@ function PttButton({
   );
 }
 
-export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
+export function LiveInterpreter({ userLanguage, active = true }: LiveInterpreterProps) {
   const ui = useUI(userLanguage);
   const [mySearch, setMySearch] = useState("");
   const [theirSearch, setTheirSearch] = useState("");
@@ -162,10 +170,12 @@ export function LiveInterpreter({ userLanguage }: LiveInterpreterProps) {
   const historyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    markUserGesture();
+    if (!active) {
+      stopSession();
+      return;
+    }
     void unlockAudio();
-    void startSession();
-  }, [startSession]);
+  }, [active, stopSession]);
 
   useEffect(() => {
     const el = historyRef.current;

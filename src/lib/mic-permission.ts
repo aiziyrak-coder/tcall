@@ -1,6 +1,6 @@
 import { getAudioConstraints, getInterpreterAudioConstraints } from "./mobile";
 import { unlockBrowserAudio } from "./audio-unlock";
-import { isNativeApp } from "./native-app";
+import { isNativeApp, getNativePlatform } from "./native-app";
 import { ensureNativeMicPermission, checkNativeMicPermission } from "./native-permissions";
 import {
   cacheMicStream,
@@ -110,6 +110,10 @@ export async function requestMicrophoneStream(interpreter = false): Promise<Medi
 /** Dashboard dial/accept/join gesture ichida — streamni saqlab qoladi */
 export async function prefetchMicrophoneAccess(): Promise<boolean> {
   try {
+    if (isNativeApp() && getNativePlatform() === "android") {
+      return wasMicGrantedBefore();
+    }
+
     if (hasCachedMicStream()) {
       markMicGranted();
       return true;

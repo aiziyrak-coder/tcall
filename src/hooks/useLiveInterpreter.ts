@@ -6,6 +6,7 @@ import { TranslationAudioQueue } from "@/lib/audioQueue";
 import { isDuplicateTranscript } from "@/lib/call-translation";
 import { acquireMicrophoneStream, prefetchMicrophoneAccess } from "@/lib/mic-permission";
 import { getPreferredAudioMimeType, isIOS, requestWakeLock } from "@/lib/mobile";
+import { isNativeApp, getNativePlatform } from "@/lib/native-app";
 import { unlockAudio } from "@/lib/ringtone";
 
 import { getSpeechLocale } from "@/lib/languages";
@@ -18,6 +19,7 @@ const MIN_RECORD_MS = 750;
 const MIN_BLOB_BYTES = 900;
 
 function speakWithBrowser(text: string, lang: string, onEnd?: () => void): boolean {
+  if (isNativeApp() && getNativePlatform() === "android") return false;
   if (typeof window === "undefined" || !window.speechSynthesis) return false;
   try {
     window.speechSynthesis.cancel();
@@ -98,7 +100,9 @@ export function useLiveInterpreter(userLanguage: string) {
 
   useEffect(() => {
     void unlockAudio();
-    void prefetchMicrophoneAccess();
+    if (!(isNativeApp() && getNativePlatform() === "android")) {
+      void prefetchMicrophoneAccess();
+    }
   }, []);
 
   const clearStopTimer = useCallback(() => {
@@ -336,7 +340,12 @@ export function useLiveInterpreter(userLanguage: string) {
 
       try {
         const audioStream = new MediaStream([audioTrack]);
-        const recorder = new MediaRecorder(audioStream, { mimeType });
+        let recorder: MediaRecorder;
+        try {
+          recorder = new MediaRecorder(audioStream, { mimeType });
+        } catch {
+          recorder = new MediaRecorder(audioStream);
+        }
 
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) chunksRef.current.push(e.data);

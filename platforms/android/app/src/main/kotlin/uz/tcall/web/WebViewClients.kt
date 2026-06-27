@@ -120,7 +120,14 @@ class AppWebViewClient(
     }
 
     override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
-        view?.reload()
+        val url = view?.url?.takeIf { it.startsWith("http") } ?: "https://web.tcall.uz/dashboard"
+        view?.postDelayed({
+            try {
+                view.loadUrl(url)
+            } catch (_: Exception) {
+                /* ignore */
+            }
+        }, 800)
         return true
     }
 }

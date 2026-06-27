@@ -22,14 +22,17 @@ export async function requestWakeLock() {
   return null;
 }
 
+function isAndroidNative(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as unknown as { TcallAndroidBridge?: unknown; TcallNative?: { isAndroid?: boolean } };
+  return !!(w.TcallAndroidBridge || w.TcallNative?.isAndroid);
+}
+
 export function getPreferredAudioMimeType(): string {
   if (typeof MediaRecorder === "undefined") return "audio/webm";
-  const types = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/aac",
-  ];
+  const types = isAndroidNative()
+    ? ["audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm"]
+    : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"];
   for (const t of types) {
     if (MediaRecorder.isTypeSupported(t)) return t;
   }
@@ -53,18 +56,18 @@ export function getAudioConstraints(): MediaStreamConstraints {
 
 /** Tarjimon uchun — balandroq va aniqroq yozuv */
 export function getInterpreterAudioConstraints(): MediaStreamConstraints {
-  return {
-    audio: {
-      echoCancellation: { ideal: true },
-      noiseSuppression: { ideal: true },
-      autoGainControl: { ideal: true },
-      sampleRate: { ideal: 48000, min: 16000 },
-      channelCount: { ideal: 1 },
-      // @ts-expect-error — Chrome/Telegram WebView
-      voiceIsolation: true,
-    },
-    video: false,
+  const audio: MediaTrackConstraints = {
+    echoCancellation: { ideal: true },
+    noiseSuppression: { ideal: true },
+    autoGainControl: { ideal: true },
+    sampleRate: { ideal: 48000, min: 16000 },
+    channelCount: { ideal: 1 },
   };
+  if (!isAndroidNative()) {
+    // @ts-expect-error — Chrome desktop
+    audio.voiceIsolation = true;
+  }
+  return { audio, video: false };
 }
 
 export function getMediaConstraints(mobile: boolean): MediaStreamConstraints {
